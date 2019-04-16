@@ -1,0 +1,13 @@
+[package]
+name = "realm"
+version = "0.1.0"
+authors = ["Amit Upadhyay <amitu@acko.com>"]
+description = "Rust / Elm base full stack web framework."
+license = "BSD-2-Clause"
+edition = "2018"
+
+[dependencies]
+hyper = "~0.12.27"
+
+[dev-dependencies]
+pretty_assertions = "~0.5.1"

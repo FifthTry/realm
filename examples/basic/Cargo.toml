@@ -1,0 +1,12 @@
+[package]
+name = "basic"
+version = "0.0.0"
+authors = ["Amit Upadhyay <upadhyay@gmail.com>"]
+publish = false
+
+[dependencies]
+futures = "~0.1.26"
+hyper = "~0.12.27"
+
+[dependencies.realm]
+path = "../.."
