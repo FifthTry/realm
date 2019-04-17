@@ -1,2 +1,2 @@
 mod http;
-pub use http::{serve, Request, Response, Result};
+pub use http::{Request, Response, Result, GLOBALS, THREAD_POOL};
