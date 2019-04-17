@@ -1,7 +1,15 @@
 extern crate basic;
 extern crate realm;
 
-use basic::forward::magic;
-use realm::realm;
+/*
+pub fn handler(req: realm::Request) -> realm::Result {
+    let conn = DB_POOL.get()?;
+    let in_: In::from(req, conn);
 
-realm!{magic}
+    basic::forward::magic(in_, req);
+    resp.tweak();
+    resp
+}
+*/
+
+realm::realm!{basic::forward::magic}
