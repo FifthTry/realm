@@ -3,47 +3,6 @@ use futures_cpupool::{self, CpuPool};
 use lazy_static::lazy_static;
 use thread_id;
 
-pub struct Request {
-    // headers: http::header::HeaderMap,
-    // cookies:
-    // path
-    // query: Query(HashMap<String, Vec<String>>), Query.get, get_list
-    // client_ip
-    // body: []u8
-
-    // response headers, cookies etc are to be put inside response object, like django
-}
-
-pub struct Response {
-    // title: Maybe<String>,
-    new_path: String,
-    // external_redirect:
-    replace: bool,
-    // headers:
-    // cookies
-    // status code
-    // x-sendfile
-
-    // seo stuff
-
-    // id
-    // config
-}
-
-impl Response {
-    // pub fn empty() -> Response {}
-
-    // pub fn add_cookie(key: String, value: String) {}
-
-    // pub fn new(id: String, config: String) -> Response {}
-}
-
-pub enum Error {
-    Http404(String),
-}
-
-pub type Result = std::result::Result<Response, hyper::Error>;
-
 lazy_static! {
     pub static ref THREAD_POOL: CpuPool = {
         let mut builder = futures_cpupool::Builder::new();
@@ -76,8 +35,9 @@ macro_rules! realm {
                 _req: hyper::Request<Body>,
             ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
                 let req: realm::Request = unimplemented!();
-                $e(req).unwrap();
-                unimplemented!()
+                Ok($e(req)
+                    .map(|r| r.to_hyper())
+                    .unwrap_or_else(|e| e.to_hyper()))
             }
 
             pub fn serve() {
