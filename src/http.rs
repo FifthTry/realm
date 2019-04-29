@@ -24,7 +24,7 @@ pub fn tid() -> usize {
 macro_rules! realm {
     ($e:expr) => {
         pub fn main() {
-            use futures::{self, IntoFuture};
+            use futures::{self, stream::Stream, IntoFuture};
             use hyper::{self, rt::Future, Body};
             use realm::{self, GLOBALS, THREAD_POOL};
             use std::{self, thread};
@@ -32,9 +32,8 @@ macro_rules! realm {
             type BoxFut = Box<Future<Item = hyper::Response<Body>, Error = hyper::Error> + Send>;
 
             pub fn handle_sync(
-                _req: hyper::Request<Body>,
+                req: realm::Request,
             ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
-                let req: realm::Request = unimplemented!();
                 Ok($e(req)
                     .map(|r| r.to_hyper())
                     .unwrap_or_else(|e| e.to_hyper()))
@@ -42,19 +41,17 @@ macro_rules! realm {
 
             pub fn serve() {
                 let addr = ([127, 0, 0, 1], 3000).into();
-                println!("main_: {:?}, tid: {}", thread::current().id(), realm::tid());
 
                 let server = hyper::Server::bind(&addr)
                     .serve(|| {
                         hyper::service::service_fn(|req: hyper::Request<Body>| -> BoxFut {
-                            println!("future tid: {:?}, {}", thread::current().id(), realm::tid());
-                            Box::new(THREAD_POOL.spawn_fn(|| {
-                                let mut i = GLOBALS.write();
-                                *i += 1;
-                                let tid = thread::current().id();
-                                println!("threadid: {:?} {}", thread::current().id(), realm::tid());
-                                println!("yo: {}, tid: {:?}", *i, tid);
-                                handle_sync(req).into_future()
+                            let (head, body) = req.into_parts();
+                            Box::new(body.concat2().and_then(|body| {
+                                let body = body.to_vec();
+                                let req: realm::Request = realm::Request::from(head, body);
+                                Box::new(
+                                    THREAD_POOL.spawn_fn(move || handle_sync(req).into_future()),
+                                )
                             }))
                         })
                     }).map_err(|e| eprintln!("server error: {}", e));

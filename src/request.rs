@@ -1,3 +1,6 @@
+use http;
+use hyper;
+
 pub struct Request {
     // headers: http::header::HeaderMap,
     // cookies:
@@ -7,4 +10,10 @@ pub struct Request {
     // body: []u8
 
     // response headers, cookies etc are to be put inside response object, like django
+}
+
+impl Request {
+    pub fn from(head: http::request::Parts, body: Vec<u8>) -> Self {
+        unimplemented!()
+    }
 }
