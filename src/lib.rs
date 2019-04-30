@@ -1,9 +1,7 @@
 mod error;
 mod http;
-mod request;
 mod response;
 
-pub use crate::http::{tid, GLOBALS, THREAD_POOL};
-pub use error::{Error, Result};
-pub use request::Request;
+pub use crate::http::{http_to_hyper, THREAD_POOL};
+pub use error::Result;
 pub use response::Response;

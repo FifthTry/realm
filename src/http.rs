@@ -1,7 +1,5 @@
-use antidote::RwLock;
 use futures_cpupool::{self, CpuPool};
 use lazy_static::lazy_static;
-use thread_id;
 
 lazy_static! {
     pub static ref THREAD_POOL: CpuPool = {
@@ -10,14 +8,11 @@ lazy_static! {
         builder.stack_size(16 * 1024 * 1024); // 16mb, default is 8mb
         builder.create()
     };
-
-    pub static ref GLOBALS: RwLock<i32> = {
-        RwLock::new(42)
-    };
 }
 
-pub fn tid() -> usize {
-    thread_id::get()
+pub fn http_to_hyper(req: http::Response<Vec<u8>>) -> hyper::Response<hyper::Body> {
+    let (parts, body) = req.into_parts();
+    hyper::Response::from_parts(parts, hyper::Body::from(body))
 }
 
 #[macro_export]
@@ -25,18 +20,19 @@ macro_rules! realm {
     ($e:expr) => {
         pub fn main() {
             use futures::{self, stream::Stream, IntoFuture};
+            use http;
             use hyper::{self, rt::Future, Body};
-            use realm::{self, GLOBALS, THREAD_POOL};
+            use realm::{self, http_to_hyper, THREAD_POOL};
             use std::{self, thread};
 
             type BoxFut = Box<Future<Item = hyper::Response<Body>, Error = hyper::Error> + Send>;
 
             pub fn handle_sync(
-                req: realm::Request,
+                req: http::Request<Vec<u8>>,
             ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
                 Ok($e(req)
-                    .map(|r| r.to_hyper())
-                    .unwrap_or_else(|e| e.to_hyper()))
+                    .map(|r| http_to_hyper(r))
+                    .unwrap_or_else(|e| http_to_hyper(e)))
             }
 
             pub fn serve() {
@@ -48,7 +44,8 @@ macro_rules! realm {
                             let (head, body) = req.into_parts();
                             Box::new(body.concat2().and_then(|body| {
                                 let body = body.to_vec();
-                                let req: realm::Request = realm::Request::from(head, body);
+                                let req: http::Request<Vec<u8>> =
+                                    http::Request::from_parts(head, body);
                                 Box::new(
                                     THREAD_POOL.spawn_fn(move || handle_sync(req).into_future()),
                                 )

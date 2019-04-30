@@ -1,10 +1,19 @@
 use hyper;
 
-pub struct Response {
+pub enum Response {
+    Success(Success),
+    Redirect(Redirect),
+}
+
+pub struct Redirect {
+    pub path: String,
+}
+
+pub struct Success {
     // title: Maybe<String>,
-    new_path: String,
-    // external_redirect:
-    replace: bool,
+    pub new_path: String,
+    pub replace: bool,
+    pub body: Vec<u8>,
     // headers:
     // cookies
     // status code
