@@ -3,6 +3,7 @@ name = "basic"
 version = "0.0.0"
 authors = ["Amit Upadhyay <upadhyay@gmail.com>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 futures = "~0.1.26"
@@ -10,6 +11,9 @@ hyper = "~0.12.27"
 futures-cpupool = "~0.1.8"
 lazy_static = "~1.2.0"
 http = "~0.1.17"
+serde_json = "~1.0.0"
+serde = "~1.0.0"
+serde_derive = "~1.0.0"
 
 [dependencies.realm]
 path = "../.."

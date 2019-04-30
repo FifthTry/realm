@@ -1,6 +1,5 @@
-use http;
 use realm;
 
-pub fn magic(_req: http::Request<Vec<u8>>) -> realm::Result {
-    unimplemented!()
+pub fn magic(req: realm::Request) -> realm::Result {
+    crate::routes::index::layout(req, 0)
 }
