@@ -32,7 +32,7 @@ macro_rules! realm {
             ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
                 Ok($e(&req)
                     .map(|r| http_to_hyper(r))
-                    .unwrap_or_else(|e| http_to_hyper(e)))
+                    .unwrap_or_else(|e| unimplemented!()))
             }
 
             pub fn serve() {
