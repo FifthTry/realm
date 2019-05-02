@@ -10,7 +10,7 @@ lazy_static! {
     };
 }
 
-pub fn http_to_hyper(req: http::Response<Vec<u8>>) -> hyper::Response<hyper::Body> {
+pub fn http_to_hyper(req: crate::Response) -> hyper::Response<hyper::Body> {
     let (parts, body) = req.into_parts();
     hyper::Response::from_parts(parts, hyper::Body::from(body))
 }
@@ -28,9 +28,9 @@ macro_rules! realm {
             type BoxFut = Box<Future<Item = hyper::Response<Body>, Error = hyper::Error> + Send>;
 
             pub fn handle_sync(
-                req: http::Request<Vec<u8>>,
+                req: realm::Request,
             ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
-                Ok($e(req)
+                Ok($e(&req)
                     .map(|r| http_to_hyper(r))
                     .unwrap_or_else(|e| http_to_hyper(e)))
             }
@@ -44,8 +44,7 @@ macro_rules! realm {
                             let (head, body) = req.into_parts();
                             Box::new(body.concat2().and_then(|body| {
                                 let body = body.to_vec();
-                                let req: http::Request<Vec<u8>> =
-                                    http::Request::from_parts(head, body);
+                                let req: realm::Request = http::Request::from_parts(head, body);
                                 Box::new(
                                     THREAD_POOL.spawn_fn(move || handle_sync(req).into_future()),
                                 )
