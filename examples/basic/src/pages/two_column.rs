@@ -2,14 +2,20 @@ use crate::widgets::{Footer, Header};
 use realm;
 
 #[derive(Serialize)]
-pub struct TwoColumn {
+pub struct TwoColumn<W>
+where
+    W: realm::Widget,
+{
     header: Header,
-    body: realm::WidgetSpec,
+    body: Box<W>,
     footer: Footer,
 }
 
-impl TwoColumn {
-    pub fn new(req: &realm::Request, body: realm::WidgetSpec) -> TwoColumn {
+impl<W> TwoColumn<W>
+where
+    W: realm::Widget,
+{
+    pub fn new(req: &realm::Request, body: Box<W>) -> TwoColumn<W> {
         TwoColumn {
             header: Header::new(req),
             body,
@@ -18,7 +24,10 @@ impl TwoColumn {
     }
 }
 
-impl realm::Page for TwoColumn {
+impl<W> realm::Page for TwoColumn<W>
+where
+    W: realm::Widget,
+{
     fn realm_id(&self) -> &'static str {
         "foo"
     }

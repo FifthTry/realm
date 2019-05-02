@@ -13,4 +13,7 @@ impl Index {
     pub fn new(_req: &realm::Request) -> Index {
         Index {}
     }
+    pub fn boxed(req: &realm::Request) -> Box<impl realm::Widget> {
+        Box::new(Index::new(req))
+    }
 }
