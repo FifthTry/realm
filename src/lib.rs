@@ -5,6 +5,7 @@ extern crate lazy_static;
 
 mod config;
 mod html;
+mod mode;
 mod page;
 mod serve;
 mod widget;

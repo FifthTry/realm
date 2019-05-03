@@ -1,14 +1,4 @@
-enum Mode {
-    API,
-    Layout,
-    HTML,
-}
-
-impl Mode {
-    fn detect(_req: &crate::Request) -> Mode {
-        unimplemented!() // TODO
-    }
-}
+use crate::mode::Mode;
 
 pub trait Page: serde::ser::Serialize {
     fn realm_id(&self) -> &'static str;
