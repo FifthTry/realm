@@ -15,14 +15,14 @@ impl HTML {
         self
     }
 
-    pub fn html(&self, spec: WidgetSpec) -> Result<Vec<u8>, failure::Error> {
+    pub fn render(&self, spec: WidgetSpec) -> Result<Vec<u8>, failure::Error> {
         let title = format!(
             "{}{}{}",
             &CONFIG.site_title_prefix, &self.title, &CONFIG.site_title_postfix
         );
         let rendered = ""; // TODO: implement server side rendering
         let json = serde_json::to_string_pretty(&spec)?;
-        let hash = ""; // TODO: latest_elm()?;
+        let hash = ""; // TODO(P1): latest_elm()?;
         Ok(format!( // TODO: add other stuff to html
             r#"<!DOCTYPE html>
 <html>
