@@ -1,7 +1,3 @@
-use failure;
-use serde;
-use serde_json;
-
 #[derive(Serialize)]
 pub struct WidgetSpec {
     pub id: &'static str,

@@ -1,6 +1,4 @@
 use crate::config::CONFIG;
-use crate::widget::WidgetSpec;
-use failure;
 
 pub struct HTML {
     pub title: String,
@@ -15,7 +13,7 @@ impl HTML {
         self
     }
 
-    pub fn render(&self, spec: WidgetSpec) -> Result<Vec<u8>, failure::Error> {
+    pub fn render(&self, spec: crate::WidgetSpec) -> Result<Vec<u8>, failure::Error> {
         let title = format!(
             "{}{}{}",
             &CONFIG.site_title_prefix, &self.title, &CONFIG.site_title_postfix

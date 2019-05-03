@@ -1,19 +1,16 @@
-use crate::widgets::{Footer, Header};
-use realm;
-
 #[derive(Serialize)]
 pub struct TwoColumn {
-    header: Header,
+    header: crate::widgets::Header,
     body: realm::WidgetSpec,
-    footer: Footer,
+    footer: crate::widgets::Footer,
 }
 
 impl TwoColumn {
     pub fn new(req: &realm::Request, body: realm::WidgetSpec) -> TwoColumn {
         TwoColumn {
-            header: Header::new(req),
+            header: crate::widgets::Header::new(req),
             body,
-            footer: Footer::new(req),
+            footer: crate::widgets::Footer::new(req),
         }
     }
 }

@@ -1,8 +1,5 @@
-use futures_cpupool::{self, CpuPool};
-use lazy_static::lazy_static;
-
 lazy_static! {
-    pub static ref THREAD_POOL: CpuPool = {
+    pub static ref THREAD_POOL: futures_cpupool::CpuPool = {
         let mut builder = futures_cpupool::Builder::new();
         builder.pool_size(2);
         builder.stack_size(16 * 1024 * 1024); // 16mb, default is 8mb
