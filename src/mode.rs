@@ -1,11 +1,11 @@
-pub(crate) enum Mode {
+pub enum Mode {
     API,
     Layout,
     HTML,
 }
 
 impl Mode {
-    pub(crate) fn detect(req: &crate::Request) -> Mode {
+    pub fn detect(req: &crate::Request) -> Mode {
         let url = url::Url::parse(&format!(
             "http://foo.com/?{}",
             req.uri().query().unwrap_or("")
