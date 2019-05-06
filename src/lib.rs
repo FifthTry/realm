@@ -10,6 +10,7 @@ mod page;
 mod serve;
 mod widget;
 
+pub(crate) use config::CONFIG;
 pub use html::HTML;
 pub use page::Page;
 pub use serve::{http_to_hyper, THREAD_POOL};

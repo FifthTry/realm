@@ -17,6 +17,6 @@ impl TwoColumn {
 
 impl realm::Page for TwoColumn {
     fn realm_id(&self) -> &'static str {
-        "foo"
+        "two_column"
     }
 }
