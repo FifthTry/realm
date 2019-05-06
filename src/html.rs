@@ -30,8 +30,8 @@ impl HTML {
     <head>
         <meta charset="utf-8" />
         <title>{}</title>
-        <meta name="viewport" content="width=device-width"  />
-        <link rel="icon" href="{}" type="image/x-icon">
+        <meta name="viewport" content="width=device-width" />
+        <link rel="icon" href="{}" type="image/x-icon" />
         <script id="data" type="application/json">
 {}
         </script>
@@ -41,7 +41,7 @@ impl HTML {
         <script src="/static/deps/{}.js"></script>
     </body>
 </html>"#,
-            title, favicon, data, rendered, hash
+            title, &CONFIG.site_icon, data, rendered, hash
         ).into())
     }
 }
@@ -57,7 +57,7 @@ fn latest_elm() -> Result<String, failure::Error> {
 }
 
 fn resolve_deps(
-    _spec: &crate::WidgetSpec,
+    spec: &crate::WidgetSpec,
     _latest: &str,
 ) -> Result<std::collections::HashMap<String, String>, failure::Error> {
     // convert spec to json, and then look recursively the value for any map that contains both
@@ -65,5 +65,64 @@ fn resolve_deps(
     //
     // insert the elm id, and all it dependencies in map, where the value would be data read from
     // file system for that elm id.
+    let _ids = fetch_ids(&serde_json::to_value(spec)?);
     Ok(std::collections::HashMap::new()) // TODO
+}
+
+fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
+    match data {
+        serde_json::Value::Object(o) => {
+            let id = if let Some(serde_json::Value::String(id)) = o.get("id") {
+                id.to_string()
+            } else {
+                return vec![];
+            };
+
+            if let Some(config) = o.get("config") {
+                let mut r = vec![id];
+                r.extend(fetch_ids(config));
+                return r;
+            } else {
+                return vec![];
+            }
+        }
+        serde_json::Value::Array(l) => {
+            let mut r: Vec<String> = vec![];
+            for o in l.iter() {
+                r.extend(fetch_ids(o))
+            }
+            return r;
+        }
+        _ => vec![],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    fn check(d: serde_json::Value, e: Vec<&str>) {
+        assert_eq!(super::fetch_ids(&d), e);
+    }
+
+    #[test]
+    fn fetch_ids() {
+        check(json!({}), vec![]);
+        check(json!({"id": "foo"}), vec![]);
+        check(json!({"id": "foo", "config": 0}), vec!["foo"]);
+        check(
+            json!({
+                "id": "foo",
+                "config": {"id": "bar", "config": 0}
+            }),
+            vec!["foo", "bar"],
+        );
+        check(
+            json!({
+                "id": "foo", "config": [
+                    {"id": "bar", "config": 0},
+                    {"id": "bar2", "config": 0}
+                ]
+            }),
+            vec!["foo", "bar", "bar2"],
+        );
+    }
 }
