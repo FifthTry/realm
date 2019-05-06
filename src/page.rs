@@ -2,11 +2,11 @@ use crate::mode::Mode;
 
 pub trait Page: serde::ser::Serialize {
     fn realm_id(&self) -> &'static str;
-    fn realm_conf(&self) -> Result<serde_json::Value, failure::Error> {
+    fn realm_config(&self) -> Result<serde_json::Value, failure::Error> {
         Ok(serde_json::to_value(self)?)
     }
     fn realm_json(&self) -> Result<serde_json::Value, failure::Error> {
-        self.realm_conf()
+        self.realm_config()
     }
     fn page_with_response(
         &self,
@@ -27,7 +27,7 @@ pub trait Page: serde::ser::Serialize {
     fn widget_spec(&self) -> Result<crate::WidgetSpec, failure::Error> {
         Ok(crate::WidgetSpec {
             id: self.realm_id(),
-            conf: self.realm_conf()?,
+            config: self.realm_config()?,
         })
     }
 }

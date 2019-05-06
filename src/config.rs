@@ -27,6 +27,9 @@ lazy_static! {
         if config.static_dir == "" {
             config.static_dir = "static".into();
         };
+        if config.site_icon == "" {
+            config.site_icon = "/static/favicon.ico".into();
+        }
         config
     };
 }
