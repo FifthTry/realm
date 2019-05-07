@@ -1,4 +1,4 @@
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct Config {
     #[serde(default)]
     pub context: String,
@@ -37,5 +37,17 @@ lazy_static! {
 impl Config {
     pub fn static_path(&self, rest: &str) -> std::path::PathBuf {
         std::path::Path::new(&self.static_dir).join(rest)
+    }
+}
+
+impl crate::static_data::StaticData for Config {
+    fn content(&self, path: &str) -> Result<String, failure::Error> {
+        use std::io::Read;
+
+        let latest = self.static_path(path);
+        let mut latest = std::fs::File::open(&latest)?;
+        let mut latest_content = String::new();
+        latest.read_to_string(&mut latest_content)?;
+        Ok(latest_content.trim().to_string())
     }
 }
