@@ -51,7 +51,7 @@ impl crate::static_data::StaticData for Config {
                 latest.read_to_string(&mut latest_content)?;
                 Ok(latest_content.trim().to_string())
             }
-            Err(e) => Err(failure::err_msg(format!("File not found: {}", path))),
+            Err(_) => Err(failure::err_msg(format!("File not found: {}", path))),
         }
     }
 }
