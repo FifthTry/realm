@@ -1,4 +1,6 @@
+use crate::utils::LayoutDeps;
 use crate::{StaticData, CONFIG};
+use std::collections::HashMap;
 
 pub struct HTML {
     pub title: String,
@@ -19,7 +21,7 @@ impl HTML {
             &CONFIG.site_title_prefix, &self.title, &CONFIG.site_title_postfix
         );
         let rendered = ""; // TODO: implement server side rendering
-        let hash = CONFIG.content("realm/latest.txt")?;
+        let hash = CONFIG.content("deps/latest.txt")?;
         let deps = resolve_deps(&spec, &hash, &CONFIG.clone() /* eff you rust */)?;
         let data = json!({"data": spec, "deps": deps});
         let data = serde_json::to_string_pretty(&data)?;
@@ -42,30 +44,55 @@ impl HTML {
     </body>
 </html>"#,
             title, &CONFIG.site_icon, data, rendered, hash
-        ).into())
+        )
+        .into())
     }
 }
 
 fn resolve_deps(
     spec: &crate::WidgetSpec,
-    _latest: &str,
+    latest: &str,
     sd: &impl crate::StaticData,
-) -> Result<std::collections::HashMap<String, String>, failure::Error> {
+) -> Result<Vec<LayoutDeps>, failure::Error> {
     // convert spec to json, and then look recursively the value for any map that contains both
     // and only "id" and "config", if found, assume id to be the elm id.
     //
     // insert the elm id, and all it dependencies in map, where the value would be data read from
     // file system for that elm id.
-    fetch_deps(fetch_ids(&serde_json::to_value(spec)?), sd)
+    fetch_deps(fetch_ids(&serde_json::to_value(spec)?), latest, sd)
 }
 
 fn fetch_deps(
     ids: Vec<String>,
+    latest: &str,
     _sd: &impl crate::StaticData,
-) -> Result<std::collections::HashMap<String, String>, failure::Error> {
-    let mut result = std::collections::HashMap::new();
+) -> Result<Vec<LayoutDeps>, failure::Error> {
+    let metadata = CONFIG.content(&format!("deps/{}/deps.json", latest))?;
+    let metadata: HashMap<String, Vec<String>> = serde_json::from_str(&metadata)?;
+    let mut deps = vec![];
+    let mut skip_map = vec![];
+    for id in ids.iter() {
+        if skip_map.contains(&id.clone()) {
+            continue;
+        }
+        skip_map.push(id.clone());
 
-    Ok(result)
+        if let Some(ref items) = metadata.get(id) {
+            for item in items.iter() {
+                skip_map.push(item.clone());
+                deps.push(LayoutDeps {
+                    module: item.clone(),
+                    source: CONFIG.content(&format!("deps/{}/{}.js", &latest, &item))?,
+                });
+            }
+        }
+
+        deps.push(LayoutDeps {
+            module: id.clone(),
+            source: CONFIG.content(&format!("deps/{}/{}.js", &latest, &id))?,
+        });
+    }
+    Ok(deps)
 }
 
 #[cfg(test)]
@@ -87,7 +114,8 @@ mod tests_fetch_deps {
                 r#"{
                     "foo": []
                 }"#,
-            ).with("elmver/foo.js", "function foo() {}")
+            )
+            .with("elmver/foo.js", "function foo() {}")
     }
 
     struct N(pub HashMap<String, String>);
@@ -114,19 +142,15 @@ mod tests_fetch_deps {
 fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
     match data {
         serde_json::Value::Object(o) => {
-            let id = if let Some(serde_json::Value::String(id)) = o.get("id") {
-                id.to_string()
-            } else {
-                return vec![];
-            };
-
-            if let Some(config) = o.get("config") {
-                let mut r = vec![id];
-                r.extend(fetch_ids(config));
-                return r;
-            } else {
-                return vec![];
+            let mut r = vec![];
+            for (key, value) in o {
+                if key != "id" {
+                    r.extend(fetch_ids(value));
+                } else if let serde_json::Value::String(id) = value {
+                    r.push(id.to_string());
+                }
             }
+            return r;
         }
         serde_json::Value::Array(l) => {
             let mut r: Vec<String> = vec![];
