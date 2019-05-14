@@ -97,12 +97,12 @@ fn fetch_deps(
 
 #[cfg(test)]
 mod tests_fetch_deps {
-    use std::collections::HashMap;
     use crate::utils::LayoutDeps;
+    use std::collections::HashMap;
 
     fn check(d: Vec<&str>, e: N, sd: &crate::static_data::TestStatic) {
         assert_eq!(
-            super::fetch_deps(d.iter().map(|s| s.to_string()).collect(), "",&sd).unwrap(),
+            super::fetch_deps(d.iter().map(|s| s.to_string()).collect(), "", &sd).unwrap(),
             e.0
         );
     }
@@ -123,11 +123,17 @@ mod tests_fetch_deps {
     impl N {
         fn o(module: &str, source: &str) -> Self {
             let mut n = N(vec![]);
-            n.0.push(LayoutDeps{module: module.into(), source: source.into()});
+            n.0.push(LayoutDeps {
+                module: module.into(),
+                source: source.into(),
+            });
             n
         }
         fn with(mut self, module: &str, source: &str) -> Self {
-            self.0.push(LayoutDeps{module: module.into(), source: source.into()});
+            self.0.push(LayoutDeps {
+                module: module.into(),
+                source: source.into(),
+            });
             self
         }
     }
