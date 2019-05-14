@@ -44,10 +44,14 @@ impl crate::static_data::StaticData for Config {
     fn content(&self, path: &str) -> Result<String, failure::Error> {
         use std::io::Read;
 
-        let latest = self.static_path(path);
-        let mut latest = std::fs::File::open(&latest)?;
-        let mut latest_content = String::new();
-        latest.read_to_string(&mut latest_content)?;
-        Ok(latest_content.trim().to_string())
+        let latest_path = self.static_path(path);
+        match std::fs::File::open(&latest_path) {
+            Ok(mut latest) => {
+                let mut latest_content = String::new();
+                latest.read_to_string(&mut latest_content)?;
+                Ok(latest_content.trim().to_string())
+            }
+            Err(e) => Err(failure::err_msg(format!("File not found: {}", path))),
+        }
     }
 }

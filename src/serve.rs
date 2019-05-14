@@ -27,9 +27,10 @@ macro_rules! realm {
             pub fn handle_sync(
                 req: realm::Request,
             ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
-                Ok($e(&req)
-                    .map(|r| http_to_hyper(r))
-                    .unwrap_or_else(|e| unimplemented!()))
+                match $e(&req).map(|r| http_to_hyper(r)){
+                    Ok(a) => Ok(a),
+                    Err(e) => {eprintln!("{:?}", e); unimplemented!()}
+                }
             }
 
             pub fn serve() {
