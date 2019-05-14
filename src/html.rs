@@ -23,7 +23,22 @@ impl HTML {
         let rendered = ""; // TODO: implement server side rendering
         let hash = CONFIG.content("deps/latest.txt")?;
         let deps = resolve_deps(&spec, &hash, &CONFIG.clone() /* eff you rust */)?;
-        let data = json!({"data": spec, "deps": deps});
+        //let data = json!({"data": spec, "deps": deps});
+        // FixME
+        let data = json!({
+            "result": {
+                "widget": spec,
+                "replace": false,
+                "session": {
+                    "user": {
+                        "id": null,
+                        "phone": null,
+                    }
+                },
+                "deps": deps
+
+            }
+        });
         let data = serde_json::to_string_pretty(&data)?;
         // TODO: escape html
         Ok(format!( // TODO: add other stuff to html
