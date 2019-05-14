@@ -10,7 +10,7 @@ impl TestStatic {
     }
 
     pub(crate) fn with(mut self, key: &str, value: &str) -> Self {
-        self.0.insert(format!("realm/{}", key), value.into());
+        self.0.insert(format!("deps/{}", key), value.into());
         self
     }
 }

@@ -65,9 +65,9 @@ fn resolve_deps(
 fn fetch_deps(
     ids: Vec<String>,
     latest: &str,
-    _sd: &impl crate::StaticData,
+    sd: &impl crate::StaticData,
 ) -> Result<Vec<LayoutDeps>, failure::Error> {
-    let metadata = CONFIG.content(&format!("deps/{}/deps.json", latest))?;
+    let metadata = sd.content(&format!("deps/{}/deps.json", latest))?;
     let metadata: HashMap<String, Vec<String>> = serde_json::from_str(&metadata)?;
     let mut deps = vec![];
     let mut skip_map = vec![];
@@ -82,14 +82,14 @@ fn fetch_deps(
                 skip_map.push(item.clone());
                 deps.push(LayoutDeps {
                     module: item.clone(),
-                    source: CONFIG.content(&format!("deps/{}/{}.js", &latest, &item))?,
+                    source: sd.content(&format!("deps/{}/{}.js", &latest, &item))?,
                 });
             }
         }
 
         deps.push(LayoutDeps {
             module: id.clone(),
-            source: CONFIG.content(&format!("deps/{}/{}.js", &latest, &id))?,
+            source: sd.content(&format!("deps/{}/{}.js", &latest, &id))?,
         });
     }
     Ok(deps)
@@ -102,7 +102,7 @@ mod tests_fetch_deps {
 
     fn check(d: Vec<&str>, e: N, sd: &crate::static_data::TestStatic) {
         assert_eq!(
-            super::fetch_deps(d.iter().map(|s| s.to_string()).collect(), "", &sd).unwrap(),
+            super::fetch_deps(d.iter().map(|s| s.to_string()).collect(), "elmver", &sd).unwrap(),
             e.0
         );
     }
@@ -111,7 +111,7 @@ mod tests_fetch_deps {
         crate::static_data::TestStatic::new()
             .with("latest.txt", "elmver")
             .with(
-                "deps.json",
+                "elmver/deps.json",
                 r#"{
                     "foo": []
                 }"#,
