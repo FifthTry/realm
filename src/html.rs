@@ -98,10 +98,11 @@ fn fetch_deps(
 #[cfg(test)]
 mod tests_fetch_deps {
     use std::collections::HashMap;
+    use crate::utils::LayoutDeps;
 
     fn check(d: Vec<&str>, e: N, sd: &crate::static_data::TestStatic) {
         assert_eq!(
-            super::fetch_deps(d.iter().map(|s| s.to_string()).collect(), &sd).unwrap(),
+            super::fetch_deps(d.iter().map(|s| s.to_string()).collect(), "",&sd).unwrap(),
             e.0
         );
     }
@@ -118,15 +119,15 @@ mod tests_fetch_deps {
             .with("elmver/foo.js", "function foo() {}")
     }
 
-    struct N(pub HashMap<String, String>);
+    struct N(pub Vec<LayoutDeps>);
     impl N {
-        fn o(key: &str, value: &str) -> Self {
-            let mut n = N(HashMap::new());
-            n.0.insert(key.into(), value.into());
+        fn o(module: &str, source: &str) -> Self {
+            let mut n = N(vec![]);
+            n.0.push(LayoutDeps{module: module.into(), source: source.into()});
             n
         }
-        fn with(mut self, key: &str, value: &str) -> Self {
-            self.0.insert(key.into(), value.into());
+        fn with(mut self, module: &str, source: &str) -> Self {
+            self.0.push(LayoutDeps{module: module.into(), source: source.into()});
             self
         }
     }
@@ -134,7 +135,7 @@ mod tests_fetch_deps {
     #[test]
     fn fetch_deps() {
         let sd = fixture();
-        check(vec![], N(HashMap::new()), &sd);
+        check(vec![], N(vec![]), &sd);
         check(vec!["foo"], N::o("foo", "function foo() {}"), &sd);
     }
 }
@@ -142,15 +143,23 @@ mod tests_fetch_deps {
 fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
     match data {
         serde_json::Value::Object(o) => {
-            let mut r = vec![];
-            for (key, value) in o {
-                if key != "id" {
+            let id = if let Some(serde_json::Value::String(id)) = o.get("id") {
+                id.to_string()
+            } else {
+                let mut r = vec![];
+                for (_, value) in o {
                     r.extend(fetch_ids(value));
-                } else if let serde_json::Value::String(id) = value {
-                    r.push(id.to_string());
                 }
+                return r;
+            };
+
+            if let Some(config) = o.get("config") {
+                let mut r = vec![id];
+                r.extend(fetch_ids(config));
+                return r;
+            } else {
+                return vec![];
             }
-            return r;
         }
         serde_json::Value::Array(l) => {
             let mut r: Vec<String> = vec![];
