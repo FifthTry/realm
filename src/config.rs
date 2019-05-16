@@ -1,4 +1,6 @@
-#[derive(Deserialize, Debug, Clone)]
+use std::collections::HashMap;
+
+#[derive(Deserialize, Debug, Default)]
 pub(crate) struct Config {
     #[serde(default)]
     pub context: String,
@@ -16,6 +18,13 @@ pub(crate) struct Config {
     pub site_title_postfix: String,
     #[serde(default)]
     pub static_dir: String,
+
+    #[serde(default)]
+    pub latest_elm: String,
+    #[serde(default)]
+    pub deps: HashMap<String, Vec<String>>,
+    #[serde(default)]
+    pub js_code: HashMap<String, String>,
 }
 
 lazy_static! {
@@ -30,6 +39,8 @@ lazy_static! {
         if config.site_icon == "" {
             config.site_icon = "/static/favicon.ico".into();
         }
+
+        config.init_elm().expect("failed to initialize elm stuff");
         config
     };
 }
@@ -38,9 +49,19 @@ impl Config {
     pub fn static_path(&self, rest: &str) -> std::path::PathBuf {
         std::path::Path::new(&self.static_dir).join(rest)
     }
-}
 
-impl crate::static_data::StaticData for Config {
+    pub fn init_elm(&mut self) -> Result<(), failure::Error> {
+        self.latest_elm = self.content("latest.txt")?;
+        self.deps =
+            serde_json::from_str(&self.content(&format!("deps/{}/deps.json", &self.latest_elm))?)?;
+
+        for entry in std::fs::read_dir(self.static_path(&format!("deps/{}/", &self.latest_elm)))? {
+            let entry = entry?;
+            let path = entry.path();
+        }
+        Ok(())
+    }
+
     fn content(&self, path: &str) -> Result<String, failure::Error> {
         use std::io::Read;
 
@@ -53,5 +74,15 @@ impl crate::static_data::StaticData for Config {
             }
             Err(_) => Err(failure::err_msg(format!("File not found: {}", path))),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn init_elm() {
+        let mut config = super::Config::default();
+        config.static_dir = "./examples/basic".into();
+        config.init_elm().expect("could not load init elm");
     }
 }

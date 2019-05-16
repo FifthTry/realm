@@ -1,6 +1,5 @@
 use crate::utils::LayoutDeps;
-use crate::{StaticData, CONFIG};
-use std::collections::HashMap;
+use crate::CONFIG;
 
 pub struct HTML {
     pub title: String,
@@ -21,8 +20,7 @@ impl HTML {
             &CONFIG.site_title_prefix, &self.title, &CONFIG.site_title_postfix
         );
         let rendered = ""; // TODO: implement server side rendering
-        let hash = CONFIG.content("deps/latest.txt")?;
-        let deps = resolve_deps(&spec, &hash, &CONFIG.clone() /* eff you rust */)?;
+        let deps = resolve_deps(&spec, &CONFIG)?;
         //let data = json!({"data": spec, "deps": deps});
         // FixME
         let data = json!({
@@ -58,30 +56,25 @@ impl HTML {
         <script src="/static/deps/{}.js"></script>
     </body>
 </html>"#,
-            title, &CONFIG.site_icon, data, rendered, hash
-        )
-        .into())
+            title, &CONFIG.site_icon, data, rendered, &CONFIG.latest_elm,
+        ).into())
     }
 }
 
 fn resolve_deps(
     spec: &crate::WidgetSpec,
-    latest: &str,
-    sd: &impl crate::StaticData,
+    config: &crate::Config,
 ) -> Result<Vec<LayoutDeps>, failure::Error> {
     // convert spec to json, and then look recursively the value for any map that contains both
     // and only "id" and "config", if found, assume id to be the elm id.
     //
     // insert the elm id, and all it dependencies in map, where the value would be data read from
     // file system for that elm id.
-    fetch_deps(fetch_ids(&serde_json::to_value(spec)?), latest, sd)
+    fetch_deps(fetch_ids(&serde_json::to_value(spec)?), config)
 }
 
-fn fetch_deps(
-    ids: Vec<String>,
-    latest: &str,
-    sd: &impl crate::StaticData,
-) -> Result<Vec<LayoutDeps>, failure::Error> {
+fn fetch_deps(ids: Vec<String>, config: &crate::Config) -> Result<Vec<LayoutDeps>, failure::Error> {
+    /*
     let metadata = sd.content(&format!("deps/{}/deps.json", latest))?;
     let metadata: HashMap<String, Vec<String>> = serde_json::from_str(&metadata)?;
     let mut deps = vec![];
@@ -108,30 +101,30 @@ fn fetch_deps(
         });
     }
     Ok(deps)
+    */
+    unimplemented!()
 }
 
 #[cfg(test)]
 mod tests_fetch_deps {
     use crate::utils::LayoutDeps;
-    use std::collections::HashMap;
 
-    fn check(d: Vec<&str>, e: N, sd: &crate::static_data::TestStatic) {
+    fn check(d: Vec<&str>, e: N, c: &crate::Config) {
         assert_eq!(
-            super::fetch_deps(d.iter().map(|s| s.to_string()).collect(), "elmver", &sd).unwrap(),
+            super::fetch_deps(d.iter().map(|s| s.to_string()).collect(), c).unwrap(),
             e.0
         );
     }
 
-    fn fixture() -> crate::static_data::TestStatic {
-        crate::static_data::TestStatic::new()
-            .with("latest.txt", "elmver")
-            .with(
-                "elmver/deps.json",
-                r#"{
-                    "foo": []
-                }"#,
-            )
-            .with("elmver/foo.js", "function foo() {}")
+    fn fixture() -> crate::Config {
+        let mut config = crate::Config::default();
+        config.static_dir = "./examples/basic".into();
+        config.latest_elm = "elm000".into();
+        config.deps.insert("foo".into(), vec![]);
+        config
+            .js_code
+            .insert("foo".into(), "function foo() {}".into());
+        config
     }
 
     struct N(pub Vec<LayoutDeps>);

@@ -10,15 +10,13 @@ mod html;
 mod mode;
 mod page;
 mod serve;
-mod static_data;
 mod utils;
 mod widget;
 
-pub(crate) use crate::config::CONFIG;
+pub(crate) use crate::config::{Config, CONFIG};
 pub use crate::html::HTML;
 pub use crate::page::Page;
 pub use crate::serve::{http_to_hyper, THREAD_POOL};
-pub(crate) use crate::static_data::StaticData;
 pub use crate::widget::{Widget, WidgetSpec};
 
 pub type Result = std::result::Result<http::Response<Vec<u8>>, failure::Error>;
