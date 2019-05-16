@@ -51,28 +51,49 @@ impl Config {
     }
 
     pub fn init_elm(&mut self) -> Result<(), failure::Error> {
-        self.latest_elm = self.content("latest.txt")?;
+        self.latest_elm = self.content("realm/latest.txt")?;
         self.deps =
-            serde_json::from_str(&self.content(&format!("deps/{}/deps.json", &self.latest_elm))?)?;
+            serde_json::from_str(&self.content(&format!("realm/{}/deps.json", &self.latest_elm))?)?;
 
-        for entry in std::fs::read_dir(self.static_path(&format!("deps/{}/", &self.latest_elm)))? {
+        for entry in std::fs::read_dir(self.static_path(&format!("realm/{}/", &self.latest_elm)))? {
             let entry = entry?;
-            let path = entry.path();
+            println!("entry.file_name: {:?}", entry.file_name());
+            let name = entry.file_name().into_string().unwrap();
+            if !name.ends_with(".js") {
+                continue;
+            }
+
+            let name = entry
+                .path()
+                .file_stem()
+                .unwrap()
+                .to_owned()
+                .into_string()
+                .unwrap();
+            self.js_code.insert(
+                name.into(), // FIXME
+                self.content2(entry.path())?,
+            );
         }
+
         Ok(())
     }
 
     fn content(&self, path: &str) -> Result<String, failure::Error> {
+        let path = self.static_path(path);
+        self.content2(path)
+    }
+
+    fn content2(&self, path: std::path::PathBuf) -> Result<String, failure::Error> {
         use std::io::Read;
 
-        let latest_path = self.static_path(path);
-        match std::fs::File::open(&latest_path) {
+        match std::fs::File::open(&path) {
             Ok(mut latest) => {
                 let mut latest_content = String::new();
                 latest.read_to_string(&mut latest_content)?;
                 Ok(latest_content.trim().to_string())
             }
-            Err(_) => Err(failure::err_msg(format!("File not found: {}", path))),
+            Err(_) => Err(failure::err_msg(format!("File not found: {:?}", path))),
         }
     }
 }
@@ -82,7 +103,17 @@ mod tests {
     #[test]
     fn init_elm() {
         let mut config = super::Config::default();
-        config.static_dir = "./examples/basic".into();
+        config.static_dir = "./examples/basic/static".into();
         config.init_elm().expect("could not load init elm");
+
+        assert_eq!(config.latest_elm, "elatest");
+
+        assert_eq!(config.deps.len(), 2);
+        assert_eq!(config.deps.get("foo").unwrap(), &vec!["bar".to_string()]);
+        assert_eq!(config.deps.get("bar").unwrap().len(), 0);
+
+        assert_eq!(config.js_code.len(), 2);
+        assert_eq!(config.js_code.get("foo").unwrap(), "function foo() {bar()}");
+        assert_eq!(config.js_code.get("bar").unwrap(), "function bar() {}");
     }
 }
