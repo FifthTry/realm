@@ -10,7 +10,6 @@ mod html;
 mod mode;
 mod page;
 mod serve;
-mod utils;
 mod widget;
 
 pub(crate) use crate::config::{Config, CONFIG};

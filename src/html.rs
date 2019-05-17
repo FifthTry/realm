@@ -1,4 +1,3 @@
-use crate::utils::LayoutDeps;
 use crate::CONFIG;
 
 pub struct HTML {
@@ -27,14 +26,7 @@ impl HTML {
             "result": {
                 "widget": spec,
                 "replace": false,
-                "session": {
-                    "user": {
-                        "id": null,
-                        "phone": null,
-                    }
-                },
                 "deps": deps
-
             }
         });
         let data = serde_json::to_string_pretty(&data)?;
@@ -59,6 +51,12 @@ impl HTML {
             title, &CONFIG.site_icon, data, rendered, &CONFIG.latest_elm,
         ).into())
     }
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct LayoutDeps {
+    pub module: String,
+    pub source: String,
 }
 
 fn resolve_deps(
@@ -104,8 +102,6 @@ fn fetch_deps(ids: Vec<String>, config: &crate::Config) -> Result<Vec<LayoutDeps
 
 #[cfg(test)]
 mod tests_fetch_deps {
-    use crate::utils::LayoutDeps;
-
     fn check(d: Vec<&str>, e: N, c: &crate::Config) {
         assert_eq!(
             super::fetch_deps(d.iter().map(|s| s.to_string()).collect(), c).unwrap(),
@@ -113,29 +109,18 @@ mod tests_fetch_deps {
         );
     }
 
-    fn fixture() -> crate::Config {
-        let mut config = crate::Config::default();
-        config.static_dir = "./examples/basic".into();
-        config.latest_elm = "elm000".into();
-        config.deps.insert("foo".into(), vec![]);
-        config
-            .js_code
-            .insert("foo".into(), "function foo() {}".into());
-        config
-    }
-
-    struct N(pub Vec<LayoutDeps>);
+    struct N(pub Vec<super::LayoutDeps>);
     impl N {
         fn o(module: &str, source: &str) -> Self {
             let mut n = N(vec![]);
-            n.0.push(LayoutDeps {
+            n.0.push(super::LayoutDeps {
                 module: module.into(),
                 source: source.into(),
             });
             n
         }
         fn with(mut self, module: &str, source: &str) -> Self {
-            self.0.push(LayoutDeps {
+            self.0.push(super::LayoutDeps {
                 module: module.into(),
                 source: source.into(),
             });
@@ -145,9 +130,14 @@ mod tests_fetch_deps {
 
     #[test]
     fn fetch_deps() {
-        let sd = fixture();
-        check(vec![], N(vec![]), &sd);
-        check(vec!["foo"], N::o("foo", "function foo() {}"), &sd);
+        let config = crate::Config::test();
+        check(vec![], N(vec![]), &config);
+        check(vec!["bar"], N::o("bar", "function bar() {}"), &config);
+        check(
+            vec!["foo"],
+            N::o("bar", "function bar() {}").with("foo", "function foo() {bar()}"),
+            &config,
+        );
     }
 }
 

@@ -103,16 +103,21 @@ impl Config {
             Err(_) => Err(failure::err_msg(format!("File not found: {:?}", path))),
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn test() -> Self {
+        let mut config = Config::default();
+        config.static_dir = "./examples/basic/static".into();
+        config.init_elm().expect("could not load init elm");
+        config
+    }
 }
 
 #[cfg(test)]
 mod tests {
     #[test]
     fn init_elm() {
-        let mut config = super::Config::default();
-        config.static_dir = "./examples/basic/static".into();
-        config.init_elm().expect("could not load init elm");
-
+        let config = super::Config::test();
         assert_eq!(config.latest_elm, "elatest");
 
         assert_eq!(config.deps.len(), 2);
