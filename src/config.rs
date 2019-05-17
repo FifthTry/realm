@@ -50,6 +50,13 @@ impl Config {
         std::path::Path::new(&self.static_dir).join(rest)
     }
 
+    pub fn get_code(&self, id: &str) -> Result<String, failure::Error> {
+        self.js_code
+            .get(id)
+            .map(|c| c.clone())
+            .ok_or_else(|| failure::err_msg("key not found"))
+    }
+
     pub fn init_elm(&mut self) -> Result<(), failure::Error> {
         self.latest_elm = self.content("realm/latest.txt")?;
         self.deps =

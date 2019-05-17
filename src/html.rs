@@ -74,35 +74,32 @@ fn resolve_deps(
 }
 
 fn fetch_deps(ids: Vec<String>, config: &crate::Config) -> Result<Vec<LayoutDeps>, failure::Error> {
-    /*
-    let metadata = sd.content(&format!("deps/{}/deps.json", latest))?;
-    let metadata: HashMap<String, Vec<String>> = serde_json::from_str(&metadata)?;
+    use std::collections::HashSet;
+
     let mut deps = vec![];
-    let mut skip_map = vec![];
+    let mut skip_map = HashSet::new();
     for id in ids.iter() {
         if skip_map.contains(&id.clone()) {
             continue;
         }
-        skip_map.push(id.clone());
+        skip_map.insert(id.clone());
 
-        if let Some(ref items) = metadata.get(id) {
+        if let Some(ref items) = config.deps.get(id) {
             for item in items.iter() {
-                skip_map.push(item.clone());
+                skip_map.insert(item.clone());
                 deps.push(LayoutDeps {
                     module: item.clone(),
-                    source: sd.content(&format!("deps/{}/{}.js", &latest, &item))?,
+                    source: config.get_code(item)?,
                 });
             }
         }
 
         deps.push(LayoutDeps {
             module: id.clone(),
-            source: sd.content(&format!("deps/{}/{}.js", &latest, &id))?,
+            source: config.get_code(id)?,
         });
     }
     Ok(deps)
-    */
-    unimplemented!()
 }
 
 #[cfg(test)]
