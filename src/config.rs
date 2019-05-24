@@ -54,7 +54,7 @@ impl Config {
         self.js_code
             .get(id)
             .map(|c| c.clone())
-            .ok_or_else(|| failure::err_msg("key not found"))
+            .ok_or_else(|| failure::err_msg(format!("js file not found: {}", id)))
     }
 
     pub fn init_elm(&mut self) -> Result<(), failure::Error> {
