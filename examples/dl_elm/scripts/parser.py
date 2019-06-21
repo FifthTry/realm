@@ -4,13 +4,14 @@ def get_word(st):
 	return st.split(' ')[0]
 
 def find_functions(st):
-	
-	reg_st = r'\n(function\s+(\w+)\s*\(.*?\{.*?\})(?=\n)'
+	delimiters = r'(function|var|catch|try|console)'
+	reg_st = r'\n(?P<content>function\s+(?P<name>\w+)\s*\(.*?\{.*?\})(?=\n\s*' + delimiters + r')'
 	c = re.compile(reg_st, re.DOTALL)
 	return c.findall(st)
 
 def find_var(st):
-	reg_st = '\n(var\s+(\w+)\s*=.*?;)(?=\n)'
+	delimiters = r'(function|var|catch|try|console)'
+	reg_st = r'\n(?P<content>var\s+(?P<name>\w+)\s*=.*?;)(?=\n\s*' + delimiters + r')'
 	c = re.compile(reg_st, re.DOTALL)
 	return c.findall(st)
 
