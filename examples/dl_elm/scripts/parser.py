@@ -15,11 +15,16 @@ def find_var(st):
 	c = re.compile(reg_st, re.DOTALL)
 	return c.findall(st)
 
+def remove_comments(st):
+	reg_st =  r'(/[*].*?[*]/)|(//.*?\n)'
+	return re.sub(reg_st, '', st, flags=re.DOTALL)
+
 def parse( file_path ):
 	content_st = ""
 	with open(file_path) as file:
 		content_st = file.read()
 	
+	content_st = remove_comments(content_st)
 	lines = content_st.split('\n')
 	print(lines)
 	imp_words = [get_word(line) for line in lines if line is not '' and line[0] not in [' ', '\t']]
@@ -42,5 +47,5 @@ def parse( file_path ):
 if __name__ == '__main__':
 	parse("../main.js")
 
-# replace comments
+
 # states - function use, function, var, (function use-strict,
