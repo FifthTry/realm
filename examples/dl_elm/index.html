@@ -1,0 +1,37 @@
+<html>
+<head>
+  <style>
+    /* you can style your program here */
+  </style>
+  <script type="text/javascript" src="main.js"></script>
+</head>
+<body>
+  <div id="main"></div>
+  <script>
+    var app = Elm.L.init({
+    	node: document.getElementById('main'),
+    	flags:{
+    	  i: 0,
+    	  s: "hello"
+    	}
+    })
+    app.ports.loadWidget.subscribe(function(handle) {
+      console.log("loadWidget", handle);
+
+      var widget = handle.first;
+      Elm[widget.id].init({
+        node: document.getElementById(widget.uid),
+        flags: widget.flags,
+      });
+
+      widget = handle.second;
+      Elm[widget.id].init({
+        node: document.getElementById(widget.uid),
+        flags: widget.flags,
+      });
+
+
+    });
+  </script>
+</body>
+</html>
