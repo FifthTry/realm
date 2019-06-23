@@ -8,11 +8,31 @@ class JsStruct:
         self.use_strict_statement = "(function(scope){\n'use strict';"
         self.try_catch_statement = ""
         self.console_warn_statements = ""
+    
+    def diff(self, jsFile):
+        diffFile = JsStruct()
+        for identifier in self.identifier_map:
+            if identifier not in jsFile.identifier_map:
+                diffFile.identifier_map[identifier] = self.identifier_map[identifier]
+            else:
+                if not match(self.identifier_map[identifier], jsFile.identifier_map[identifier]):
+                    print("az")
+                    print(self.identifier_map[identifier])
+                    print("bz")
+                    print(jsFile.identifier_map[identifier])
+                    print("identifier ambiguity")
+                    return None
+        
+        return diffFile
+        
+        
 
 
 def get_word(st):
     return st.split(" ")[0]
 
+def match(st1, st2):
+    return st1==st2
 
 def find_functions(jsFile, st, st_left):
     delimiters = r"(function|var|catch|try|console|_Platform_export"
@@ -57,10 +77,10 @@ def remove_comments(st):
 
 
 """def remove_spaces(st):
-	reg_st =  r'(\s*\n)'
-	c = re.compile(reg_st, re.DOTALL)
-	print("bwaha", len(c.findall(st)), len(st) - len(re.sub(reg_st, '', st, flags=re.DOTALL)))
-	return re.sub(reg_st, '', st, flags=re.DOTALL)"""
+    reg_st =  r'(\s*\n)'
+    c = re.compile(reg_st, re.DOTALL)
+    print("bwaha", len(c.findall(st)), len(st) - len(re.sub(reg_st, '', st, flags=re.DOTALL)))
+    return re.sub(reg_st, '', st, flags=re.DOTALL)"""
 
 
 def find_try_catch(jsFile, st, st_left):
@@ -112,14 +132,22 @@ def parse(file_path):
     for k in jsFile.identifier_map:
         print(jsFile.identifier_map[k])
 
-    print("st_left ", st_left)
+    print("st_left ", st_left.strip())
 
     with open("output.txt", "w") as f:
         f.write(st_left)
+    
+    return jsFile
 
 
 if __name__ == "__main__":
-    parse("../main.js")
+    main_js = parse("../l.js")
+    m_js = parse("../m.js")
+    diff_js = main_js.diff(m_js)
+    print(diff_js)
+    
 
 
 # make tolerant
+# use hash in match
+
