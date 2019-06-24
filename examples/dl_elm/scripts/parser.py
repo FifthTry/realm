@@ -22,7 +22,9 @@ class JsStruct:
                     print(jsFile.identifier_map[identifier])
                     print("identifier ambiguity")
                     return None
-        
+        print("a", self.identifier_map)
+        print("b", jsFile.identifier_map)
+        print("diff", diffFile.identifier_map)
         return diffFile
         
         

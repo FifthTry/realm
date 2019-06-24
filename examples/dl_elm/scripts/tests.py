@@ -474,6 +474,66 @@ function C(){
 	}
 var
 	''', {})
+	,('''
+function A(){
+		this is A
+	}
+function B(){
+		this is B
+	}
+function C(){
+		this is C
+	}
+var
+	'''
+	 ,'''
+function A(){
+		this is A
+	}
+function G(){
+		this is G
+	}
+function C(){
+		this is C
+	}
+var
+	''', {
+		'B': '''function B(){
+		this is B
+	}'''
+	  })
+	
+,('''
+function A(){
+		this is A
+	}
+function B(){
+		this is B
+	}
+function C(){
+		this is C
+	}
+var
+	'''
+	 ,'''
+function Q(){
+		this is Q
+	}
+function B(){
+		this is B
+	}
+function Z(){
+		this is Z
+	}
+var
+	''', {
+		'A': '''function A(){
+		this is A
+	}'''
+		,'C': '''function C(){
+		this is C
+	}'''
+	  })
 ]
 
 
