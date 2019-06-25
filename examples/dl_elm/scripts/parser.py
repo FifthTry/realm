@@ -85,17 +85,17 @@ def find_identifier(jsFile, st, st_left, uid):
         + r"))"
     )
 
-    reg_st_var = r"\n(?P<contentVar>var\s+?(?P<nameVar>\S+)\s*?=?.*?;)(?=\n+" + delimiters + r"))"
+    reg_st_var = r"\n(?P<contentVar>var\s+?(?P<nameVar>(\w|[$])+)\s*=?.*?;)(?=\n+" + delimiters + r"))"
     reg_st_trycatch = r"\n(?P<contentTry>try\s*\{.*?\}\s*catch\s*\(.*?\)\s*\{.*?\})(?=\n)"
     reg_st = reg_st_fun + '|' + reg_st_var + '|' + reg_st_trycatch
     c = re.compile(reg_st, re.DOTALL)
     lis_f = c.findall(st)
     print("lis_f", lis_f[1])
-    for (func, nameFun, _, var, nameVar, _, try_c)  in lis_f:
+    for (func, nameFun, _, var, nameVar, _, _, try_c)  in lis_f:
         if func:
             jsFile.identifier_map[nameFun] = func
         elif var:
-            if nameVar == '_VirtualDom_passiveSupported;':
+            if nameVar == '_VirtualDom_passiveSupported':
                 print("alerrrrt ", var)
             jsFile.identifier_map[nameVar] = var
         elif try_c:
@@ -205,19 +205,22 @@ if __name__ == "__main__":
     diff_js_main_l = main_js.diff(l_js)
     for k in diff_js_main_l.identifier_map:
         print(diff_js_main_l.identifier_map[k])
-        
 
+
+    print("diff between main and m")
+    diff_js_main_m = main_js.diff(l_js)
+    for k in diff_js_main_m.identifier_map:
+        print(diff_js_main_m.identifier_map[k])
+    pass
+    
+    
     print("diff between l and m")
     diff_js_l_m = l_js.diff(m_js)
     for k in diff_js_l_m.identifier_map:
         print(diff_js_l_m.identifier_map[k])
     
     
-    print("diff between main and m")
-    diff_js_main_m = main_js.diff(l_js)
-    for k in diff_js_main_m.identifier_map:
-        print(diff_js_main_m.identifier_map[k])
-    pass
+    
     
 
 # use hash in match
