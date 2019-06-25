@@ -1,9 +1,9 @@
 import re
-
+from collections import OrderedDict
 
 class JsStruct:
     def __init__(self):
-        self.identifier_map = {}
+        self.identifier_map = OrderedDict()
         self.platform_export_statement = ""
         self.use_strict_statement = "(function(scope){\n'use strict';"
         self.try_catch_statement = ""
@@ -80,7 +80,7 @@ def find_var(jsFile, st, st_left):
 def find_identifier(jsFile, st, st_left, uid):
     delimiters = r"(function|var|catch|try|console|_Platform_"
     reg_st_fun = (
-        r"\n(?P<contentFun>function\s+(?P<nameFun>\w+)\s*\(.*?\{.*?\})(?=\n+"
+        r"\n(?P<contentFun>function\s+(?P<nameFun>(\w|[$])+)\s*\(.*?\{.*?\})(?=\n+"
         + delimiters
         + r"))"
     )
@@ -91,7 +91,7 @@ def find_identifier(jsFile, st, st_left, uid):
     c = re.compile(reg_st, re.DOTALL)
     lis_f = c.findall(st)
     print("lis_f", lis_f[1])
-    for (func, nameFun, _, var, nameVar, _, _, try_c)  in lis_f:
+    for (func, nameFun, _, _, var, nameVar, _, _, try_c)  in lis_f:
         if func:
             jsFile.identifier_map[nameFun] = func
         elif var:

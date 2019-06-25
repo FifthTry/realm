@@ -1,3 +1,5 @@
 target
+__pycache__/
+*.pyc
 elm-stuff/
 .idea/

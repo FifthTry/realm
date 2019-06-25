@@ -1,5 +1,5 @@
 import parser
-
+from collections import OrderedDict
 # tests
 
 parse_test_input = [
@@ -39,7 +39,7 @@ _Platform_export({'L':{'init':author$project$L$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)},'M':{'init':author$project$M$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
     '''
-	 , {
+	 , OrderedDict({
 		 '_VirtualDom_applyAttrs': '''function _VirtualDom_applyAttrs(domNode, attrs)
 {
 	for (var key in attrs)
@@ -63,7 +63,7 @@ _Platform_export({'L':{'init':author$project$L$main(
 			: domNode.removeAttributeNS(namespace, key);
 	}
 }'''
-	 }
+	 })
 	 )
 	
 	# break delimiters: function var export
@@ -127,7 +127,7 @@ _Platform_export({'L':{'init':author$project$L$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)},'M':{'init':author$project$M$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
     '''
-	   , {
+	   ,  OrderedDict({
 		   '_VirtualDom_applyAttrs': '''function _VirtualDom_applyAttrs(domNode, attrs)
 {
 	for (var key in attrs)
@@ -176,7 +176,7 @@ _Platform_export({'L':{'init':author$project$L$main(
 					]))
 			]));
 };'''
-	   }
+	   })
 	   )
 	
 	# break delimiters: function var var
@@ -239,7 +239,7 @@ var author$project$L$view = function (model) {
 var author$project$L$main = elm$browser$Browser$element(
 	{init: author$project$L$init, subscriptions: author$project$L$subscriptions, update: author$project$L$update, view: author$project$L$view});
     '''
-	   , {
+	   ,  OrderedDict({
 		   '_VirtualDom_applyAttrs': '''function _VirtualDom_applyAttrs(domNode, attrs)
 {
 	for (var key in attrs)
@@ -288,7 +288,7 @@ var author$project$L$main = elm$browser$Browser$element(
 					]))
 			]));
 };'''
-	   }
+	   })
 	   )
 
 	#regex
@@ -370,8 +370,18 @@ var author$project$L$view = function (model) {
 var author$project$L$main = elm$browser$Browser$element(
 	{init: author$project$L$init, subscriptions: author$project$L$subscriptions, update: author$project$L$update, view: author$project$L$view});
     '''
-	    ,{
-		   '_': '''function _()
+	    , OrderedDict({
+'_VirtualDom_applyAttrs': '''function _VirtualDom_applyAttrs(domNode, attrs)
+{
+	for (var key in attrs)
+	{
+		var value = attrs[key];
+		value
+			? domNode.setAttribute(key, value)
+			: domNode.removeAttribute(key);
+	}
+}'''
+		   ,'_': '''function _()
 {
 	for (var key in attrs)
 	{
@@ -391,16 +401,7 @@ var author$project$L$main = elm$browser$Browser$element(
 	}
 }'''
 
-	,'_VirtualDom_applyAttrs': '''function _VirtualDom_applyAttrs(domNode, attrs)
-{
-	for (var key in attrs)
-	{
-		var value = attrs[key];
-		value
-			? domNode.setAttribute(key, value)
-			: domNode.removeAttribute(key);
-	}
-}'''
+	
 		   , 'author$project$L$view': '''var author$project$L$view = function (model) {
 	return A2(
 		elm$html$Html$div,
@@ -439,7 +440,7 @@ var author$project$L$main = elm$browser$Browser$element(
 					]))
 			]));
 };'''
-	   }
+	   })
 	   )
 	,('''
 
@@ -493,7 +494,7 @@ try
 catch(e) {}
 
 
-''', {
+''',  OrderedDict({
 		'_VirtualDom_applyEvents': '''function _VirtualDom_applyEvents(domNode, eventNode, events)
 {
 	var allCallbacks = domNode.elmFs || (domNode.elmFs = {});
@@ -539,7 +540,7 @@ catch(e) {}
 }
 catch(e) {}'''
 	
-	})
+	}))
 	
 
 ]
@@ -572,7 +573,7 @@ function C(){
 		this is C
 	}
 var
-	''', {})
+	''',  OrderedDict({}))
 	,('''
 function A(){
 		this is A
@@ -596,11 +597,11 @@ function C(){
 		this is C
 	}
 var
-	''', {
+	''',  OrderedDict({
 		'B': '''function B(){
 		this is B
 	}'''
-	  })
+	  }))
 	
 ,('''
 function A(){
@@ -625,20 +626,22 @@ function Z(){
 		this is Z
 	}
 var
-	''', {
+	''',  OrderedDict({
 		'A': '''function A(){
 		this is A
 	}'''
 		,'C': '''function C(){
 		this is C
 	}'''
-	  })
+	  }))
 	
 ]
 
 
 def test_parse_ex():
 	def test_parse(st, result_dic):
+		x = parser.parse(st, 'test').identifier_map
+		print("parse assert map 1", x , "parse assert map 2",result_dic)
 		assert (parser.parse(st, 'test').identifier_map == result_dic)
 	
 	for rank, (st, result_map) in enumerate(parse_test_input):
@@ -648,6 +651,8 @@ def test_parse_ex():
 		
 def test_diff_ex():
 	def test_diff(l, m, result_dic):
+		print("diff assert map", parser.parse(l, 'l').diff(
+			parser.parse(m, 'm')).identifier_map, result_dic)
 		assert (parser.parse(l, 'l').diff(
 			parser.parse(m, 'm')).identifier_map == result_dic)
 	
