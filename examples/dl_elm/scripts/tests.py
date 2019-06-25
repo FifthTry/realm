@@ -441,6 +441,105 @@ var author$project$L$main = elm$browser$Browser$element(
 };'''
 	   }
 	   )
+	,('''
+
+function _VirtualDom_applyEvents(domNode, eventNode, events)
+{
+	var allCallbacks = domNode.elmFs || (domNode.elmFs = {});
+
+	for (var key in events)
+	{
+		var newHandler = events[key];
+		var oldCallback = allCallbacks[key];
+
+		if (!newHandler)
+		{
+			domNode.removeEventListener(key, oldCallback);
+			allCallbacks[key] = undefined;
+			continue;
+		}
+
+		if (oldCallback)
+		{
+			var oldHandler = oldCallback.q;
+			if (oldHandler.$ === newHandler.$)
+			{
+				oldCallback.q = newHandler;
+				continue;
+			}
+			domNode.removeEventListener(key, oldCallback);
+		}
+
+		oldCallback = _VirtualDom_makeCallback(eventNode, newHandler);
+		domNode.addEventListener(key, oldCallback,
+			_VirtualDom_passiveSupported
+			&& { passive: elm$virtual_dom$VirtualDom$toHandlerInt(newHandler) < 2 }
+		);
+		allCallbacks[key] = oldCallback;
+	}
+}
+
+
+
+
+var _VirtualDom_passiveSupported;
+
+try
+{
+	window.addEventListener('t', null, Object.defineProperty({}, 'passive', {
+		get: function() { _VirtualDom_passiveSupported = true; }
+	}));
+}
+catch(e) {}
+
+
+''', {
+		'_VirtualDom_applyEvents': '''function _VirtualDom_applyEvents(domNode, eventNode, events)
+{
+	var allCallbacks = domNode.elmFs || (domNode.elmFs = {});
+
+	for (var key in events)
+	{
+		var newHandler = events[key];
+		var oldCallback = allCallbacks[key];
+
+		if (!newHandler)
+		{
+			domNode.removeEventListener(key, oldCallback);
+			allCallbacks[key] = undefined;
+			continue;
+		}
+
+		if (oldCallback)
+		{
+			var oldHandler = oldCallback.q;
+			if (oldHandler.$ === newHandler.$)
+			{
+				oldCallback.q = newHandler;
+				continue;
+			}
+			domNode.removeEventListener(key, oldCallback);
+		}
+
+		oldCallback = _VirtualDom_makeCallback(eventNode, newHandler);
+		domNode.addEventListener(key, oldCallback,
+			_VirtualDom_passiveSupported
+			&& { passive: elm$virtual_dom$VirtualDom$toHandlerInt(newHandler) < 2 }
+		);
+		allCallbacks[key] = oldCallback;
+	}
+}'''
+		,
+		'_VirtualDom_passiveSupported': '''var _VirtualDom_passiveSupported;'''
+		, 'try_catch_test': '''try
+{
+	window.addEventListener('t', null, Object.defineProperty({}, 'passive', {
+		get: function() { _VirtualDom_passiveSupported = true; }
+	}));
+}
+catch(e) {}'''
+	
+	})
 	
 
 ]
@@ -534,12 +633,13 @@ var
 		this is C
 	}'''
 	  })
+	
 ]
 
 
 def test_parse_ex():
 	def test_parse(st, result_dic):
-		assert (parser.parse(st).identifier_map == result_dic)
+		assert (parser.parse(st, 'test').identifier_map == result_dic)
 	
 	for rank, (st, result_map) in enumerate(parse_test_input):
 		print("rank", rank)
@@ -548,8 +648,8 @@ def test_parse_ex():
 		
 def test_diff_ex():
 	def test_diff(l, m, result_dic):
-		assert (parser.parse(l).diff(
-			parser.parse(m)).identifier_map == result_dic)
+		assert (parser.parse(l, 'l').diff(
+			parser.parse(m, 'm')).identifier_map == result_dic)
 	
 	for l, m, result_map in diff_test_input:
 		test_diff(l, m, result_map)

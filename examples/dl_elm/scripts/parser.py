@@ -21,7 +21,10 @@ class JsStruct:
                     print("bz")
                     print(jsFile.identifier_map[identifier])
                     print("identifier ambiguity")
-                    return None
+                    print("identifier ", identifier)
+                    raise Exception(
+                        'same identifier is not having same content')
+                    
         print("a", self.identifier_map)
         print("b", jsFile.identifier_map)
         print("diff", diffFile.identifier_map)
@@ -52,7 +55,7 @@ def find_functions(jsFile, st, st_left):
 
 
 def find_export(jsFile, st, st_left):
-    reg_st = r"((?<!function )_Platform_export[(].*this[)][)];)"
+    reg_st = r"((?<!function )_Platform_export[(].*?;)(?=\}[(]this[)][)];)"
     c = re.compile(reg_st, re.DOTALL)
     search_result = c.search(st)
     stt=''
@@ -74,7 +77,7 @@ def find_var(jsFile, st, st_left):
     return re.sub(reg_st, "", st_left, flags=re.DOTALL)
 
 
-def find_identifier(jsFile, st, st_left):
+def find_identifier(jsFile, st, st_left, uid):
     delimiters = r"(function|var|catch|try|console|_Platform_"
     reg_st_fun = (
         r"\n(?P<contentFun>function\s+(?P<nameFun>\w+)\s*\(.*?\{.*?\})(?=\n+"
@@ -82,16 +85,21 @@ def find_identifier(jsFile, st, st_left):
         + r"))"
     )
 
-    reg_st_var = r"\n(?P<contentVar>var\s+(?P<nameVar>\S+)\s*=?.*?;)(?=\n+" + delimiters + r"))"
-    reg_st = reg_st_fun + '|' + reg_st_var
+    reg_st_var = r"\n(?P<contentVar>var\s+?(?P<nameVar>\S+)\s*?=?.*?;)(?=\n+" + delimiters + r"))"
+    reg_st_trycatch = r"\n(?P<contentTry>try\s*\{.*?\}\s*catch\s*\(.*?\)\s*\{.*?\})(?=\n)"
+    reg_st = reg_st_fun + '|' + reg_st_var + '|' + reg_st_trycatch
     c = re.compile(reg_st, re.DOTALL)
     lis_f = c.findall(st)
-    print("lis_f", lis_f[0])
-    for func, nameFun, _, var, nameVar, _ in lis_f:
+    print("lis_f", lis_f[1])
+    for (func, nameFun, _, var, nameVar, _, try_c)  in lis_f:
         if func:
             jsFile.identifier_map[nameFun] = func
         elif var:
+            if nameVar == '_VirtualDom_passiveSupported;':
+                print("alerrrrt ", var)
             jsFile.identifier_map[nameVar] = var
+        elif try_c:
+            jsFile.identifier_map['try_catch_' + uid] = try_c
         else:
             pass
     return re.sub(reg_st, "", st_left, flags=re.DOTALL)
@@ -109,7 +117,7 @@ def remove_comments(st):
 
 
 def find_try_catch(jsFile, st, st_left):
-    reg_st = r"\n(?P<content>try\s*\{.*?\}\s*catch\s*\(.*?\)\s*\{.*?\}\s*)(?=\n)"
+    reg_st = r"\n(?P<content>try\s*\{.*?\}\s*catch\s*\(.*?\)\s*\{.*?\})(?=\n)"
     c = re.compile(reg_st, re.DOTALL)
     search_result = c.search(st)
     if search_result:
@@ -128,7 +136,7 @@ def find_consolewarn_statement(jsFile, st, st_left):
     return re.sub(reg_st, "", st_left, flags=re.DOTALL)
 
 
-def parse(content_st):
+def parse(content_st, uid):
     
 
     content_st = remove_comments(content_st)
@@ -148,10 +156,10 @@ def parse(content_st):
     #st_left = find_functions(jsFile, content_st, st_left)
 
     #st_left = find_var(jsFile, content_st, st_left)
-    st_left = find_identifier(jsFile, content_st, st_left)
+    st_left = find_identifier(jsFile, content_st, st_left, uid)
     st_left = find_export(jsFile, content_st, st_left)
 
-    st_left = find_try_catch(jsFile, content_st, st_left)
+    #st_left = find_try_catch(jsFile, content_st, st_left)
 
     # st_left = find_consolewarn_statement(jsFile, content_st, st_left)
     order_lis = []
@@ -177,9 +185,40 @@ if __name__ == "__main__":
     diff_js = main_js.diff(m_js)
     for k in diff_js.identifier_map:
         print(diff_js.identifier_map[k])'''
+
+    file_path = "../main.js"
+    with open(file_path) as file:
+        content_st = file.read()
+    main_js = parse(content_st, 'main')
+    
+    file_path = "../l.js"
+    with open(file_path) as file:
+        content_st = file.read()
+    l_js = parse(content_st, 'l')
+
+    file_path = "../m.js"
+    with open(file_path) as file:
+        content_st = file.read()
+    m_js = parse(content_st, 'm')
+
+    print("diff between main and l")
+    diff_js_main_l = main_js.diff(l_js)
+    for k in diff_js_main_l.identifier_map:
+        print(diff_js_main_l.identifier_map[k])
+        
+
+    print("diff between l and m")
+    diff_js_l_m = l_js.diff(m_js)
+    for k in diff_js_l_m.identifier_map:
+        print(diff_js_l_m.identifier_map[k])
+    
+    
+    print("diff between main and m")
+    diff_js_main_m = main_js.diff(l_js)
+    for k in diff_js_main_m.identifier_map:
+        print(diff_js_main_m.identifier_map[k])
     pass
     
 
-# make tolerant
 # use hash in match
-
+# use ordered_dict
