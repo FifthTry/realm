@@ -11,6 +11,7 @@ class JsStruct:
     
     def diff(self, jsFile):
         diffFile = JsStruct()
+        diffFile.platform_export_statement = self.platform_export_statement
         for identifier in self.identifier_map:
             if identifier not in jsFile.identifier_map:
                 diffFile.identifier_map[identifier] = self.identifier_map[identifier]
@@ -29,6 +30,19 @@ class JsStruct:
         print("b", jsFile.identifier_map)
         print("diff", diffFile.identifier_map)
         return diffFile
+    def regenerate(self, file_path, include_scope_this = False):
+        st = ''
+        if include_scope_this:
+            st = 'var scope = this;\n'
+        for k, v in self.identifier_map.items():
+            
+            st += v+'\n'
+        
+        st += self.platform_export_statement+'\n'
+        with open(file_path, 'w') as file_o:
+            file_o.write(st)
+            
+            
         
         
 
@@ -99,7 +113,7 @@ def find_identifier(jsFile, st, st_left, uid):
                 print("alerrrrt ", var)
             jsFile.identifier_map[nameVar] = var
         elif try_c:
-            jsFile.identifier_map['try_catch_' + uid] = try_c
+            jsFile.identifier_map['try_catch_' + uid] = 'var _VirtualDom_passiveSupported;\n' + try_c
         else:
             pass
     return re.sub(reg_st, "", st_left, flags=re.DOTALL)
@@ -176,20 +190,12 @@ def parse(content_st, uid):
     return jsFile
 
 if __name__ == "__main__":
-    '''
-    file_path = "../l.js"
-    with open(file_path) as file:
-        content_st = file.read()
-    main_js = parse(content_st)
-    m_js = parse("../m.js")
-    diff_js = main_js.diff(m_js)
-    for k in diff_js.identifier_map:
-        print(diff_js.identifier_map[k])'''
+    
 
-    file_path = "../main.js"
+    file_path = "../n.js"
     with open(file_path) as file:
         content_st = file.read()
-    main_js = parse(content_st, 'main')
+    n_js = parse(content_st, 'n')
     
     file_path = "../l.js"
     with open(file_path) as file:
@@ -201,23 +207,29 @@ if __name__ == "__main__":
         content_st = file.read()
     m_js = parse(content_st, 'm')
 
-    print("diff between main and l")
-    diff_js_main_l = main_js.diff(l_js)
-    for k in diff_js_main_l.identifier_map:
-        print(diff_js_main_l.identifier_map[k])
+   
 
-
-    print("diff between main and m")
-    diff_js_main_m = main_js.diff(l_js)
-    for k in diff_js_main_m.identifier_map:
-        print(diff_js_main_m.identifier_map[k])
-    pass
     
     
-    print("diff between l and m")
-    diff_js_l_m = l_js.diff(m_js)
-    for k in diff_js_l_m.identifier_map:
-        print(diff_js_l_m.identifier_map[k])
+    
+    
+    
+    print("diff m-l")
+    diff_js_m_l = m_js.diff(l_js)
+    for k in diff_js_m_l.identifier_map:
+        print(diff_js_m_l.identifier_map[k])
+
+    print("diff n-l")
+    diff_js_n_l = n_js.diff(l_js)
+    for k in diff_js_n_l.identifier_map:
+        print(diff_js_n_l.identifier_map[k])
+    
+    
+    diff_js_m_l.regenerate('../regenerated/m_l.js')
+    diff_js_n_l.regenerate('../regenerated/n_l.js')
+    l_js.regenerate('../regenerated/l.js', include_scope_this=True)
+    
+    
     
     
     

@@ -2,6 +2,51 @@ import parser
 from collections import OrderedDict
 # tests
 
+export_test_input = [
+('''
+function _VirtualDom_applyAttrs(domNode, attrs)
+{
+	for (var key in attrs)
+	{
+		var value = attrs[key];
+		value
+			? domNode.setAttribute(key, value)
+			: domNode.removeAttribute(key);
+	}
+}
+
+
+
+
+
+function _VirtualDom_applyAttrsNS(domNode, nsAttrs)
+{
+	for (var key in nsAttrs)
+	{
+		var pair = nsAttrs[key];
+		var namespace = pair.f;
+		var value = pair.o;
+
+		value
+			? domNode.setAttributeNS(namespace, key, value)
+			: domNode.removeAttributeNS(namespace, key);
+	}
+}
+
+_Platform_export({'L':{'init':author$project$L$main(
+	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)},'N':{'init':author$project$N$main(
+	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)},'M':{'init':author$project$M$main(
+	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
+    ''',
+ '''_Platform_export({'L':{'init':author$project$L$main(
+	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)},'N':{'init':author$project$N$main(
+	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)},'M':{'init':author$project$M$main(
+	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});'''
+	 
+	 
+	 )
+]
+
 parse_test_input = [
 	# break simple
 	('''
@@ -638,12 +683,21 @@ var
 	
 ]
 
+def test_export_ex():
+	def test_export(st, result):
+		x = parser.parse(st, 'test').platform_export_statement
+		assert (x == result)
+	
+	for rank, (st, result) in enumerate(export_test_input):
+		
+		print("rank", rank)
+		test_export(st, result)
+
 
 def test_parse_ex():
 	def test_parse(st, result_dic):
 		x = parser.parse(st, 'test').identifier_map
-		print("parse assert map 1", x , "parse assert map 2",result_dic)
-		assert (parser.parse(st, 'test').identifier_map == result_dic)
+		assert (x == result_dic)
 	
 	for rank, (st, result_lis) in enumerate(parse_test_input):
 		result_map = OrderedDict()
@@ -655,8 +709,6 @@ def test_parse_ex():
 		
 def test_diff_ex():
 	def test_diff(l, m, result_dic):
-		print("diff assert map", parser.parse(l, 'l').diff(
-			parser.parse(m, 'm')).identifier_map, result_dic)
 		assert (parser.parse(l, 'l').diff(
 			parser.parse(m, 'm')).identifier_map == result_dic)
 	
@@ -671,6 +723,7 @@ def test_diff_ex():
 if __name__ == "__main__":
 	test_parse_ex()
 	test_diff_ex()
+	test_export_ex()
 
 
 
