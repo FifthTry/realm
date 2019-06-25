@@ -39,8 +39,8 @@ _Platform_export({'L':{'init':author$project$L$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)},'M':{'init':author$project$M$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
     '''
-	 , OrderedDict({
-		 '_VirtualDom_applyAttrs': '''function _VirtualDom_applyAttrs(domNode, attrs)
+	 , [
+		 ('_VirtualDom_applyAttrs', '''function _VirtualDom_applyAttrs(domNode, attrs)
 {
 	for (var key in attrs)
 	{
@@ -49,8 +49,8 @@ _Platform_export({'L':{'init':author$project$L$main(
 			? domNode.setAttribute(key, value)
 			: domNode.removeAttribute(key);
 	}
-}'''
-		 , '_VirtualDom_applyAttrsNS': '''function _VirtualDom_applyAttrsNS(domNode, nsAttrs)
+}''')
+		 , ('_VirtualDom_applyAttrsNS', '''function _VirtualDom_applyAttrsNS(domNode, nsAttrs)
 {
 	for (var key in nsAttrs)
 	{
@@ -62,8 +62,8 @@ _Platform_export({'L':{'init':author$project$L$main(
 			? domNode.setAttributeNS(namespace, key, value)
 			: domNode.removeAttributeNS(namespace, key);
 	}
-}'''
-	 })
+}''')
+	 ]
 	 )
 	
 	# break delimiters: function var export
@@ -127,8 +127,8 @@ _Platform_export({'L':{'init':author$project$L$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)},'M':{'init':author$project$M$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
     '''
-	   ,  OrderedDict({
-		   '_VirtualDom_applyAttrs': '''function _VirtualDom_applyAttrs(domNode, attrs)
+	   ,  [
+		   ('_VirtualDom_applyAttrs', '''function _VirtualDom_applyAttrs(domNode, attrs)
 {
 	for (var key in attrs)
 	{
@@ -137,8 +137,8 @@ _Platform_export({'L':{'init':author$project$L$main(
 			? domNode.setAttribute(key, value)
 			: domNode.removeAttribute(key);
 	}
-}'''
-		   , 'author$project$L$view': '''var author$project$L$view = function (model) {
+}''')
+		   , ('author$project$L$view', '''var author$project$L$view = function (model) {
 	return A2(
 		elm$html$Html$div,
 		_List_fromArray(
@@ -175,8 +175,8 @@ _Platform_export({'L':{'init':author$project$L$main(
 						author$project$L$viewValidation(model)
 					]))
 			]));
-};'''
-	   })
+};''')
+	   ]
 	   )
 	
 	# break delimiters: function var var
@@ -239,8 +239,8 @@ var author$project$L$view = function (model) {
 var author$project$L$main = elm$browser$Browser$element(
 	{init: author$project$L$init, subscriptions: author$project$L$subscriptions, update: author$project$L$update, view: author$project$L$view});
     '''
-	   ,  OrderedDict({
-		   '_VirtualDom_applyAttrs': '''function _VirtualDom_applyAttrs(domNode, attrs)
+	   ,  [
+		   ('_VirtualDom_applyAttrs', '''function _VirtualDom_applyAttrs(domNode, attrs)
 {
 	for (var key in attrs)
 	{
@@ -249,8 +249,8 @@ var author$project$L$main = elm$browser$Browser$element(
 			? domNode.setAttribute(key, value)
 			: domNode.removeAttribute(key);
 	}
-}'''
-		   , 'author$project$L$view': '''var author$project$L$view = function (model) {
+}''')
+		   , ('author$project$L$view', '''var author$project$L$view = function (model) {
 	return A2(
 		elm$html$Html$div,
 		_List_fromArray(
@@ -288,7 +288,8 @@ var author$project$L$main = elm$browser$Browser$element(
 					]))
 			]));
 };'''
-	   })
+		    )
+	   ]
 	   )
 
 	#regex
@@ -370,8 +371,8 @@ var author$project$L$view = function (model) {
 var author$project$L$main = elm$browser$Browser$element(
 	{init: author$project$L$init, subscriptions: author$project$L$subscriptions, update: author$project$L$update, view: author$project$L$view});
     '''
-	    , OrderedDict({
-'_VirtualDom_applyAttrs': '''function _VirtualDom_applyAttrs(domNode, attrs)
+	    , [
+		   ('_VirtualDom_applyAttrs', '''function _VirtualDom_applyAttrs(domNode, attrs)
 {
 	for (var key in attrs)
 	{
@@ -380,8 +381,8 @@ var author$project$L$main = elm$browser$Browser$element(
 			? domNode.setAttribute(key, value)
 			: domNode.removeAttribute(key);
 	}
-}'''
-		   ,'_': '''function _()
+}''')
+		   ,('_', '''function _()
 {
 	for (var key in attrs)
 	{
@@ -390,8 +391,8 @@ var author$project$L$main = elm$browser$Browser$element(
 			? domNode.setAttribute(key, value)
 			: domNode.removeAttribute(key);
 	}
-}'''
-		,'z':'''function z(){
+}''')
+		,('z','''function z(){
 	for (var key in attrs)
 	{
 		var value = attrs[key];
@@ -399,10 +400,10 @@ var author$project$L$main = elm$browser$Browser$element(
 			? domNode.setAttribute(key, value)
 			: domNode.removeAttribute(key);
 	}
-}'''
+}''')
 
 	
-		   , 'author$project$L$view': '''var author$project$L$view = function (model) {
+		   , ('author$project$L$view', '''var author$project$L$view = function (model) {
 	return A2(
 		elm$html$Html$div,
 		_List_fromArray(
@@ -439,8 +440,8 @@ var author$project$L$main = elm$browser$Browser$element(
 						author$project$L$viewValidation(model)
 					]))
 			]));
-};'''
-	   })
+};''')
+	   ]
 	   )
 	,('''
 
@@ -494,8 +495,8 @@ try
 catch(e) {}
 
 
-''',  OrderedDict({
-		'_VirtualDom_applyEvents': '''function _VirtualDom_applyEvents(domNode, eventNode, events)
+''',  [
+		('_VirtualDom_applyEvents', '''function _VirtualDom_applyEvents(domNode, eventNode, events)
 {
 	var allCallbacks = domNode.elmFs || (domNode.elmFs = {});
 
@@ -529,18 +530,18 @@ catch(e) {}
 		);
 		allCallbacks[key] = oldCallback;
 	}
-}'''
+}''')
 		,
-		'_VirtualDom_passiveSupported': '''var _VirtualDom_passiveSupported;'''
-		, 'try_catch_test': '''try
+		('_VirtualDom_passiveSupported', '''var _VirtualDom_passiveSupported;''')
+		, ('try_catch_test', '''try
 {
 	window.addEventListener('t', null, Object.defineProperty({}, 'passive', {
 		get: function() { _VirtualDom_passiveSupported = true; }
 	}));
 }
-catch(e) {}'''
+catch(e) {}''')
 	
-	}))
+	])
 	
 
 ]
@@ -573,7 +574,7 @@ function C(){
 		this is C
 	}
 var
-	''',  OrderedDict({}))
+	''',  OrderedDict())
 	,('''
 function A(){
 		this is A
@@ -597,11 +598,11 @@ function C(){
 		this is C
 	}
 var
-	''',  OrderedDict({
-		'B': '''function B(){
+	''',  [
+		  ('B', '''function B(){
 		this is B
-	}'''
-	  }))
+	}''')
+	  ])
 	
 ,('''
 function A(){
@@ -626,14 +627,14 @@ function Z(){
 		this is Z
 	}
 var
-	''',  OrderedDict({
-		'A': '''function A(){
+	''',  [
+	  ('A', '''function A(){
 		this is A
-	}'''
-		,'C': '''function C(){
+	}''')
+		,('C', '''function C(){
 		this is C
-	}'''
-	  }))
+	}''')
+	  ])
 	
 ]
 
@@ -644,7 +645,10 @@ def test_parse_ex():
 		print("parse assert map 1", x , "parse assert map 2",result_dic)
 		assert (parser.parse(st, 'test').identifier_map == result_dic)
 	
-	for rank, (st, result_map) in enumerate(parse_test_input):
+	for rank, (st, result_lis) in enumerate(parse_test_input):
+		result_map = OrderedDict()
+		for k, v in result_lis:
+			result_map[k] = v
 		print("rank", rank)
 		test_parse(st, result_map)
 		
@@ -656,7 +660,10 @@ def test_diff_ex():
 		assert (parser.parse(l, 'l').diff(
 			parser.parse(m, 'm')).identifier_map == result_dic)
 	
-	for l, m, result_map in diff_test_input:
+	for l, m, result_lis in diff_test_input:
+		result_map = OrderedDict()
+		for k, v in result_lis:
+			result_map[k] = v
 		test_diff(l, m, result_map)
 	
 	
