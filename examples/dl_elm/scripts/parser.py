@@ -119,7 +119,7 @@ def find_identifier(jsFile, st, st_left, uid):
     return re.sub(reg_st, "", st_left, flags=re.DOTALL)
 
 def remove_comments(st):
-    reg_st = r"(/[*].*?[*]/)|(//.*?\n)"
+    reg_st = r"(/[*].*?[*]/)|(//[^']*?\n)"
     return re.sub(reg_st, "", st, flags=re.DOTALL)
 
 
