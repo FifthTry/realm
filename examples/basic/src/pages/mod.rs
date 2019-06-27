@@ -1,3 +1,4 @@
 mod two_column;
-mod lroot;
+mod l;
+pub use self::l::L;
 pub use self::two_column::TwoColumn;
