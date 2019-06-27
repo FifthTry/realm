@@ -31,10 +31,12 @@ function hello(){
         load_src(data.deps[dep].source);
     }
 
-    /*var app = Elm.[data.widget.id].init({
+    /*
+    var app = Elm.[data.widget.id].init({
     	node: document.getElementById('main'),
     	flags:data.widget.config
     });
+
     app.ports.loadWidget.subscribe(function(handle) {
       console.log("loadWidget", handle);
 
