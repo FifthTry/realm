@@ -27,10 +27,11 @@ function hello(){
     console.log(data);
 
     for (dep in data.deps) {
-        load_src(dep.source);
+        console.log(data.deps[dep])
+        load_src(data.deps[dep].source);
     }
 
-    var app = Elm.[data.widget.id].init({
+    /*var app = Elm.[data.widget.id].init({
     	node: document.getElementById('main'),
     	flags:data.widget.config
     });
@@ -50,7 +51,7 @@ function hello(){
       });
 
 
-    });
+    });*/
 
 }
 hello();
