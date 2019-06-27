@@ -25,6 +25,8 @@ pub(crate) struct Config {
     pub deps: HashMap<String, Vec<String>>,
     #[serde(default)]
     pub js_code: HashMap<String, String>,
+    #[serde(default)]
+    pub loader_file: String,
 }
 
 lazy_static! {
@@ -39,6 +41,7 @@ lazy_static! {
         if config.site_icon == "" {
             config.site_icon = "/static/favicon.ico".into();
         }
+        config.loader_file = "static/realm/elatest/loader.js".into();
 
         config.init_elm().expect("failed to initialize elm stuff");
         config
@@ -51,6 +54,7 @@ impl Config {
     }
 
     pub fn get_code(&self, id: &str) -> Result<String, failure::Error> {
+        println!("herez {:?}", id);
         self.js_code
             .get(id)
             .map(|c| c.clone())
@@ -121,11 +125,11 @@ mod tests {
         assert_eq!(config.latest_elm, "elatest");
 
         assert_eq!(config.deps.len(), 2);
-        assert_eq!(config.deps.get("foo").unwrap(), &vec!["bar".to_string()]);
+        assert_eq!(config.deps.get("f").unwrap(), &vec!["bar".to_string()]);
         assert_eq!(config.deps.get("bar").unwrap().len(), 0);
 
         assert_eq!(config.js_code.len(), 2);
-        assert_eq!(config.js_code.get("foo").unwrap(), "function foo() {bar()}");
+        assert_eq!(config.js_code.get("f").unwrap(), "function f() {bar()}");
         assert_eq!(config.js_code.get("bar").unwrap(), "function bar() {}");
     }
 }

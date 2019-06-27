@@ -30,7 +30,6 @@ macro_rules! realm {
                 match $e(&req).map(|r| http_to_hyper(r)) {
                     Ok(a) => Ok(a),
                     Err(e) => {
-                        eprintln!("{:?}", e);
                         unimplemented!()
                     }
                 }

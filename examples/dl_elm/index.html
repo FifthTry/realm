@@ -8,12 +8,9 @@
 <body>
   <div id="main"></div>
   <script>
-    var app = Elm.L.init({
+    var app = Elm.[data.widget.id].init({
     	node: document.getElementById('main'),
-    	flags:{
-    	  i: 0,
-    	  s: "hello"
-    	}
+    	flags:data.widget.config
     })
     app.ports.loadWidget.subscribe(function(handle) {
       console.log("loadWidget", handle);

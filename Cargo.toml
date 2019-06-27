@@ -17,6 +17,7 @@ serde = "~1.0.0"
 serde_derive = "~1.0.0"
 failure = "~0.1.1"
 url = "~1"
+htmlescape = "0.3.1"
 
 [dev-dependencies]
 pretty_assertions = "~0.5.1"

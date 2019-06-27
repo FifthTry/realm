@@ -1,9 +1,8 @@
 module N exposing (main)
-
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+import Html.Events exposing (..)
+import Random
 
 
 
@@ -11,7 +10,12 @@ import Html.Events exposing (onInput)
 
 
 main =
-  Browser.sandbox { init = init, update = update, view = view }
+  Browser.element
+    { init = init
+    , update = update
+    , subscriptions = subscriptions
+    , view = view
+    }
 
 
 
@@ -19,15 +23,15 @@ main =
 
 
 type alias Model =
-  { name : String
-  , password : String
-  , passwordAgain : String
+  { dieFace : Int
   }
 
 
-init : Model
-init =
-  Model "" "" ""
+init : () -> (Model, Cmd Msg)
+init _ =
+  ( Model 1
+  , Cmd.none
+  )
 
 
 
@@ -35,22 +39,31 @@ init =
 
 
 type Msg
-  = Name String
-  | Password String
-  | PasswordAgain String
+  = Roll
+  | NewFace Int
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    Name name ->
-      { model | name = name }
+    Roll ->
+      ( model
+      , Random.generate NewFace (Random.int 1 6)
+      )
 
-    Password password ->
-      { model | password = password }
+    NewFace newFace ->
+      ( Model newFace
+      , Cmd.none
+      )
 
-    PasswordAgain password ->
-      { model | passwordAgain = password }
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  Sub.none
 
 
 
@@ -60,24 +73,6 @@ update msg model =
 view : Model -> Html Msg
 view model =
   div []
-    [ viewInput "text" "Name" model.name Name
-    , viewInput "password" "Password" model.password Password
-    , viewInput "password" "Re-enter Password" model.passwordAgain PasswordAgain
-    , viewValidation model
+    [ h1 [] [ text (String.fromInt model.dieFace) ]
+    , button [ onClick Roll ] [ text "Roll" ]
     ]
-
-
-viewInput : String -> String -> String -> (String -> msg) -> Html msg
-viewInput t p v toMsg =
-  input [ type_ t, placeholder p, value v, onInput toMsg ] []
-
-
-viewValidation : Model -> Html msg
-viewValidation model =
-  if model.password /= model.passwordAgain then
-    div [ style "color" "red" ] [ text "Passwords do not match!" ]
-  else if String.length model.password < 8 then
-    div [ style "color" "red" ] [ text "Passwords' minimum length is 8" ]
-  else
-    div [ style "color" "green" ] [ text "OK" ]
-

@@ -1,5 +1,5 @@
 use crate::CONFIG;
-
+use htmlescape;
 pub struct HTML {
     pub title: String,
 }
@@ -29,7 +29,13 @@ impl HTML {
                 "deps": deps
             }
         });
+
         let data = serde_json::to_string_pretty(&data)?;
+        let data = htmlescape::encode_minimal(&data);
+
+
+        let loader: String= read(CONFIG.loader_file.as_str()).unwrap_or("".into());
+
         // TODO: escape html
         Ok(format!( // TODO: add other stuff to html
             r#"<!DOCTYPE html>
@@ -45,10 +51,15 @@ impl HTML {
     </head>
     <body>
         <div id="root">{}</div>
+        <div id="main"></div>
+
+        <script>
+        {}
+        </script>
         <script src="/static/deps/{}.js"></script>
     </body>
 </html>"#,
-            title, &CONFIG.site_icon, data, rendered, &CONFIG.latest_elm,
+            title, &CONFIG.site_icon, data, rendered, loader, &CONFIG.latest_elm,
         ).into())
     }
 }
@@ -73,7 +84,8 @@ fn resolve_deps(
 
 fn fetch_deps(ids: Vec<String>, config: &crate::Config) -> Result<Vec<LayoutDeps>, failure::Error> {
     use std::collections::HashSet;
-
+    //let testing = env["testing"] == "1";
+    println!("ids {:?}", ids);
     let mut deps = vec![];
     let mut skip_map = HashSet::new();
     for id in ids.iter() {
@@ -81,16 +93,6 @@ fn fetch_deps(ids: Vec<String>, config: &crate::Config) -> Result<Vec<LayoutDeps
             continue;
         }
         skip_map.insert(id.clone());
-
-        if let Some(ref items) = config.deps.get(id) {
-            for item in items.iter() {
-                skip_map.insert(item.clone());
-                deps.push(LayoutDeps {
-                    module: item.clone(),
-                    source: config.get_code(item)?,
-                });
-            }
-        }
 
         deps.push(LayoutDeps {
             module: id.clone(),
@@ -134,11 +136,24 @@ mod tests_fetch_deps {
         check(vec![], N(vec![]), &config);
         check(vec!["bar"], N::o("bar", "function bar() {}"), &config);
         check(
-            vec!["foo"],
-            N::o("bar", "function bar() {}").with("foo", "function foo() {bar()}"),
+            vec!["f"],
+            N::o("bar", "function bar() {}").with("f", "function f() {bar()}"),
             &config,
         );
     }
+}
+
+fn read(path_st: &str) -> Result<String, failure::Error> {
+        use std::io::Read;
+        let path = std::path::Path::new(path_st);
+        match std::fs::File::open(&path) {
+            Ok(mut loader) => {
+                let mut loader_content = String::new();
+                loader.read_to_string(&mut loader_content)?;
+                Ok(loader_content.trim().to_string())
+            }
+            Err(_) => Err(failure::err_msg(format!("File not found: {:?}", path))),
+        }
 }
 
 fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
@@ -182,23 +197,23 @@ mod tests_fetch_ids {
     #[test]
     fn fetch_ids() {
         check(json!({}), vec![]);
-        check(json!({"id": "foo"}), vec![]);
-        check(json!({"id": "foo", "config": 0}), vec!["foo"]);
+        check(json!({"id": "f"}), vec![]);
+        check(json!({"id": "f", "config": 0}), vec!["f"]);
         check(
             json!({
-                "id": "foo",
+                "id": "f",
                 "config": {"id": "bar", "config": 0}
             }),
-            vec!["foo", "bar"],
+            vec!["f", "bar"],
         );
         check(
             json!({
-                "id": "foo", "config": [
+                "id": "f", "config": [
                     {"id": "bar", "config": 0},
                     {"id": "bar2", "config": 0}
                 ]
             }),
-            vec!["foo", "bar", "bar2"],
+            vec!["f", "bar", "bar2"],
         );
     }
 }
