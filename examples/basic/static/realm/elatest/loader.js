@@ -22,32 +22,29 @@ function load_src(source) {
     document.body.appendChild(scriptNode);
 }
 
-/*
 function get_app(id) {
-    // split a.b.c
-    var a, b, c = split(id);
-    return Elm[a][b]
 
     var current = Elm;
-    while (true) {
-        if id.contains(".") {
-            var first, rest = split()
-            current = current[first];
-        }
+    mod_list = id.split('.');
+
+    for (x in mod_list) {
+        current = current[mod_list[x]]
     }
+    return current;
 }
-*/
 
-function loadWidget(handle) {
-  console.log("loadWidget", handle);
+function loadWidget(data) {
+  console.log("loadWidget", data);
+  for (var i in data){
 
-  var widget = handle.first;
-  var app = Elm[widget.id].init({
-    node: document.getElementById(widget.uid),
-    flags: widget.flags,
-  });
-
-  app.ports.loadWidget.subscribe(loadWidget);
+    widget = data[i];
+    console.log("widget", widget, 'get_app', get_app(widget.id));
+    var app = get_app(widget.id).init({
+        node: document.getElementById(widget.uid),
+        flags: widget.flags,
+      });
+      app.ports.loadWidget.subscribe(loadWidget);
+  }
 
 }
 
@@ -62,18 +59,19 @@ function main(){
 
     console.log("hello");
 
-    var app = Elm[data.widget.id].init({
-    	node: document.getElementById('main'),
-    	flags:data.widget.config
+    var app = get_app(data.widget.id).init({
+       node: document.getElementById('main'),
+       flags:data.widget.config
     });
 
-    /*var app = Elm["F"]["M"].init({
-    	node: document.getElementById('main'),
-    	flags:data.widget.config
+    /*var app = get_app("F.M").init({
+       node: document.getElementById('main'),
+       flags:data.widget.config
     });*/
 
 
     app.ports.loadWidget.subscribe(loadWidget);
 
 }
+
 main();

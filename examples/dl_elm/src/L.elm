@@ -30,14 +30,14 @@ init _ =
     ( Model "" "" ""
     , loadWidget
         (JE.object
-            [(  "first" ,
+            [(  "First" ,
                 JE.object
                     [ ( "uid", JE.string "child1" )
-                    , ( "id", JE.string "M" )
+                    , ( "id", JE.string "F.M" )
                     , ( "flags", JE.object [] )
                     ]
             )
-            ,(  "second" ,
+            ,(  "Second" ,
                 JE.object
                     [ ( "uid", JE.string "child2" )
                     , ( "id", JE.string "N" )

@@ -4806,7 +4806,7 @@ var author$project$L$init = function (_n0) {
 				_List_fromArray(
 					[
 						_Utils_Tuple2(
-						'first',
+						'First',
 						elm$json$Json$Encode$object(
 							_List_fromArray(
 								[
@@ -4815,13 +4815,13 @@ var author$project$L$init = function (_n0) {
 									elm$json$Json$Encode$string('child1')),
 									_Utils_Tuple2(
 									'id',
-									elm$json$Json$Encode$string('M')),
+									elm$json$Json$Encode$string('F.M')),
 									_Utils_Tuple2(
 									'flags',
 									elm$json$Json$Encode$object(_List_Nil))
 								]))),
 						_Utils_Tuple2(
-						'second',
+						'Second',
 						elm$json$Json$Encode$object(
 							_List_fromArray(
 								[

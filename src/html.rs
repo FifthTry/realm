@@ -56,10 +56,9 @@ impl HTML {
         <script>
         {}
         </script>
-        <script src="/static/deps/{}.js"></script>
     </body>
 </html>"#,
-            title, &CONFIG.site_icon, data, rendered, loader, &CONFIG.latest_elm,
+            title, &CONFIG.site_icon, data, rendered, loader,
         ).into())
     }
 }
@@ -84,6 +83,7 @@ fn resolve_deps(
 
 fn fetch_deps(ids: Vec<String>, config: &crate::Config) -> Result<Vec<LayoutDeps>, failure::Error> {
     use std::collections::HashSet;
+
     //let testing = env["testing"] == "1";
     println!("ids {:?}", ids);
     let mut deps = vec![];
