@@ -31,11 +31,14 @@ function hello(){
         load_src(data.deps[dep].source);
     }
 
-    /*
-    var app = Elm.[data.widget.id].init({
+    console.log("hello");
+    var app = Elm[data.widget.id].init({
     	node: document.getElementById('main'),
     	flags:data.widget.config
     });
+
+
+
 
     app.ports.loadWidget.subscribe(function(handle) {
       console.log("loadWidget", handle);
@@ -46,14 +49,14 @@ function hello(){
         flags: widget.flags,
       });
 
-      widget = handle.second;
+      /*widget = handle.second;
       Elm[widget.id].init({
         node: document.getElementById(widget.uid),
         flags: widget.flags,
-      });
+      });*/
 
 
-    });*/
+    });
 
 }
 hello();
