@@ -22,7 +22,36 @@ function load_src(source) {
     document.body.appendChild(scriptNode);
 }
 
-function hello(){
+/*
+function get_app(id) {
+    // split a.b.c
+    var a, b, c = split(id);
+    return Elm[a][b]
+
+    var current = Elm;
+    while (true) {
+        if id.contains(".") {
+            var first, rest = split()
+            current = current[first];
+        }
+    }
+}
+*/
+
+function loadWidget(handle) {
+  console.log("loadWidget", handle);
+
+  var widget = handle.first;
+  var app = Elm[widget.id].init({
+    node: document.getElementById(widget.uid),
+    flags: widget.flags,
+  });
+
+  app.ports.loadWidget.subscribe(loadWidget);
+
+}
+
+function main(){
     var data = getDocumentLayoutOutput();
     console.log(data);
 
@@ -32,31 +61,19 @@ function hello(){
     }
 
     console.log("hello");
+
     var app = Elm[data.widget.id].init({
     	node: document.getElementById('main'),
     	flags:data.widget.config
     });
 
+    /*var app = Elm["F"]["M"].init({
+    	node: document.getElementById('main'),
+    	flags:data.widget.config
+    });*/
 
 
-
-    app.ports.loadWidget.subscribe(function(handle) {
-      console.log("loadWidget", handle);
-
-      var widget = handle.first;
-      Elm[widget.id].init({
-        node: document.getElementById(widget.uid),
-        flags: widget.flags,
-      });
-
-      /*widget = handle.second;
-      Elm[widget.id].init({
-        node: document.getElementById(widget.uid),
-        flags: widget.flags,
-      });*/
-
-
-    });
+    app.ports.loadWidget.subscribe(loadWidget);
 
 }
-hello();
+main();
