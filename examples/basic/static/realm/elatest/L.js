@@ -4798,7 +4798,7 @@ var elm$json$Json$Encode$object = function (pairs) {
 			pairs));
 };
 var elm$json$Json$Encode$string = _Json_wrap;
-var author$project$L$init = function (_n0) {
+var author$project$L$init = function (config) {
 	return _Utils_Tuple2(
 		A3(author$project$L$Model, '', '', ''),
 		author$project$L$loadWidget(
@@ -4815,10 +4815,8 @@ var author$project$L$init = function (_n0) {
 									elm$json$Json$Encode$string('child1')),
 									_Utils_Tuple2(
 									'id',
-									elm$json$Json$Encode$string('F.M')),
-									_Utils_Tuple2(
-									'flags',
-									elm$json$Json$Encode$object(_List_Nil))
+									elm$json$Json$Encode$string(config.body.id)),
+									_Utils_Tuple2('config', config.body.config)
 								])))
 					]))));
 };
@@ -5308,7 +5306,29 @@ var elm$url$Url$fromString = function (str) {
 		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
 var elm$browser$Browser$element = _Browser_element;
+var elm$json$Json$Decode$andThen = _Json_andThen;
+var elm$json$Json$Decode$value = _Json_decodeValue;
 var author$project$L$main = elm$browser$Browser$element(
 	{init: author$project$L$init, subscriptions: author$project$L$subscriptions, update: author$project$L$update, view: author$project$L$view});
 _Platform_export({'L':{'init':author$project$L$main(
-	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
+	A2(
+		elm$json$Json$Decode$andThen,
+		function (body) {
+			return elm$json$Json$Decode$succeed(
+				{body: body});
+		},
+		A2(
+			elm$json$Json$Decode$field,
+			'body',
+			A2(
+				elm$json$Json$Decode$andThen,
+				function (id) {
+					return A2(
+						elm$json$Json$Decode$andThen,
+						function (config) {
+							return elm$json$Json$Decode$succeed(
+								{config: config, id: id});
+						},
+						A2(elm$json$Json$Decode$field, 'config', elm$json$Json$Decode$value));
+				},
+				A2(elm$json$Json$Decode$field, 'id', elm$json$Json$Decode$string)))))(0)}});}(this));

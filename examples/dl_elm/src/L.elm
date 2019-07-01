@@ -7,7 +7,19 @@ import Json.Encode as JE
 import Html.Events exposing (onInput)
 
 
--- MAIN
+
+type alias Config = {
+    body: WidgetSpec
+    -- header: WidgetSpec,
+    -- footer: WidgetSpec,
+  }
+
+type alias WidgetSpec = {
+    id: String
+    ,config: JE.Value
+  }
+
+
 
 
 main =
@@ -25,27 +37,20 @@ type alias Model =
   , passwordAgain : String
   }
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : Config -> ( Model, Cmd Msg )
+init config =
     ( Model "" "" ""
-    , loadWidget
+     , loadWidget
         (JE.object
             [(  "First" ,
                 JE.object
                     [ ( "uid", JE.string "child1" )
-                    , ( "id", JE.string "F.M" )
-                    , ( "flags", JE.object [] )
+                    , ( "id", JE.string config.body.id )
+                    , ( "config", config.body.config)
                     ]
-            )
---            ,(  "Second" ,
---                JE.object
---                    [ ( "uid", JE.string "child2" )
---                    , ( "id", JE.string "H.I" )
---                    , ( "flags", JE.object [] )
---                    ]
---            )
-            ]
+            )]
         )
+
     )
 
 
