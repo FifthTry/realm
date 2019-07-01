@@ -5,5 +5,3 @@ elm-stuff/
 .idea/
 regenerated/
 scripts/output.txt
-examples/basic/static/realm/elatest/
-!examples/basic/static/realm/elatest/loader.js

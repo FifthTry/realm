@@ -43,7 +43,7 @@ function loadWidget(data) {
         node: document.getElementById(widget.uid),
         flags: widget.flags,
       });
-      app.ports.loadWidget.subscribe(loadWidget);
+      //app.ports.loadWidget.subscribe(loadWidget);
   }
 
 }
