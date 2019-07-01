@@ -1,7 +1,8 @@
 module F.M exposing (main)
 
 import Browser
-import Html exposing (..)
+import Html as H exposing (..)
+import Html.Attributes as H exposing (..)
 import Task
 import Time
 
@@ -80,4 +81,4 @@ view model =
     minute = String.fromInt (Time.toMinute model.zone model.time)
     second = String.fromInt (Time.toSecond model.zone model.time)
   in
-  h1 [] [ text (hour ++ ":" ++ minute ++ ":" ++ second) ]
+  H.div [ H.id "child1" ][h1 [] [ text (hour ++ ":" ++ minute ++ ":" ++ second) ]]

@@ -64,5 +64,4 @@ destination_dir = home + "/forgit/dwelm/realm/examples/basic/static/realm/elates
 
 print(compile_all_elm(source_dir, destination_dir))
 
-# pick only one with main
 # make everything exception friendly and neat
