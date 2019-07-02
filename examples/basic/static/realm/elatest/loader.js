@@ -23,7 +23,6 @@ function load_src(source) {
 }
 
 function get_app(id) {
-
     var current = Elm;
     mod_list = id.split('.');
 
@@ -36,14 +35,13 @@ function get_app(id) {
 function loadWidget(data) {
   console.log("loadWidget", data);
   for (var i in data){
-
     widget = data[i];
     console.log("widget", widget, 'get_app', get_app(widget.id));
     var app = get_app(widget.id).init({
         node: document.getElementById(widget.uid),
         flags: widget.flags,
       });
-      //app.ports.loadWidget.subscribe(loadWidget);
+      app.ports.loadWidget.subscribe(loadWidget);
   }
 
 }
@@ -61,7 +59,7 @@ function main(){
 
     var app = get_app(data.widget.id).init({
        node: document.getElementById('main'),
-       flags:data.widget.config
+       flags: data.widget.config
     });
 
     /*var app = get_app("F.M").init({

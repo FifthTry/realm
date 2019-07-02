@@ -4301,14 +4301,14 @@ function _Browser_load(url)
 		}
 	}));
 }
-var author$project$L$Model = F3(
-	function (name, password, passwordAgain) {
-		return {name: name, password: password, passwordAgain: passwordAgain};
+var author$project$L$Model = F4(
+	function (name, password, passwordAgain, config) {
+		return {config: config, name: name, password: password, passwordAgain: passwordAgain};
 	});
 var elm$core$Basics$identity = function (x) {
 	return x;
 };
-var author$project$L$loadWidget = _Platform_outgoingPort('loadWidget', elm$core$Basics$identity);
+var author$project$Realm$loadWidget = _Platform_outgoingPort('loadWidget', elm$core$Basics$identity);
 var elm$core$List$foldl = F3(
 	function (func, acc, list) {
 		foldl:
@@ -4800,8 +4800,8 @@ var elm$json$Json$Encode$object = function (pairs) {
 var elm$json$Json$Encode$string = _Json_wrap;
 var author$project$L$init = function (config) {
 	return _Utils_Tuple2(
-		A3(author$project$L$Model, '', '', ''),
-		author$project$L$loadWidget(
+		A4(author$project$L$Model, '', '', '', config),
+		author$project$Realm$loadWidget(
 			elm$json$Json$Encode$object(
 				_List_fromArray(
 					[
@@ -5028,6 +5028,15 @@ var author$project$L$viewValidation = function (model) {
 			])));
 };
 var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
+var author$project$Realm$child = function (wspec) {
+	return A2(
+		elm$html$Html$div,
+		_List_fromArray(
+			[
+				elm$html$Html$Attributes$id('child1')
+			]),
+		_List_Nil);
+};
 var author$project$L$view = function (model) {
 	return A2(
 		elm$html$Html$div,
@@ -5037,20 +5046,7 @@ var author$project$L$view = function (model) {
 			]),
 		_List_fromArray(
 			[
-				A2(
-				elm$html$Html$div,
-				_List_fromArray(
-					[
-						elm$html$Html$Attributes$id('child1')
-					]),
-				_List_Nil),
-				A2(
-				elm$html$Html$div,
-				_List_fromArray(
-					[
-						elm$html$Html$Attributes$id('child2')
-					]),
-				_List_Nil),
+				author$project$Realm$child(model.config.body),
 				A2(
 				elm$html$Html$div,
 				_List_fromArray(

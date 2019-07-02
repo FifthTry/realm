@@ -1,5 +1,6 @@
-port module L exposing (main)
+module L exposing (main)
 
+import Realm
 import Browser
 import Html as H exposing (..)
 import Html.Attributes as H exposing (..)
@@ -8,16 +9,12 @@ import Html.Events exposing (onInput)
 
 
 
-type alias Config = {
-    body: WidgetSpec
-    -- header: WidgetSpec,
-    -- footer: WidgetSpec,
-  }
 
-type alias WidgetSpec = {
-    uid: String
-    , id: String
-    , config: JE.Value
+type alias Config = {
+    body: Realm.WidgetSpec
+    -- ,footer: Realm.WidgetSpec
+    -- header: WidgetSpec,
+
   }
 
 
@@ -29,19 +26,21 @@ main =
         , update = update
         , subscriptions = subscriptions
         , view = view
-        }
+
+    }
 
 
 type alias Model =
   { name : String
   , password : String
   , passwordAgain : String
+  , config: Config
   }
 
 init : Config -> ( Model, Cmd Msg )
 init config =
-    ( Model "" "" ""
-     , loadWidget
+    ( Model "" "" "" config
+     , Realm.loadWidget
         (JE.object
             [(  "First" ,
                 JE.object
@@ -55,8 +54,6 @@ init config =
     )
 
 
-
-port loadWidget : JE.Value -> Cmd msg
 
 -- UPDATE
 
@@ -107,11 +104,11 @@ subscriptions _ =
 -- VIEW
 
 
-view : Model -> Html Msg
-view model =
+view : Model  -> Html Msg
+view model=
   div [ H.id "main" ]
-    [ Realm.child model.body
-    , Realm.child model.footer
+    [ Realm.child model.config.body
+    -- , Realm.child model.config.footer
     , (div
         [H.id "child3"]
         [ viewInput "text" "Name" model.name Name

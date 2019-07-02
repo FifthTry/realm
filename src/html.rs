@@ -191,7 +191,6 @@ fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
 }
 
 fn attach_uids(data: &mut serde_json::Value, count_map: &mut HashMap<String, u64>){
-
     let mut edit_flag = false;
     match data {
         serde_json::Value::Object(o) => {
