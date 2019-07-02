@@ -1,7 +1,7 @@
 use crate::CONFIG;
 use htmlescape;
 use serde_json::Value;
-
+use std::collections::HashMap;
 pub struct HTML {
     pub title: String,
 }
@@ -190,21 +190,32 @@ fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
     }
 }
 
-fn attach_uids(data: &mut serde_json::Value) {
+fn attach_uids(data: &mut serde_json::Value, count_map: &mut HashMap<String, u64>  ) {
     println!("au welcome");
+
     let mut edit_flag = false;
     match data {
         serde_json::Value::Object(o) => {
-            //println!("hi");
             if o.get("id") != None && o.get("config") != None{
                 edit_flag = true;
             }
 
             if let Some(serde_json::Value::String(id)) = o.get("id") {
                 let id = id.to_string();
+                let mut uid = id.to_string();
                 println!("au id {}", id);
                 if edit_flag {
-                    o.insert("uid".to_string(), serde_json::Value::String("uhid".to_string()));
+                    if let Some(count) = count_map.get_mut(id.as_str()){
+                        uid.push_str(count.to_string().as_str());
+                        *count += 1;
+
+                    }
+                    else{
+                        count_map.insert(id, 1);
+                        uid.push_str("0");
+                    }
+
+                    o.insert("uid".to_string(), serde_json::Value::String(uid));
                 }else{
                         println!("au id but no config");
                 }
@@ -214,7 +225,7 @@ fn attach_uids(data: &mut serde_json::Value) {
             }
 
             for (_, value) in o.iter_mut() {
-                attach_uids(value);
+                attach_uids(value, count_map);
             }
 
 
@@ -222,7 +233,7 @@ fn attach_uids(data: &mut serde_json::Value) {
         }
         serde_json::Value::Array(l) => {
             for o in  l.iter_mut() {
-                attach_uids( o);
+                attach_uids( o, count_map);
                 println!("hello");
             }
         }
@@ -232,9 +243,13 @@ fn attach_uids(data: &mut serde_json::Value) {
 
 #[cfg(test)]
 mod tests_attach_uids {
+
+use std::collections::HashMap;
     fn check(i: serde_json::Value, o: serde_json::Value) {
+
+        let mut count_map: HashMap<String, u64> = HashMap::new();
         let mut j = i.clone();
-        super::attach_uids(&mut j);
+        super::attach_uids(&mut j, &mut count_map);
         assert_eq!(j, o);
     }
 
@@ -243,19 +258,10 @@ mod tests_attach_uids {
         check(json!({}), json!({}));
         check(json!({"id": "f"}), json!({"id": "f"}));
         check(
-            json!({"id": "e"
-             ,"x": {
-                "id": "g"
-                 ,"config": 0
-               }
-             }),
-            json!({"id": "e"
-             ,"x": {
-                "id": "g"
-                 ,"config": 0
-                 ,"uid": "uhid"
-               }
-             })
+            json!({"id": "f", "config": 0}),
+            json!({"id": "f", "config": 0
+            , "uid": "f0"
+            })
         );
         check(
             json!({"id": "f"
@@ -273,11 +279,79 @@ mod tests_attach_uids {
              , "uid": "f0"
              })
         );
+
         check(
-            json!({"id": "f", "config": 0}),
-            json!({"id": "f", "config": 0
-            , "uid": "f0"
-            })
+            json!({"id": "f"
+             ,"config": {
+                "id": "f"
+                 ,"config": 0
+               }
+             }),
+            json!({"id": "f"
+             ,"config": {
+                "id": "f"
+                 ,"config": 0
+                 ,"uid": "f1"
+               }
+             , "uid": "f0"
+             })
+        );
+
+        check(
+            json!({"id": "f"
+             ,"config": {
+                "id": "f"
+                 ,"config": {
+                    "id": "f"
+                     ,"config": {
+                        "id": "d"
+                         ,"config": 0
+                       }
+                     ,"x":{
+
+                        "id": "f"
+                        ,"config": 0
+
+                     }
+                   }
+                 ,"y":{
+                    "z" : {
+                         "id": "d"
+                        ,"config": 0
+                   }
+                 }
+               }
+             }),
+            json!({"id": "f"
+             ,"config": {
+                 "id": "f"
+                 ,"config": {
+                    "id": "f"
+                     ,"config": {
+                        "id": "d"
+                         ,"config": 0
+                         ,"uid": "d0"
+                       }
+                     ,"x":{
+
+                        "id": "f"
+                        ,"config": 0
+                        , "uid": "f3"
+
+                     }
+                     , "uid": "f2"
+                   }
+                 ,"y":{
+                    "z" : {
+                         "id": "d"
+                        ,"config": 0
+                        ,"uid": "d1"
+                   }
+                 }
+                 ,"uid": "f1"
+               }
+             , "uid": "f0"
+             })
         );
     }
 }
@@ -311,6 +385,3 @@ mod tests_fetch_ids {
         );
     }
 }
-// TODO: attach_uids
-//attach right uid
-////recursively and conditionally attach uid
