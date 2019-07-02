@@ -1,5 +1,7 @@
 use crate::CONFIG;
 use htmlescape;
+use serde_json::Value;
+
 pub struct HTML {
     pub title: String,
 }
@@ -188,6 +190,78 @@ fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
     }
 }
 
+fn attach_uids(data: &mut serde_json::Value) {
+    println!("au welcome");
+    match data {
+        serde_json::Value::Object(o) => {
+            //println!("hi");
+
+            if let Some(serde_json::Value::String(id)) = o.get("id") {
+                let id = id.to_string();
+                println!("au id {}", id);
+            } else {
+                for (_, value) in o.iter_mut() {
+                    attach_uids(value);
+                }
+            };
+
+            match o.get_mut("config"){
+                Some( config) => {
+                    attach_uids( config);
+                }
+                None => {
+                    println!("au no config");
+                }
+            };
+        }
+        serde_json::Value::Array(l) => {
+            for o in  l.iter_mut() {
+                attach_uids( o);
+                println!("hello");
+            }
+        }
+        _ => unimplemented!()
+    };
+}
+
+#[cfg(test)]
+mod tests_attach_uids {
+    fn check(i: serde_json::Value, o: serde_json::Value) {
+        let mut j = i.clone();
+        super::attach_uids(&mut j);
+        assert_eq!(j, o);
+    }
+
+    #[test]
+    fn attach_uids() {
+        check(json!({}), json!({}));
+        check(json!({"id": "f"}), json!({"id": "f"}));
+
+        check(
+            json!({"id": "f"
+             ,"config": {
+                "id": "d"
+                 ,"config": 0
+               }
+             }),
+            json!({"id": "f"
+             ,"config": {
+                "id": "d"
+                 ,"config": 0
+                 //,"uid": "d0"
+               }
+             , "uid": "f0"
+             })
+        );
+        check(
+            json!({"id": "f", "config": 0}),
+            json!({"id": "f", "config": 0
+            //, "uid": "f0"
+            })
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests_fetch_ids {
     fn check(d: serde_json::Value, e: Vec<&str>) {
@@ -217,3 +291,7 @@ mod tests_fetch_ids {
         );
     }
 }
+// TODO: attach_uids
+//recursively and conditionally print
+//attach uid
+////recursively and conditionally attach uid

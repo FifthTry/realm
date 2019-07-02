@@ -15,8 +15,9 @@ type alias Config = {
   }
 
 type alias WidgetSpec = {
-    id: String
-    ,config: JE.Value
+    uid: String
+    , id: String
+    , config: JE.Value
   }
 
 
@@ -109,8 +110,8 @@ subscriptions _ =
 view : Model -> Html Msg
 view model =
   div [ H.id "main" ]
-    [ (H.div [ H.id "child1" ] [])
-    , (H.div [ H.id "child2" ] [])
+    [ Realm.child model.body
+    , Realm.child model.footer
     , (div
         [H.id "child3"]
         [ viewInput "text" "Name" model.name Name
