@@ -192,27 +192,33 @@ fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
 
 fn attach_uids(data: &mut serde_json::Value) {
     println!("au welcome");
+    let mut edit_flag = false;
     match data {
         serde_json::Value::Object(o) => {
             //println!("hi");
+            if o.get("id") != None && o.get("config") != None{
+                edit_flag = true;
+            }
 
             if let Some(serde_json::Value::String(id)) = o.get("id") {
                 let id = id.to_string();
                 println!("au id {}", id);
-            } else {
-                for (_, value) in o.iter_mut() {
-                    attach_uids(value);
+                if edit_flag {
+                    o.insert("uid".to_string(), serde_json::Value::String("uhid".to_string()));
+                }else{
+                        println!("au id but no config");
                 }
-            };
 
-            match o.get_mut("config"){
-                Some( config) => {
-                    attach_uids( config);
-                }
-                None => {
-                    println!("au no config");
-                }
-            };
+
+
+            }
+
+            for (_, value) in o.iter_mut() {
+                attach_uids(value);
+            }
+
+
+
         }
         serde_json::Value::Array(l) => {
             for o in  l.iter_mut() {
@@ -220,7 +226,7 @@ fn attach_uids(data: &mut serde_json::Value) {
                 println!("hello");
             }
         }
-        _ => unimplemented!()
+        _ => {}
     };
 }
 
@@ -236,7 +242,21 @@ mod tests_attach_uids {
     fn attach_uids() {
         check(json!({}), json!({}));
         check(json!({"id": "f"}), json!({"id": "f"}));
-
+        check(
+            json!({"id": "e"
+             ,"x": {
+                "id": "g"
+                 ,"config": 0
+               }
+             }),
+            json!({"id": "e"
+             ,"x": {
+                "id": "g"
+                 ,"config": 0
+                 ,"uid": "uhid"
+               }
+             })
+        );
         check(
             json!({"id": "f"
              ,"config": {
@@ -248,7 +268,7 @@ mod tests_attach_uids {
              ,"config": {
                 "id": "d"
                  ,"config": 0
-                 //,"uid": "d0"
+                 ,"uid": "d0"
                }
              , "uid": "f0"
              })
@@ -256,7 +276,7 @@ mod tests_attach_uids {
         check(
             json!({"id": "f", "config": 0}),
             json!({"id": "f", "config": 0
-            //, "uid": "f0"
+            , "uid": "f0"
             })
         );
     }
@@ -292,6 +312,5 @@ mod tests_fetch_ids {
     }
 }
 // TODO: attach_uids
-//recursively and conditionally print
-//attach uid
+//attach right uid
 ////recursively and conditionally attach uid
