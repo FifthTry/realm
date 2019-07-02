@@ -35,8 +35,7 @@ impl HTML {
         let data = serde_json::to_string_pretty(&data)?;
         let data = htmlescape::encode_minimal(&data);
 
-
-        let loader: String= read(CONFIG.loader_file.as_str()).unwrap_or("".into());
+        let loader: String = read(CONFIG.loader_file.as_str()).unwrap_or("".into());
 
         // TODO: escape html
         Ok(format!( // TODO: add other stuff to html
@@ -61,7 +60,8 @@ impl HTML {
     </body>
 </html>"#,
             title, &CONFIG.site_icon, data, rendered, loader,
-        ).into())
+        )
+        .into())
     }
 }
 
@@ -146,16 +146,16 @@ mod tests_fetch_deps {
 }
 
 fn read(path_st: &str) -> Result<String, failure::Error> {
-        use std::io::Read;
-        let path = std::path::Path::new(path_st);
-        match std::fs::File::open(&path) {
-            Ok(mut loader) => {
-                let mut loader_content = String::new();
-                loader.read_to_string(&mut loader_content)?;
-                Ok(loader_content.trim().to_string())
-            }
-            Err(_) => Err(failure::err_msg(format!("File not found: {:?}", path))),
+    use std::io::Read;
+    let path = std::path::Path::new(path_st);
+    match std::fs::File::open(&path) {
+        Ok(mut loader) => {
+            let mut loader_content = String::new();
+            loader.read_to_string(&mut loader_content)?;
+            Ok(loader_content.trim().to_string())
         }
+        Err(_) => Err(failure::err_msg(format!("File not found: {:?}", path))),
+    }
 }
 
 fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
@@ -190,50 +190,42 @@ fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
     }
 }
 
-fn attach_uids(data: &mut serde_json::Value, count_map: &mut HashMap<String, u64>  ) {
-    println!("au welcome");
+fn attach_uids(data: &mut serde_json::Value, count_map: &mut HashMap<String, u64>){
 
     let mut edit_flag = false;
     match data {
         serde_json::Value::Object(o) => {
-            if o.get("id") != None && o.get("config") != None{
+            if o.get("id") != None && o.get("config") != None && o.keys().len() == 2 {
                 edit_flag = true;
+
             }
 
             if let Some(serde_json::Value::String(id)) = o.get("id") {
                 let id = id.to_string();
                 let mut uid = id.to_string();
-                println!("au id {}", id);
+
                 if edit_flag {
-                    if let Some(count) = count_map.get_mut(id.as_str()){
+                    if let Some(count) = count_map.get_mut(id.as_str()) {
                         uid.push_str(count.to_string().as_str());
                         *count += 1;
-
-                    }
-                    else{
+                    } else {
                         count_map.insert(id, 1);
                         uid.push_str("0");
                     }
 
                     o.insert("uid".to_string(), serde_json::Value::String(uid));
-                }else{
-                        println!("au id but no config");
+                } else {
+                    println!("au id but no config");
                 }
-
-
-
             }
 
             for (_, value) in o.iter_mut() {
                 attach_uids(value, count_map);
             }
-
-
-
         }
         serde_json::Value::Array(l) => {
-            for o in  l.iter_mut() {
-                attach_uids( o, count_map);
+            for o in l.iter_mut() {
+                attach_uids(o, count_map);
                 println!("hello");
             }
         }
@@ -244,9 +236,8 @@ fn attach_uids(data: &mut serde_json::Value, count_map: &mut HashMap<String, u64
 #[cfg(test)]
 mod tests_attach_uids {
 
-use std::collections::HashMap;
+    use std::collections::HashMap;
     fn check(i: serde_json::Value, o: serde_json::Value) {
-
         let mut count_map: HashMap<String, u64> = HashMap::new();
         let mut j = i.clone();
         super::attach_uids(&mut j, &mut count_map);
@@ -261,97 +252,95 @@ use std::collections::HashMap;
             json!({"id": "f", "config": 0}),
             json!({"id": "f", "config": 0
             , "uid": "f0"
-            })
+            }),
         );
         check(
             json!({"id": "f"
-             ,"config": {
-                "id": "d"
-                 ,"config": 0
-               }
-             }),
+            ,"config": {
+               "id": "d"
+                ,"config": 0
+              }
+            }),
             json!({"id": "f"
-             ,"config": {
-                "id": "d"
-                 ,"config": 0
-                 ,"uid": "d0"
-               }
-             , "uid": "f0"
-             })
-        );
-
-        check(
-            json!({"id": "f"
-             ,"config": {
-                "id": "f"
-                 ,"config": 0
-               }
-             }),
-            json!({"id": "f"
-             ,"config": {
-                "id": "f"
-                 ,"config": 0
-                 ,"uid": "f1"
-               }
-             , "uid": "f0"
-             })
+            ,"config": {
+               "id": "d"
+                ,"config": 0
+                ,"uid": "d0"
+              }
+            , "uid": "f0"
+            }),
         );
 
         check(
             json!({"id": "f"
-             ,"config": {
-                "id": "f"
-                 ,"config": {
-                    "id": "f"
-                     ,"config": {
+            ,"config": {
+               "id": "f"
+               ,"config": 0
+              }
+            }),
+            json!({"id": "f"
+            ,"config": {
+               "id": "f"
+                ,"config": 0
+                ,"uid": "f1"
+              }
+            , "uid": "f0"
+            }),
+        );
+
+        check(
+            json!({
+                "id": "f",
+                "config": {
+                    "id": "f",
+                    "config": {
+                        "id": "f",
+                        "config": {
+                            "id": "d",
+                            "config": 0
+                        },
+                        "x": {
+                            "id": "f",
+                            "config": 0
+                        }
+                    },
+                    "y": {
+                        "z" : {
+                            "id": "d",
+                            "config": 0
+                        }
+                    }
+                }
+            }),
+            json!({
+            "id": "f",
+            "config": {
+                "id": "f",
+                "config": {
+                   "id": "f",
+                   "config": {
+                       "id": "d"
+                        ,"config": 0
+                        ,"uid": "d0"
+                      },
+                   "x":{
+                       "id": "f"
+                       ,"config": 0
+                       , "uid": "f1"
+                   }
+
+                },
+                "y":{
+                   "z" : {
                         "id": "d"
-                         ,"config": 0
-                       }
-                     ,"x":{
-
-                        "id": "f"
-                        ,"config": 0
-
-                     }
+                       ,"config": 0
+                       ,"uid": "d1"
                    }
-                 ,"y":{
-                    "z" : {
-                         "id": "d"
-                        ,"config": 0
-                   }
-                 }
-               }
-             }),
-            json!({"id": "f"
-             ,"config": {
-                 "id": "f"
-                 ,"config": {
-                    "id": "f"
-                     ,"config": {
-                        "id": "d"
-                         ,"config": 0
-                         ,"uid": "d0"
-                       }
-                     ,"x":{
+                }
 
-                        "id": "f"
-                        ,"config": 0
-                        , "uid": "f3"
-
-                     }
-                     , "uid": "f2"
-                   }
-                 ,"y":{
-                    "z" : {
-                         "id": "d"
-                        ,"config": 0
-                        ,"uid": "d1"
-                   }
-                 }
-                 ,"uid": "f1"
-               }
-             , "uid": "f0"
-             })
+              },
+            "uid": "f0"
+            }),
         );
     }
 }
