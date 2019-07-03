@@ -44,7 +44,7 @@ init config =
         (JE.object
             [(  "First" ,
                 JE.object
-                    [ ( "uid", JE.string "child1" )
+                    [ ( "uid", JE.string config.body.uid )
                     , ( "id", JE.string config.body.id )
                     , ( "config", config.body.config)
                     ]

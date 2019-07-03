@@ -32,16 +32,34 @@ function get_app(id) {
     return current;
 }
 
+function loadWidgetUtil(uid, id, config){
+    var div = document.createElement("div");
+    div.setAttribute("id", uid);
+
+    inner_st = uid + "_actual";
+    var inner_div =  document.getElementById(inner_st);
+    if (inner_div === null){
+        inner_div = document.createElement("div");
+        inner_div.setAttribute("id", inner_st);
+    }
+
+    div.appendChild(inner_div);
+
+
+
+    var app = get_app(id).init({
+        node: document.getElementById(uid),
+        flags: config,
+      });
+      app.ports.loadWidget.subscribe(loadWidgetUtil);
+}
+
 function loadWidget(data) {
   console.log("loadWidget", data);
   for (var i in data){
     widget = data[i];
     console.log("widget", widget, 'get_app', get_app(widget.id));
-    var app = get_app(widget.id).init({
-        node: document.getElementById(widget.uid),
-        flags: widget.flags,
-      });
-      app.ports.loadWidget.subscribe(loadWidget);
+    loadWidgetUtil(widget.uid, widget.id, widget.config);
   }
 
 }
@@ -61,6 +79,8 @@ function main(){
        node: document.getElementById('main'),
        flags: data.widget.config
     });
+
+
 
     /*var app = get_app("F.M").init({
        node: document.getElementById('main'),

@@ -24,13 +24,16 @@ impl HTML {
         let deps = resolve_deps(&spec, &CONFIG)?;
         //let data = json!({"data": spec, "deps": deps});
         // FixME
-        let data = json!({
+        let mut data = json!({
             "result": {
                 "widget": spec,
                 "replace": false,
                 "deps": deps
             }
         });
+
+        let mut count_map: HashMap<String, u64> = HashMap::new();
+        attach_uids(&mut data, &mut count_map);
 
         let data = serde_json::to_string_pretty(&data)?;
         let data = htmlescape::encode_minimal(&data);

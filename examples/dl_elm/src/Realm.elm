@@ -8,14 +8,14 @@ port loadWidget : JE.Value -> Cmd msg
 type alias WidgetSpec = {
     id: String
     , config: JE.Value
-    -- ,uid: String
+    ,uid: String
 
   }
 
 
 child : WidgetSpec ->  Html msg
 child wspec =
-    H.div [ H.id "child1" ] []
+    H.div [ H.id wspec.uid ] []
 
 
 

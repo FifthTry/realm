@@ -4812,7 +4812,7 @@ var author$project$L$init = function (config) {
 								[
 									_Utils_Tuple2(
 									'uid',
-									elm$json$Json$Encode$string('child1')),
+									elm$json$Json$Encode$string(config.body.uid)),
 									_Utils_Tuple2(
 									'id',
 									elm$json$Json$Encode$string(config.body.id)),
@@ -5033,7 +5033,7 @@ var author$project$Realm$child = function (wspec) {
 		elm$html$Html$div,
 		_List_fromArray(
 			[
-				elm$html$Html$Attributes$id('child1')
+				elm$html$Html$Attributes$id(wspec.uid)
 			]),
 		_List_Nil);
 };
@@ -5318,13 +5318,18 @@ _Platform_export({'L':{'init':author$project$L$main(
 			'body',
 			A2(
 				elm$json$Json$Decode$andThen,
-				function (id) {
+				function (uid) {
 					return A2(
 						elm$json$Json$Decode$andThen,
-						function (config) {
-							return elm$json$Json$Decode$succeed(
-								{config: config, id: id});
+						function (id) {
+							return A2(
+								elm$json$Json$Decode$andThen,
+								function (config) {
+									return elm$json$Json$Decode$succeed(
+										{config: config, id: id, uid: uid});
+								},
+								A2(elm$json$Json$Decode$field, 'config', elm$json$Json$Decode$value));
 						},
-						A2(elm$json$Json$Decode$field, 'config', elm$json$Json$Decode$value));
+						A2(elm$json$Json$Decode$field, 'id', elm$json$Json$Decode$string));
 				},
-				A2(elm$json$Json$Decode$field, 'id', elm$json$Json$Decode$string)))))(0)}});}(this));
+				A2(elm$json$Json$Decode$field, 'uid', elm$json$Json$Decode$string)))))(0)}});}(this));
