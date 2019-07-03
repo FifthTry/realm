@@ -30,7 +30,7 @@ update msg model =
             { model | count = model.count - 1 }
 
         Reset ->
-            { model | count = 0}
+            { model | count = 0 }
 
 
 view : Model -> Html Msg

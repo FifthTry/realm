@@ -1,9 +1,9 @@
 module F.M exposing (main)
 
-import Realm
 import Browser
 import Html as H exposing (..)
 import Html.Attributes as H exposing (..)
+import Realm
 import Task
 import Time
 
@@ -13,29 +13,36 @@ import Time
 
 
 main =
-  Browser.element
-    { init = init
-    , view = view
-    , update = update
-    , subscriptions = subscriptions
-    }
+    Browser.element
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }
 
 
 
 -- MODEL
 
 
+type alias Config =
+    {
+
+    }
+
+
 type alias Model =
-  { zone : Time.Zone
-  , time : Time.Posix
-  }
+    { zone : Time.Zone
+    , time : Time.Posix
+    , uid : String
+    }
 
 
-init : () -> (Model, Cmd Msg)
-init _ =
-  ( Model Time.utc (Time.millisToPosix 0)
-  , Task.perform AdjustTimeZone Time.here
-  )
+init : Config -> ( Model, Cmd Msg )
+init config =
+    ( Model Time.utc (Time.millisToPosix 0) "x"
+    , Task.perform AdjustTimeZone Time.here
+    )
 
 
 
@@ -43,23 +50,22 @@ init _ =
 
 
 type Msg
-  = Tick Time.Posix
-  | AdjustTimeZone Time.Zone
+    = Tick Time.Posix
+    | AdjustTimeZone Time.Zone
 
 
-
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case msg of
-    Tick newTime ->
-      ( { model | time = newTime }
-      , Cmd.none
-      )
+    case msg of
+        Tick newTime ->
+            ( { model | time = newTime }
+            , Cmd.none
+            )
 
-    AdjustTimeZone newZone ->
-      ( { model | zone = newZone }
-      , Cmd.none
-      )
+        AdjustTimeZone newZone ->
+            ( { model | zone = newZone }
+            , Cmd.none
+            )
 
 
 
@@ -68,7 +74,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Time.every 1000 Tick
+    Time.every 1000 Tick
 
 
 
@@ -77,9 +83,20 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-  let
-    hour   = String.fromInt (Time.toHour   model.zone model.time)
-    minute = String.fromInt (Time.toMinute model.zone model.time)
-    second = String.fromInt (Time.toSecond model.zone model.time)
-  in
-  H.div [ H.id "child1" ][h1 [] [ text (hour ++ ":" ++ minute ++ ":" ++ second) ]]
+    view2 model
+        |> Realm.wrapped model.uid
+
+
+view2 : Model -> Html Msg
+view2 model =
+    let
+        hour =
+            String.fromInt (Time.toHour model.zone model.time)
+
+        minute =
+            String.fromInt (Time.toMinute model.zone model.time)
+
+        second =
+            String.fromInt (Time.toSecond model.zone model.time)
+    in
+    h1 [] [ text (hour ++ ":" ++ minute ++ ":" ++ second) ]

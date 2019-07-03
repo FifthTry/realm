@@ -5022,22 +5022,19 @@ var author$project$L$viewValidation = function (model) {
 			])));
 };
 var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
-var author$project$Realm$child = function (wspec) {
+var author$project$Realm$child = function (spec) {
 	return A2(
 		elm$html$Html$div,
 		_List_fromArray(
 			[
-				elm$html$Html$Attributes$id(wspec.uid)
+				elm$html$Html$Attributes$id(spec.uid)
 			]),
 		_List_Nil);
 };
-var author$project$L$view = function (model) {
+var author$project$L$view2 = function (model) {
 	return A2(
 		elm$html$Html$div,
-		_List_fromArray(
-			[
-				elm$html$Html$Attributes$id('main')
-			]),
+		_List_Nil,
 		_List_fromArray(
 			[
 				author$project$Realm$child(model.config.body),
@@ -5049,12 +5046,29 @@ var author$project$L$view = function (model) {
 					]),
 				_List_fromArray(
 					[
-						A4(author$project$L$viewInput, 'text', 'Name', model.name, author$project$L$Name),
+						A4(author$project$L$viewInput, 'text', 'Nameeeee', model.name, author$project$L$Name),
 						A4(author$project$L$viewInput, 'password', 'Password', model.password, author$project$L$Password),
 						A4(author$project$L$viewInput, 'password', 'Re-enter Password', model.passwordAgain, author$project$L$PasswordAgain),
 						author$project$L$viewValidation(model)
 					]))
 			]));
+};
+var author$project$Realm$wrapped = F2(
+	function (uid, html) {
+		return A2(
+			elm$html$Html$div,
+			_List_fromArray(
+				[
+					elm$html$Html$Attributes$id(uid + '_actual')
+				]),
+			_List_fromArray(
+				[html]));
+	});
+var author$project$L$view = function (model) {
+	return A2(
+		author$project$Realm$wrapped,
+		'main',
+		author$project$L$view2(model));
 };
 var elm$browser$Browser$External = function (a) {
 	return {$: 'External', a: a};

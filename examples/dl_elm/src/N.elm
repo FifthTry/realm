@@ -1,4 +1,5 @@
 module N exposing (main)
+
 import Browser
 import Html exposing (..)
 import Html.Events exposing (..)
@@ -10,12 +11,12 @@ import Random
 
 
 main =
-  Browser.element
-    { init = init
-    , update = update
-    , subscriptions = subscriptions
-    , view = view
-    }
+    Browser.element
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = view
+        }
 
 
 
@@ -23,15 +24,15 @@ main =
 
 
 type alias Model =
-  { dieFace : Int
-  }
+    { dieFace : Int
+    }
 
 
-init : () -> (Model, Cmd Msg)
+init : () -> ( Model, Cmd Msg )
 init _ =
-  ( Model 1
-  , Cmd.none
-  )
+    ( Model 1
+    , Cmd.none
+    )
 
 
 
@@ -39,22 +40,22 @@ init _ =
 
 
 type Msg
-  = Roll
-  | NewFace Int
+    = Roll
+    | NewFace Int
 
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case msg of
-    Roll ->
-      ( model
-      , Random.generate NewFace (Random.int 1 6)
-      )
+    case msg of
+        Roll ->
+            ( model
+            , Random.generate NewFace (Random.int 1 6)
+            )
 
-    NewFace newFace ->
-      ( Model newFace
-      , Cmd.none
-      )
+        NewFace newFace ->
+            ( Model newFace
+            , Cmd.none
+            )
 
 
 
@@ -63,7 +64,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.none
+    Sub.none
 
 
 
@@ -72,7 +73,7 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-  div []
-    [ h1 [] [ text (String.fromInt model.dieFace) ]
-    , button [ onClick Roll ] [ text "Roll" ]
-    ]
+    div []
+        [ h1 [] [ text (String.fromInt model.dieFace) ]
+        , button [ onClick Roll ] [ text "Roll" ]
+        ]

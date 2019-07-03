@@ -32,9 +32,13 @@ function loadWidget(widget) {
         div.setAttribute("id", inner_div_id);
         document.getElementById(widget.uid).appendChild(div);
     }
-    var app = get_app(widget.id).init({
-        node: div,
-        flags: widget.config
+    subscribeApp(inner_div_id, widget.id, widget.config);
+}
+
+function subscribeApp(uid, id, config) {
+    var app = get_app(id).init({
+        node: document.getElementById(uid),
+        flags: config
     });
     app.ports.loadWidget.subscribe(loadWidget);
 }
@@ -47,11 +51,7 @@ function main() {
         load_src(data.deps[dep].source);
     }
     console.log("hello");
-    var app = get_app(data.widget.id).init({
-        node: document.getElementById("main"),
-        flags: data.widget.config
-    });
-    app.ports.loadWidget.subscribe(loadWidget);
+    subscribeApp("main", data.widget.id, data.widget.config);
 }
 
 main();

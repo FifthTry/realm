@@ -76,6 +76,7 @@ impl Config {
             .map(|c| c.clone())
             .ok_or_else(|| failure::err_msg("key not found"))
     }
+
     fn set_js_code_recur(&mut self, path: &Path, parent_path: &Path) -> Result<(), failure::Error>{
         println!("dir {:?}", path.file_name());
 

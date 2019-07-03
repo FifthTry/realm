@@ -1,23 +1,19 @@
 module L exposing (main)
 
-import Realm
 import Browser
 import Html as H exposing (..)
 import Html.Attributes as H exposing (..)
-import Json.Encode as JE
 import Html.Events exposing (onInput)
+import Json.Encode as JE
+import Realm
 
 
+type alias Config =
+    { body : Realm.WidgetSpec
 
-
-type alias Config = {
-    body: Realm.WidgetSpec
     -- ,footer: Realm.WidgetSpec
     -- header: WidgetSpec,
-
-  }
-
-
+    }
 
 
 main =
@@ -26,30 +22,27 @@ main =
         , update = update
         , subscriptions = subscriptions
         , view = view
-
-    }
+        }
 
 
 type alias Model =
-  { name : String
-  , password : String
-  , passwordAgain : String
-  , config: Config
-  }
+    { name : String
+    , password : String
+    , passwordAgain : String
+    , config : Config
+    }
+
 
 init : Config -> ( Model, Cmd Msg )
 init config =
     ( Model "" "" "" config
-     , Realm.loadWidget
-        (
-                JE.object
-                    [ ( "uid", JE.string config.body.uid )
-                    , ( "id", JE.string config.body.id )
-                    , ( "config", config.body.config)
-                    ]
-
+    , Realm.loadWidget
+        (JE.object
+            [ ( "uid", JE.string config.body.uid )
+            , ( "id", JE.string config.body.id )
+            , ( "config", config.body.config )
+            ]
         )
-
     )
 
 
@@ -58,34 +51,22 @@ init config =
 
 
 type Msg
-  = Name String
-  | Password String
-  | PasswordAgain String
+    = Name String
+    | Password String
+    | PasswordAgain String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case msg of
-    Name name ->
-      ({ model | name = name }, Cmd.none)
+    case msg of
+        Name name ->
+            ( { model | name = name }, Cmd.none )
 
-    Password password ->
-      ({ model | password = password }, Cmd.none)
+        Password password ->
+            ( { model | password = password }, Cmd.none )
 
-    PasswordAgain password ->
-      ({ model | passwordAgain = password }, Cmd.none)
-
-
-
-
-
-
-
-
-
-
-
-
+        PasswordAgain password ->
+            ( { model | passwordAgain = password }, Cmd.none )
 
 
 
@@ -98,37 +79,43 @@ subscriptions _ =
 
 
 
-
-
 -- VIEW
 
 
-view : Model  -> Html Msg
-view model=
-  div [ H.id "main" ]
-    [ Realm.child model.config.body
-    -- , Realm.child model.config.footer
-    , (div
-        [H.id "child3"]
-        [ viewInput "text" "Name" model.name Name
+view : Model -> Html Msg
+view model =
+    view2 model
+        |> Realm.wrapped "main"
+
+
+view2 : Model -> Html Msg
+view2 model =
+    div []
+        [ Realm.child model.config.body
+
+        -- , Realm.child model.config.footer
+        , div
+            [ H.id "child3" ]
+            [ viewInput "text" "Nameeeee" model.name Name
             , viewInput "password" "Password" model.password Password
             , viewInput "password" "Re-enter Password" model.passwordAgain PasswordAgain
             , viewValidation model
+            ]
         ]
-      )
-    ]
+
 
 viewInput : String -> String -> String -> (String -> msg) -> Html msg
 viewInput t p v toMsg =
-  input [ type_ t, placeholder p, value v, onInput toMsg ] []
+    input [ type_ t, placeholder p, value v, onInput toMsg ] []
 
 
 viewValidation : Model -> Html msg
 viewValidation model =
-  if model.password /= model.passwordAgain then
-    div [ style "color" "red" ] [ text "Passwords do not match!" ]
-  else if String.length model.password < 8 then
-    div [ style "color" "red" ] [ text "Passwords' minimum length is 8" ]
-  else
-    div [ style "color" "green" ] [ text "OK" ]
+    if model.password /= model.passwordAgain then
+        div [ style "color" "red" ] [ text "Passwords do not match!" ]
 
+    else if String.length model.password < 8 then
+        div [ style "color" "red" ] [ text "Passwords' minimum length is 8" ]
+
+    else
+        div [ style "color" "green" ] [ text "OK" ]

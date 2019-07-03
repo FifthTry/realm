@@ -4350,9 +4350,9 @@ function _Browser_load(url)
 var author$project$F$M$AdjustTimeZone = function (a) {
 	return {$: 'AdjustTimeZone', a: a};
 };
-var author$project$F$M$Model = F2(
-	function (zone, time) {
-		return {time: time, zone: zone};
+var author$project$F$M$Model = F3(
+	function (zone, time, uid) {
+		return {time: time, uid: uid, zone: zone};
 	});
 var elm$core$Basics$identity = function (x) {
 	return x;
@@ -4997,12 +4997,13 @@ var elm$time$Time$Posix = function (a) {
 };
 var elm$time$Time$millisToPosix = elm$time$Time$Posix;
 var elm$time$Time$utc = A2(elm$time$Time$Zone, 0, _List_Nil);
-var author$project$F$M$init = function (_n0) {
+var author$project$F$M$init = function (config) {
 	return _Utils_Tuple2(
-		A2(
+		A3(
 			author$project$F$M$Model,
 			elm$time$Time$utc,
-			elm$time$Time$millisToPosix(0)),
+			elm$time$Time$millisToPosix(0),
+			'x'),
 		A2(elm$core$Task$perform, author$project$F$M$AdjustTimeZone, elm$time$Time$here));
 };
 var author$project$F$M$Tick = function (a) {
@@ -5446,19 +5447,9 @@ var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 			return 3;
 	}
 };
-var elm$html$Html$div = _VirtualDom_node('div');
 var elm$html$Html$h1 = _VirtualDom_node('h1');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
-var elm$json$Json$Encode$string = _Json_wrap;
-var elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			elm$json$Json$Encode$string(string));
-	});
-var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
 var elm$core$Basics$modBy = _Basics_modBy;
 var elm$time$Time$flooredDiv = F2(
 	function (numerator, denominator) {
@@ -5531,7 +5522,7 @@ var elm$time$Time$toSecond = F2(
 				elm$time$Time$posixToMillis(time),
 				1000));
 	});
-var author$project$F$M$view = function (model) {
+var author$project$F$M$view2 = function (model) {
 	var second = elm$core$String$fromInt(
 		A2(elm$time$Time$toSecond, model.zone, model.time));
 	var minute = elm$core$String$fromInt(
@@ -5539,21 +5530,39 @@ var author$project$F$M$view = function (model) {
 	var hour = elm$core$String$fromInt(
 		A2(elm$time$Time$toHour, model.zone, model.time));
 	return A2(
-		elm$html$Html$div,
+		elm$html$Html$h1,
+		_List_Nil,
 		_List_fromArray(
 			[
-				elm$html$Html$Attributes$id('child1')
-			]),
-		_List_fromArray(
-			[
-				A2(
-				elm$html$Html$h1,
-				_List_Nil,
-				_List_fromArray(
-					[
-						elm$html$Html$text(hour + (':' + (minute + (':' + second))))
-					]))
+				elm$html$Html$text(hour + (':' + (minute + (':' + second))))
 			]));
+};
+var elm$html$Html$div = _VirtualDom_node('div');
+var elm$json$Json$Encode$string = _Json_wrap;
+var elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			elm$json$Json$Encode$string(string));
+	});
+var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
+var author$project$Realm$wrapped = F2(
+	function (uid, html) {
+		return A2(
+			elm$html$Html$div,
+			_List_fromArray(
+				[
+					elm$html$Html$Attributes$id(uid + '_actual')
+				]),
+			_List_fromArray(
+				[html]));
+	});
+var author$project$F$M$view = function (model) {
+	return A2(
+		author$project$Realm$wrapped,
+		model.uid,
+		author$project$F$M$view2(model));
 };
 var elm$browser$Browser$External = function (a) {
 	return {$: 'External', a: a};
@@ -5706,4 +5715,5 @@ var elm$browser$Browser$element = _Browser_element;
 var author$project$F$M$main = elm$browser$Browser$element(
 	{init: author$project$F$M$init, subscriptions: author$project$F$M$subscriptions, update: author$project$F$M$update, view: author$project$F$M$view});
 _Platform_export({'F':{'M':{'init':author$project$F$M$main(
-	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}}});}(this));
+	elm$json$Json$Decode$succeed(
+		{}))(0)}}});}(this));

@@ -9,6 +9,14 @@ impl realm::Widget for M {
 
 impl M {
     pub fn new(_req: &realm::Request) -> M {
-        M {}
+        M {
+
+        }
     }
 }
+
+
+//config:json!({
+//                "uid":
+//                }
+//            )

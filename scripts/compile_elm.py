@@ -13,13 +13,15 @@ def compile(source_path, destination_path):
 	
 	elm_path = 'forgit/dwelm/elm_latest/node_modules/elm/bin/elm'
 	elm_path = home + '/' + elm_path
-	
+	elm_format_path = 'forgit/dwelm/elm_latest/node_modules/elm-format/bin/elm-format'
+	elm_format_path = home + '/' + elm_format_path
 	
 	os.chdir(home + "/forgit/dwelm/realm/examples/dl_elm/")
 	print(os.getcwd(), source_path, destination_path)
-	
+	os.system(elm_format_path + " --yes " + source_path)
 	os.system(
 		elm_path + " make " + source_path + " --output " + destination_path)
+	
 
 
 def has_main( file ):

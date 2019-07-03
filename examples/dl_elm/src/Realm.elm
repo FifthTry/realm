@@ -14,8 +14,12 @@ type alias WidgetSpec = {
 
 
 child : WidgetSpec ->  Html msg
-child wspec =
-    H.div [ H.id wspec.uid ] []
+child spec =
+    H.div [ H.id spec.uid ] []
 
+
+wrapped : String -> Html msg -> Html msg
+wrapped uid html =
+    H.div [ H.id <| uid ++ "_actual" ] [html]
 
 

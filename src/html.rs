@@ -20,7 +20,7 @@ impl HTML {
             "{}{}{}",
             &CONFIG.site_title_prefix, &self.title, &CONFIG.site_title_postfix
         );
-        let rendered = ""; // TODO: implement server side rendering
+        let _rendered = ""; // TODO: implement server side rendering
         let deps = resolve_deps(&spec, &CONFIG)?;
         //let data = json!({"data": spec, "deps": deps});
         // FixME
@@ -54,7 +54,6 @@ impl HTML {
         </script>
     </head>
     <body>
-        <div id="root">{}</div>
         <div id="main"></div>
 
         <script>
@@ -62,7 +61,7 @@ impl HTML {
         </script>
     </body>
 </html>"#,
-            title, &CONFIG.site_icon, data, rendered, loader,
+            title, &CONFIG.site_icon, data, /*rendered,*/ loader,
         )
         .into())
     }
@@ -204,7 +203,7 @@ fn attach_uids(data: &mut serde_json::Value, count_map: &mut HashMap<String, u64
 
             if let Some(serde_json::Value::String(id)) = o.get("id") {
                 let id = id.to_string();
-                let mut uid = id.to_string();
+                let mut uid = id.to_string().replace(".", "_");
 
                 if edit_flag {
                     if let Some(count) = count_map.get_mut(id.as_str()) {
