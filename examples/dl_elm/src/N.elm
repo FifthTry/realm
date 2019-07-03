@@ -2,8 +2,10 @@ module N exposing (main)
 
 import Browser
 import Html exposing (..)
-import Html.Events exposing (..)
-import Random
+import Json.Encode as JE
+import Realm
+import Task
+import Time
 
 
 
@@ -13,9 +15,9 @@ import Random
 main =
     Browser.element
         { init = init
+        , view = view
         , update = update
         , subscriptions = subscriptions
-        , view = view
         }
 
 
@@ -23,15 +25,28 @@ main =
 -- MODEL
 
 
+type alias Config =
+    {}
+
+
 type alias Model =
-    { dieFace : Int
+    { zone : Time.Zone
+    , time : Time.Posix
+    , uid : String
     }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( Model 1
-    , Cmd.none
+init : Realm.Flag Config -> ( Model, Cmd Msg )
+init flag =
+    ( Model Time.utc (Time.millisToPosix 0) flag.uid
+      -- , Task.perform AdjustTimeZone Time.here
+    , Realm.loadWidget
+        (JE.object
+            [ ( "uid", JE.string "uu" )
+            , ( "id", JE.string "ii" )
+            , ( "config", JE.null )
+            ]
+        )
     )
 
 
@@ -40,20 +55,20 @@ init _ =
 
 
 type Msg
-    = Roll
-    | NewFace Int
+    = Tick Time.Posix
+    | AdjustTimeZone Time.Zone
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Roll ->
-            ( model
-            , Random.generate NewFace (Random.int 1 6)
+        Tick newTime ->
+            ( { model | time = newTime }
+            , Cmd.none
             )
 
-        NewFace newFace ->
-            ( Model newFace
+        AdjustTimeZone newZone ->
+            ( { model | zone = newZone }
             , Cmd.none
             )
 
@@ -64,7 +79,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Time.every 1000 Tick
 
 
 
@@ -73,7 +88,20 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ h1 [] [ text (String.fromInt model.dieFace) ]
-        , button [ onClick Roll ] [ text "Roll" ]
-        ]
+    view2 model
+        |> Realm.wrapped model.uid
+
+
+view2 : Model -> List (Html Msg)
+view2 model =
+    let
+        hour =
+            String.fromInt (Time.toHour model.zone model.time)
+
+        minute =
+            String.fromInt (Time.toMinute model.zone model.time)
+
+        second =
+            String.fromInt (Time.toSecond model.zone model.time)
+    in
+    [ h1 [] [ text (hour ++ ":" ++ minute ++ ":" ++ second) ] ]

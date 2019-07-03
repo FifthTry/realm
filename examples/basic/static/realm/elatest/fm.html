@@ -1,0 +1,27 @@
+<html>
+<head>
+  <style>
+    /* you can style your program here */
+  </style>
+  <script type="text/javascript" src="N.js"></script>
+  
+
+</head>
+<body>
+  <div id="main"></div>
+  <script>
+      var app = Elm["N"].init({
+          node: document.getElementById("main"),
+          flags: {
+              config: {"body": {
+                "id": "",
+                "config": {},
+                "uid": ""
+              }},
+              uid: "main"
+          }
+      });
+      console.log(app);
+  </script>
+</body>
+</html>

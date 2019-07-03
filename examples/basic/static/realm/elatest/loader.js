@@ -25,15 +25,6 @@ function get_app(id) {
 
 function loadWidget(widget) {
     console.log("loadWidget", widget);
-    /*
-    inner_div_id = widget.uid + "_actual";
-    var div = document.getElementById(inner_div_id);
-    if (div === null) {
-        div = document.createElement("div");
-        div.setAttribute("id", inner_div_id);
-        document.getElementById(widget.uid).appendChild(div);
-    }
-    */
     var app = get_app(widget.id).init({
         node: document.getElementById(widget.uid),
         flags: {
@@ -42,7 +33,9 @@ function loadWidget(widget) {
         }
     });
     console.log("widget", app);
-    app.ports.loadWidget.subscribe(loadWidget);
+    if (app.ports) {
+        app.ports.loadWidget.subscribe(loadWidget);
+    }
 }
 
 function main() {
