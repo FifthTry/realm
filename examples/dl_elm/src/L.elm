@@ -41,14 +41,13 @@ init : Config -> ( Model, Cmd Msg )
 init config =
     ( Model "" "" "" config
      , Realm.loadWidget
-        (JE.object
-            [(  "First" ,
+        (
                 JE.object
                     [ ( "uid", JE.string config.body.uid )
                     , ( "id", JE.string config.body.id )
                     , ( "config", config.body.config)
                     ]
-            )]
+
         )
 
     )

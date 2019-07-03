@@ -4806,18 +4806,12 @@ var author$project$L$init = function (config) {
 				_List_fromArray(
 					[
 						_Utils_Tuple2(
-						'First',
-						elm$json$Json$Encode$object(
-							_List_fromArray(
-								[
-									_Utils_Tuple2(
-									'uid',
-									elm$json$Json$Encode$string(config.body.uid)),
-									_Utils_Tuple2(
-									'id',
-									elm$json$Json$Encode$string(config.body.id)),
-									_Utils_Tuple2('config', config.body.config)
-								])))
+						'uid',
+						elm$json$Json$Encode$string(config.body.uid)),
+						_Utils_Tuple2(
+						'id',
+						elm$json$Json$Encode$string(config.body.id)),
+						_Utils_Tuple2('config', config.body.config)
 					]))));
 };
 var elm$core$Platform$Sub$batch = _Platform_batch;
