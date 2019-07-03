@@ -12,6 +12,10 @@ type alias WidgetSpec = {
 
   }
 
+type alias Flag config = {
+        uid: String,
+        config: config
+    }
 
 child : WidgetSpec ->  Html msg
 child spec =

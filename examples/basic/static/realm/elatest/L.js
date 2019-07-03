@@ -4798,20 +4798,20 @@ var elm$json$Json$Encode$object = function (pairs) {
 			pairs));
 };
 var elm$json$Json$Encode$string = _Json_wrap;
-var author$project$L$init = function (config) {
+var author$project$L$init = function (flag) {
 	return _Utils_Tuple2(
-		A4(author$project$L$Model, '', '', '', config),
+		A4(author$project$L$Model, '', '', '', flag.config),
 		author$project$Realm$loadWidget(
 			elm$json$Json$Encode$object(
 				_List_fromArray(
 					[
 						_Utils_Tuple2(
 						'uid',
-						elm$json$Json$Encode$string(config.body.uid)),
+						elm$json$Json$Encode$string(flag.config.body.uid)),
 						_Utils_Tuple2(
 						'id',
-						elm$json$Json$Encode$string(config.body.id)),
-						_Utils_Tuple2('config', config.body.config)
+						elm$json$Json$Encode$string(flag.config.body.id)),
+						_Utils_Tuple2('config', flag.config.body.config)
 					]))));
 };
 var elm$core$Platform$Sub$batch = _Platform_batch;
@@ -5317,27 +5317,41 @@ var author$project$L$main = elm$browser$Browser$element(
 _Platform_export({'L':{'init':author$project$L$main(
 	A2(
 		elm$json$Json$Decode$andThen,
-		function (body) {
-			return elm$json$Json$Decode$succeed(
-				{body: body});
-		},
-		A2(
-			elm$json$Json$Decode$field,
-			'body',
-			A2(
+		function (uid) {
+			return A2(
 				elm$json$Json$Decode$andThen,
-				function (uid) {
-					return A2(
-						elm$json$Json$Decode$andThen,
-						function (id) {
-							return A2(
-								elm$json$Json$Decode$andThen,
-								function (config) {
-									return elm$json$Json$Decode$succeed(
-										{config: config, id: id, uid: uid});
-								},
-								A2(elm$json$Json$Decode$field, 'config', elm$json$Json$Decode$value));
-						},
-						A2(elm$json$Json$Decode$field, 'id', elm$json$Json$Decode$string));
+				function (config) {
+					return elm$json$Json$Decode$succeed(
+						{config: config, uid: uid});
 				},
-				A2(elm$json$Json$Decode$field, 'uid', elm$json$Json$Decode$string)))))(0)}});}(this));
+				A2(
+					elm$json$Json$Decode$field,
+					'config',
+					A2(
+						elm$json$Json$Decode$andThen,
+						function (body) {
+							return elm$json$Json$Decode$succeed(
+								{body: body});
+						},
+						A2(
+							elm$json$Json$Decode$field,
+							'body',
+							A2(
+								elm$json$Json$Decode$andThen,
+								function (uid) {
+									return A2(
+										elm$json$Json$Decode$andThen,
+										function (id) {
+											return A2(
+												elm$json$Json$Decode$andThen,
+												function (config) {
+													return elm$json$Json$Decode$succeed(
+														{config: config, id: id, uid: uid});
+												},
+												A2(elm$json$Json$Decode$field, 'config', elm$json$Json$Decode$value));
+										},
+										A2(elm$json$Json$Decode$field, 'id', elm$json$Json$Decode$string));
+								},
+								A2(elm$json$Json$Decode$field, 'uid', elm$json$Json$Decode$string))))));
+		},
+		A2(elm$json$Json$Decode$field, 'uid', elm$json$Json$Decode$string)))(0)}});}(this));

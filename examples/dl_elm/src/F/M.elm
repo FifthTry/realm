@@ -26,9 +26,7 @@ main =
 
 
 type alias Config =
-    {
-
-    }
+    {}
 
 
 type alias Model =
@@ -38,9 +36,9 @@ type alias Model =
     }
 
 
-init : Config -> ( Model, Cmd Msg )
-init config =
-    ( Model Time.utc (Time.millisToPosix 0) "x"
+init : Realm.Flag Config -> ( Model, Cmd Msg )
+init flag =
+    ( Model Time.utc (Time.millisToPosix 0) flag.uid
     , Task.perform AdjustTimeZone Time.here
     )
 

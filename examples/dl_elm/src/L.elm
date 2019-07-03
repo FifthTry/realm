@@ -33,14 +33,14 @@ type alias Model =
     }
 
 
-init : Config -> ( Model, Cmd Msg )
-init config =
-    ( Model "" "" "" config
+init : Realm.Flag Config -> ( Model, Cmd Msg )
+init flag =
+    ( Model "" "" "" flag.config
     , Realm.loadWidget
         (JE.object
-            [ ( "uid", JE.string config.body.uid )
-            , ( "id", JE.string config.body.id )
-            , ( "config", config.body.config )
+            [ ( "uid", JE.string flag.config.body.uid )
+            , ( "id", JE.string flag.config.body.id )
+            , ( "config", flag.config.body.config )
             ]
         )
     )

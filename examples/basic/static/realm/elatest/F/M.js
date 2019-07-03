@@ -4997,13 +4997,13 @@ var elm$time$Time$Posix = function (a) {
 };
 var elm$time$Time$millisToPosix = elm$time$Time$Posix;
 var elm$time$Time$utc = A2(elm$time$Time$Zone, 0, _List_Nil);
-var author$project$F$M$init = function (config) {
+var author$project$F$M$init = function (flag) {
 	return _Utils_Tuple2(
 		A3(
 			author$project$F$M$Model,
 			elm$time$Time$utc,
 			elm$time$Time$millisToPosix(0),
-			'x'),
+			flag.uid),
 		A2(elm$core$Task$perform, author$project$F$M$AdjustTimeZone, elm$time$Time$here));
 };
 var author$project$F$M$Tick = function (a) {
@@ -5712,8 +5712,25 @@ var elm$url$Url$fromString = function (str) {
 		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
 var elm$browser$Browser$element = _Browser_element;
+var elm$json$Json$Decode$andThen = _Json_andThen;
+var elm$json$Json$Decode$field = _Json_decodeField;
+var elm$json$Json$Decode$string = _Json_decodeString;
 var author$project$F$M$main = elm$browser$Browser$element(
 	{init: author$project$F$M$init, subscriptions: author$project$F$M$subscriptions, update: author$project$F$M$update, view: author$project$F$M$view});
 _Platform_export({'F':{'M':{'init':author$project$F$M$main(
-	elm$json$Json$Decode$succeed(
-		{}))(0)}}});}(this));
+	A2(
+		elm$json$Json$Decode$andThen,
+		function (uid) {
+			return A2(
+				elm$json$Json$Decode$andThen,
+				function (config) {
+					return elm$json$Json$Decode$succeed(
+						{config: config, uid: uid});
+				},
+				A2(
+					elm$json$Json$Decode$field,
+					'config',
+					elm$json$Json$Decode$succeed(
+						{})));
+		},
+		A2(elm$json$Json$Decode$field, 'uid', elm$json$Json$Decode$string)))(0)}}});}(this));
