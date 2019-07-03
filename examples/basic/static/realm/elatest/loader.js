@@ -25,6 +25,7 @@ function get_app(id) {
 
 function loadWidget(widget) {
     console.log("loadWidget", widget);
+    /*
     inner_div_id = widget.uid + "_actual";
     var div = document.getElementById(inner_div_id);
     if (div === null) {
@@ -32,14 +33,17 @@ function loadWidget(widget) {
         div.setAttribute("id", inner_div_id);
         document.getElementById(widget.uid).appendChild(div);
     }
-
+    */
     var app = get_app(widget.id).init({
         node: document.getElementById(widget.uid),
-        flags: {config: widget.config, uid: widget.uid}
+        flags: {
+            config: widget.config,
+            uid: widget.uid
+        }
     });
+    console.log("widget", app);
     app.ports.loadWidget.subscribe(loadWidget);
 }
-
 
 function main() {
     var data = getDocumentLayoutOutput();
@@ -49,7 +53,11 @@ function main() {
         load_src(data.deps[dep].source);
     }
     console.log("hello");
-    loadWidget({uid: "main", id: data.widget.id, config: data.widget.config});
+    loadWidget({
+        uid: "main",
+        id: data.widget.id,
+        config: data.widget.config
+    });
 }
 
 main();

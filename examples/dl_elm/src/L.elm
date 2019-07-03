@@ -88,20 +88,19 @@ view model =
         |> Realm.wrapped "main"
 
 
-view2 : Model -> Html Msg
+view2 : Model -> List (Html Msg)
 view2 model =
-    div []
-        [ Realm.child model.config.body
+    [ Realm.child model.config.body
 
-        -- , Realm.child model.config.footer
-        , div
-            [ H.id "child3" ]
-            [ viewInput "text" "Nameeeee" model.name Name
-            , viewInput "password" "Password" model.password Password
-            , viewInput "password" "Re-enter Password" model.passwordAgain PasswordAgain
-            , viewValidation model
-            ]
+    -- , Realm.child model.config.footer
+    , div
+        [ H.id "child3" ]
+        [ viewInput "text" "Nameeeee" model.name Name
+        , viewInput "password" "Password" model.password Password
+        , viewInput "password" "Re-enter Password" model.passwordAgain PasswordAgain
+        , viewValidation model
         ]
+    ]
 
 
 viewInput : String -> String -> String -> (String -> msg) -> Html msg

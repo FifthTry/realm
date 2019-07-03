@@ -1,8 +1,7 @@
 module F.M exposing (main)
 
 import Browser
-import Html as H exposing (..)
-import Html.Attributes as H exposing (..)
+import Html exposing (..)
 import Realm
 import Task
 import Time
@@ -85,7 +84,7 @@ view model =
         |> Realm.wrapped model.uid
 
 
-view2 : Model -> Html Msg
+view2 : Model -> List (Html Msg)
 view2 model =
     let
         hour =
@@ -97,4 +96,4 @@ view2 model =
         second =
             String.fromInt (Time.toSecond model.zone model.time)
     in
-    h1 [] [ text (hour ++ ":" ++ minute ++ ":" ++ second) ]
+    [ h1 [] [ text (hour ++ ":" ++ minute ++ ":" ++ second) ] ]

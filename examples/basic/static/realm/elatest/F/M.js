@@ -5529,13 +5529,16 @@ var author$project$F$M$view2 = function (model) {
 		A2(elm$time$Time$toMinute, model.zone, model.time));
 	var hour = elm$core$String$fromInt(
 		A2(elm$time$Time$toHour, model.zone, model.time));
-	return A2(
-		elm$html$Html$h1,
-		_List_Nil,
-		_List_fromArray(
-			[
-				elm$html$Html$text(hour + (':' + (minute + (':' + second))))
-			]));
+	return _List_fromArray(
+		[
+			A2(
+			elm$html$Html$h1,
+			_List_Nil,
+			_List_fromArray(
+				[
+					elm$html$Html$text(hour + (':' + (minute + (':' + second))))
+				]))
+		]);
 };
 var elm$html$Html$div = _VirtualDom_node('div');
 var elm$json$Json$Encode$string = _Json_wrap;
@@ -5553,10 +5556,9 @@ var author$project$Realm$wrapped = F2(
 			elm$html$Html$div,
 			_List_fromArray(
 				[
-					elm$html$Html$Attributes$id(uid + '_actual')
+					elm$html$Html$Attributes$id(uid)
 				]),
-			_List_fromArray(
-				[html]));
+			html);
 	});
 var author$project$F$M$view = function (model) {
 	return A2(

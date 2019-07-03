@@ -5032,26 +5032,23 @@ var author$project$Realm$child = function (spec) {
 		_List_Nil);
 };
 var author$project$L$view2 = function (model) {
-	return A2(
-		elm$html$Html$div,
-		_List_Nil,
-		_List_fromArray(
-			[
-				author$project$Realm$child(model.config.body),
-				A2(
-				elm$html$Html$div,
-				_List_fromArray(
-					[
-						elm$html$Html$Attributes$id('child3')
-					]),
-				_List_fromArray(
-					[
-						A4(author$project$L$viewInput, 'text', 'Nameeeee', model.name, author$project$L$Name),
-						A4(author$project$L$viewInput, 'password', 'Password', model.password, author$project$L$Password),
-						A4(author$project$L$viewInput, 'password', 'Re-enter Password', model.passwordAgain, author$project$L$PasswordAgain),
-						author$project$L$viewValidation(model)
-					]))
-			]));
+	return _List_fromArray(
+		[
+			author$project$Realm$child(model.config.body),
+			A2(
+			elm$html$Html$div,
+			_List_fromArray(
+				[
+					elm$html$Html$Attributes$id('child3')
+				]),
+			_List_fromArray(
+				[
+					A4(author$project$L$viewInput, 'text', 'Nameeeee', model.name, author$project$L$Name),
+					A4(author$project$L$viewInput, 'password', 'Password', model.password, author$project$L$Password),
+					A4(author$project$L$viewInput, 'password', 'Re-enter Password', model.passwordAgain, author$project$L$PasswordAgain),
+					author$project$L$viewValidation(model)
+				]))
+		]);
 };
 var author$project$Realm$wrapped = F2(
 	function (uid, html) {
@@ -5059,10 +5056,9 @@ var author$project$Realm$wrapped = F2(
 			elm$html$Html$div,
 			_List_fromArray(
 				[
-					elm$html$Html$Attributes$id(uid + '_actual')
+					elm$html$Html$Attributes$id(uid)
 				]),
-			_List_fromArray(
-				[html]));
+			html);
 	});
 var author$project$L$view = function (model) {
 	return A2(

@@ -22,8 +22,8 @@ child spec =
     H.div [ H.id spec.uid ] []
 
 
-wrapped : String -> Html msg -> Html msg
+wrapped : String -> List (Html msg) -> Html msg
 wrapped uid html =
-    H.div [ H.id <| uid ++ "_actual" ] [html]
+    H.div [ H.id uid ] html
 
 
