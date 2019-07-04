@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-
+use std::path::Path;
 #[derive(Deserialize, Debug, Default)]
 pub(crate) struct Config {
     #[serde(default)]
@@ -25,6 +25,8 @@ pub(crate) struct Config {
     pub deps: HashMap<String, Vec<String>>,
     #[serde(default)]
     pub js_code: HashMap<String, String>,
+    #[serde(default)]
+    pub loader_file: String,
 }
 
 lazy_static! {
@@ -39,49 +41,97 @@ lazy_static! {
         if config.site_icon == "" {
             config.site_icon = "/static/favicon.ico".into();
         }
+        config.loader_file = "static/realm/elatest/loader.js".into();
 
         config.init_elm().expect("failed to initialize elm stuff");
         config
     };
 }
 
+
+fn get_prefix(path: &Path, parent_path: &Path) -> Result<String, failure::Error>{
+    let dir_path = path.clone();
+    println!("diryy_path {:?}", dir_path);
+    let strip_dir = dir_path.strip_prefix(parent_path.to_str().unwrap())?;
+    let mut relative_path_st = strip_dir.to_str().unwrap().to_string();
+    if relative_path_st != "".to_string(){
+        relative_path_st = relative_path_st.replace("/", ".");
+        relative_path_st.push('.');
+        Ok(relative_path_st)
+    }
+    else {
+        Ok("".to_string())
+    }
+}
+
 impl Config {
     pub fn static_path(&self, rest: &str) -> std::path::PathBuf {
-        std::path::Path::new(&self.static_dir).join(rest)
+      Path::new(&self.static_dir).join(rest)
     }
 
     pub fn get_code(&self, id: &str) -> Result<String, failure::Error> {
+        println!("herez {:?}", id);
         self.js_code
             .get(id)
             .map(|c| c.clone())
             .ok_or_else(|| failure::err_msg("key not found"))
     }
 
+    fn set_js_code_recur(&mut self, path: &Path, parent_path: &Path) -> Result<(), failure::Error>{
+        println!("dir {:?}", path.file_name());
+
+        let mut name_prefix = get_prefix(path, parent_path)?;
+        println!("name_prefix {:?}", name_prefix);
+        for entry in std::fs::read_dir(path)? {
+                let entry = entry?;
+
+                println!("entry.file_name: {:?}", entry.file_name());
+                if entry.path().is_dir() {
+                    let entry_path = entry.path();
+                    self.set_js_code_recur(&entry_path, &parent_path)?;
+                }
+                let name = entry.file_name().into_string().unwrap();
+                if !name.ends_with(".js") {
+                    continue;
+                }
+
+
+
+
+
+                let mut name = entry
+                    .path()
+                    .file_stem()
+                    .unwrap()
+                    .to_owned()
+                    .into_string()
+                    .unwrap();
+
+                //name_prefix.push_str(&name);
+
+
+                name = format!("{}{}", name_prefix, name);
+                println!("name {:?}", entry.path().file_stem());
+                self.js_code.insert(
+                    name.into(), // FIXME
+                    self.content2(entry.path())?,
+                );
+        }
+        Ok(())
+    }
+
     pub fn init_elm(&mut self) -> Result<(), failure::Error> {
         self.latest_elm = self.content("realm/latest.txt")?;
         self.deps =
             serde_json::from_str(&self.content(&format!("realm/{}/deps.json", &self.latest_elm))?)?;
+        let path = self.static_path(&format!("realm/{}/", &self.latest_elm));
 
-        for entry in std::fs::read_dir(self.static_path(&format!("realm/{}/", &self.latest_elm)))? {
-            let entry = entry?;
-            println!("entry.file_name: {:?}", entry.file_name());
-            let name = entry.file_name().into_string().unwrap();
-            if !name.ends_with(".js") {
-                continue;
-            }
+//        if let Some(path) = entry_dir{
+//            self.latest_elm = path.file_name().into_string().unwrap();
+//        }
+        self.set_js_code_recur(&path, &path)?;
 
-            let name = entry
-                .path()
-                .file_stem()
-                .unwrap()
-                .to_owned()
-                .into_string()
-                .unwrap();
-            self.js_code.insert(
-                name.into(), // FIXME
-                self.content2(entry.path())?,
-            );
-        }
+
 
         Ok(())
     }
@@ -121,11 +171,11 @@ mod tests {
         assert_eq!(config.latest_elm, "elatest");
 
         assert_eq!(config.deps.len(), 2);
-        assert_eq!(config.deps.get("foo").unwrap(), &vec!["bar".to_string()]);
+        assert_eq!(config.deps.get("f").unwrap(), &vec!["bar".to_string()]);
         assert_eq!(config.deps.get("bar").unwrap().len(), 0);
 
         assert_eq!(config.js_code.len(), 2);
-        assert_eq!(config.js_code.get("foo").unwrap(), "function foo() {bar()}");
+        assert_eq!(config.js_code.get("f").unwrap(), "function f() {bar()}");
         assert_eq!(config.js_code.get("bar").unwrap(), "function bar() {}");
     }
 }

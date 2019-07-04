@@ -7,7 +7,7 @@ pub(crate) enum Mode {
 impl Mode {
     pub(crate) fn detect(req: &crate::Request) -> Mode {
         let url = url::Url::parse(&format!(
-            "http://foo.com/?{}",
+            "http://f.com/?{}",
             req.uri().query().unwrap_or("")
         ));
         let q: std::collections::HashMap<String, String> = match url {

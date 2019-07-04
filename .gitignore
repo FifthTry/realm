@@ -1,2 +1,7 @@
 target
+__pycache__/
+*.pyc
+elm-stuff/
 .idea/
+regenerated/
+scripts/output.txt
