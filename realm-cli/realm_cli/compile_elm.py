@@ -7,14 +7,19 @@ import json
 home = expanduser("~")
 config = json.loads(open('realm.json').read())
 
+elm_path_G = 'forgit/dwelm/elm_latest/node_modules/elm/bin/elm'
+elm_path_G = home + '/' + elm_path_G
 
-def compile(source_path, destination_path):
-	elm_path = 'forgit/dwelm/elm_latest/node_modules/elm/bin/elm'
-	elm_path = home + '/' + elm_path
-	elm_format_path = 'forgit/dwelm/elm_latest/node_modules/elm-format/bin/elm-format'
-	elm_format_path = home + '/' + elm_format_path
+elm_format_path_G = 'forgit/dwelm/elm_latest/node_modules/elm-format/bin/elm-format'
+elm_format_path_G = home + '/' + elm_format_path_G
+
+go_to_dir_G = home + "/forgit/dwelm/graftpress/"
+
+def compile(source_path, destination_path, elm_path = elm_path_G, elm_format_path = elm_format_path_G, go_to_dir = go_to_dir_G  ):
 	
-	os.chdir(home + "/forgit/dwelm/graftpress/")
+	
+	
+	os.chdir(go_to_dir)
 	print(os.getcwd(), source_path, destination_path)
 	os.system(elm_format_path + " --yes " + source_path)
 	os.system(
@@ -31,7 +36,8 @@ def has_main(file):
 	return (search_result != None)
 
 
-def compile_all_elm(source_dir, destination_dir):
+def compile_all_elm(source_dir, destination_dir, elm_path = elm_path_G, elm_format_path = elm_format_path_G, go_to_dir = go_to_dir_G  ):
+	
 	# handle error
 	for file in os.listdir(source_dir):
 		print(file)
@@ -44,12 +50,12 @@ def compile_all_elm(source_dir, destination_dir):
 			if not os.path.isdir(dest_path):
 				os.mkdir(dest_path)
 			
-			compile_all_elm(source_path, dest_path)
+			compile_all_elm(source_path, dest_path, elm_path, elm_format_path, go_to_dir)
 		
 		filename, file_extension = os.path.splitext(file)
 		if file_extension == '.elm' and has_main(source_path):
 			dest_path = destination_dir + '/' + filename + ".js"
-			compile(source_path, dest_path)
+			compile(source_path, dest_path, elm_path, elm_format_path, go_to_dir)
 
 
 source_dir = 'src/frontend'
