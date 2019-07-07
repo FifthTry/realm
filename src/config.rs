@@ -41,7 +41,9 @@ lazy_static! {
         if config.site_icon == "" {
             config.site_icon = "/static/favicon.ico".into();
         }
-        config.loader_file = "static/realm/elatest/loader.js".into();
+        if config.loader_file == ""{
+            config.loader_file = "static/realm/elatest/loader.js".into();  //SOI
+        }
 
         config.init_elm().expect("failed to initialize elm stuff");
         config
@@ -71,6 +73,9 @@ impl Config {
 
     pub fn get_code(&self, id: &str) -> Result<String, failure::Error> {
         println!("herez {:?}", id);
+        for (k, v) in &self.js_code{
+            println!("{}", k);
+        }
         self.js_code
             .get(id)
             .map(|c| c.clone())

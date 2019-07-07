@@ -1,1 +1,6 @@
-{}
+{
+  "elm_source_dir": "~/forgit/dwelm/realm/examples/dl_elm/src",
+  "elm_destination_dir": "~/forgit/dwelm/realm/examples/basic/static/realm/elatest",
+  "elm_path": "~/forgit/dwelm/elm_latest/node_modules/elm/bin/elm",
+  "elm_format_path": "~/forgit/dwelm/elm_latest/node_modules/elm-format/bin/elm-format"
+}
