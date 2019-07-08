@@ -6,5 +6,5 @@ setup(
      entry_points = {
         'console_scripts': ['realm-cli=realm_cli.main:main']
     },
-    py_modules = ['compile_elm']
+    py_modules = find_packages()
 )
