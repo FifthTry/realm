@@ -165,6 +165,11 @@ def main():
         destination_dir = destination_dir + latest_dir
         compile_all_elm(go_to_dir, destination_dir, elm_path, elm_format_path, "")
         
+    elif sys.argv[1] == 'debug':
+        os.system("RUST_BACKTRACE=1 cargo run")
+        
+        
+        
         
             
         
