@@ -42,7 +42,8 @@ lazy_static! {
             config.site_icon = "/static/favicon.ico".into();
         }
         if config.loader_file == ""{
-            config.loader_file = "static/realm/elatest/loader.js".into();  //SOI
+            //config.loader_file = "static/realm/elatest/loader.js".into();  //SOI
+            config.loader_file = proj_dir.join("node_modules").join("loader.js").to_str().ok()?.to_string();
         }
 
         config.init_elm().expect("failed to initialize elm stuff");
