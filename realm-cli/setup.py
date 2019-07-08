@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
      entry_points = {
         'console_scripts': ['realm-cli=realm_cli.main:main']
-    }
+    },
+    py_modules = ['compile_elm']
 )

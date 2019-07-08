@@ -7,6 +7,7 @@ import json
 from os.path import expanduser
 import re
 
+import realm_cli.compile_elm as ce
 
 home = expanduser("~")
 
@@ -130,43 +131,29 @@ def main():
         if len(sys.argv) > 2 and sys.argv[2] != '':
             project_name = sys.argv[2]
             cookiecutter('gh:nilinswap/realm-startapp', extra_context={ "project_name": project_name, "project_slug": project_name}, no_input=True)
-        
-        
+
         os.chdir(project_name)
         os.system("npm install") #make exception friendly
         
-        
-        elm_path = "node_modules/.bin/elm"
-        elm_format_path = "node_modules/.bin/elm-format"
-        go_to_dir = "src/frontend"
-        elm_config = json.loads(open('elm.json').read())
-        elm_config["source-directories"] = [go_to_dir]
-        json.dump(elm_config, open("elm.json", "w"))
-
-        os.system("mkdir -p src/frontend src/static/realm/elatest")
-        with open("src/static/realm/latest.txt", "w") as f:
-            f.write("elatest")
-
-        with open("src/static/realm/elatest/loader.js", "w") as f:
-            f.write(loader_script)
-
-        with open("src/static/realm/elatest/deps.json", "w") as f:
-            f.write("{}")
-            
+        curr_dir = os.getcwd()
+        print("curr_dir", curr_dir)
+        bin_path = os.path.join(curr_dir, "node_modules", ".bin")
+        elm_path = os.path.join(bin_path, "elm")
         os.system(elm_path + " install")
-        config = json.loads(open('realm.json').read())
-        static_dir = 'src/static'
-        if 'static_dir' in config:
-            static_dir = config['static_dir']
-            print("static ", static_dir)
         
-        destination_dir = static_dir + "/realm/"
-        latest_dir = open(destination_dir + "latest.txt").read()
-        destination_dir = destination_dir + latest_dir
-        compile_all_elm(go_to_dir, destination_dir, elm_path, elm_format_path, "")
+        
         
     elif sys.argv[1] == 'debug':
+        curr_dir = os.getcwd()
+        bin_path = os.path.join(curr_dir, "node_modules", ".bin")
+        elm_path = os.path.join(bin_path, "elm")
+        elm_format_path = os.path.join(bin_path, "elm-format")
+        elm_src_dir = "src/frontend"
+        elm_dest_dir = "src/static/realm/elatest/"
+        ce.compile_all_elm(elm_src_dir, elm_dest_dir, elm_path, elm_format_path,
+                           "")
         os.system("RUST_BACKTRACE=1 cargo run")
+        
         
         
         
