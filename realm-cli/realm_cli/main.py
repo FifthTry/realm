@@ -9,7 +9,6 @@ import re
 
 
 home = expanduser("~")
-#config = json.loads(open('realm.json').read())
 
 elm_path_G = 'forgit/dwelm/elm_latest/node_modules/elm/bin/elm'
 elm_path_G = home + '/' + elm_path_G
@@ -137,8 +136,8 @@ def main():
         os.system("npm install") #make exception friendly
         
         
-        elm_path = "node_modules/elm/bin/elm"
-        elm_format_path = "node_modules/elm-format/bin/elm-format"
+        elm_path = "node_modules/.bin/elm"
+        elm_format_path = "node_modules/.bin/elm-format"
         go_to_dir = "src/frontend"
         elm_config = json.loads(open('elm.json').read())
         elm_config["source-directories"] = [go_to_dir]
@@ -169,5 +168,7 @@ def main():
         
             
         
+
+# ToDo: make main clean; in fact, read the whole thing for grace.
 
     
