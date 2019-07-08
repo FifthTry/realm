@@ -133,7 +133,7 @@ def main():
             cookiecutter('gh:nilinswap/realm-startapp', extra_context={ "project_name": project_name, "project_slug": project_name}, no_input=True)
 
         os.chdir(project_name)
-        os.system("npm install") #make exception friendly
+        os.system("yarn add package.json") #make exception friendly
         
         curr_dir = os.getcwd()
         print("curr_dir", curr_dir)
@@ -145,11 +145,13 @@ def main():
         
     elif sys.argv[1] == 'debug':
         curr_dir = os.getcwd()
+        print("curr_dir, ", curr_dir)
         bin_path = os.path.join(curr_dir, "node_modules", ".bin")
         elm_path = os.path.join(bin_path, "elm")
         elm_format_path = os.path.join(bin_path, "elm-format")
         elm_src_dir = "src/frontend"
         elm_dest_dir = "src/static/realm/elatest/"
+        
         ce.compile_all_elm(elm_src_dir, elm_dest_dir, elm_path, elm_format_path,
                            "")
         os.system("RUST_BACKTRACE=1 cargo run")
