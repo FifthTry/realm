@@ -21,6 +21,9 @@ def compile(source_path, destination_path, elm_path = elm_path_G, elm_format_pat
 		os.chdir(elm_proj_dir)
 	print(os.getcwd(), source_path, destination_path)
 	os.system(elm_format_path + " --yes " + source_path)
+	if os.path.isfile(destination_path):
+		raise Exception(
+			'filename- {} is used twice'.format(os.path.basename(destination_path)))
 	os.system(
 		elm_path + " make " + source_path + " --output " + destination_path)
 

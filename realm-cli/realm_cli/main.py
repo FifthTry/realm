@@ -4,6 +4,7 @@ from cookiecutter.main import cookiecutter
 import os
 
 import realm_cli.compile_elm as ce
+import json
 
 
 def main():
@@ -33,9 +34,14 @@ def main():
         elm_format_path = os.path.join(bin_path, "elm-format")
         elm_src_dir = "src/frontend"
         elm_dest_dir = "src/static/realm/elatest/"
+        #elm_src_dirs = ["src/frontend"]
+        with open("realm.json", "r") as f:
+            config = json.load(f)
+            elm_src_dirs = config["elm_source_dirs"]
         
-        ce.compile_all_elm(elm_src_dir, elm_dest_dir, elm_path, elm_format_path,
-                           "")
+        for src_dir in elm_src_dirs:
+            ce.compile_all_elm(src_dir, elm_dest_dir, elm_path, elm_format_path,
+                               "")
         os.system("RUST_BACKTRACE=1 cargo run")
         
         

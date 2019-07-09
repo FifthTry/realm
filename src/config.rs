@@ -43,7 +43,7 @@ lazy_static! {
         }
         if config.loader_file == ""{
             //config.loader_file = "static/realm/elatest/loader.js".into();  //SOI
-            config.loader_file = proj_dir.join("node_modules").join("realm-loader").join("lib").join("loader.js").into_os_string().into_string().unwrap();
+            config.loader_file = proj_dir.join("node_modules").join("realm_javascript").join("lib").join("loader.js").into_os_string().into_string().unwrap();
         }
 
         config.init_elm().expect("failed to initialize elm stuff");
