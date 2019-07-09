@@ -32,9 +32,8 @@ def main():
         bin_path = os.path.join(curr_dir, "node_modules", ".bin")
         elm_path = os.path.join(bin_path, "elm")
         elm_format_path = os.path.join(bin_path, "elm-format")
-        elm_src_dir = "src/frontend"
         elm_dest_dir = "src/static/realm/elatest/"
-        #elm_src_dirs = ["src/frontend"]
+        elm_src_dirs = ["src/frontend"]
         with open("realm.json", "r") as f:
             config = json.load(f)
             elm_src_dirs = config["elm_source_dirs"]
