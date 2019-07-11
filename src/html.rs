@@ -65,6 +65,12 @@ impl HTML {
         )
         .into())
     }
+
+    pub fn render_to_response(&self, spec: crate::WidgetSpec) -> crate::Result {
+        let mut resp = crate::Response::new(vec![]);
+        *resp.body_mut() = self.render(spec)?;
+        Ok(resp)
+    }
 }
 
 #[derive(Debug, Serialize, PartialEq)]

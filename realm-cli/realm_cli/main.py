@@ -38,8 +38,8 @@ def main():
             config = json.load(f)
             elm_src_dirs = config["elm_source_dirs"]
         
+        ce.check_conflicts(elm_src_dirs)
         for src_dir in elm_src_dirs:
-            os.system("rm -r " + src_dir + "/*")
             ce.compile_all_elm(src_dir, elm_dest_dir, elm_path, elm_format_path,
                                "")
         os.system("RUST_BACKTRACE=1 cargo run")

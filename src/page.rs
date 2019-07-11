@@ -26,7 +26,7 @@ pub trait Page: serde::ser::Serialize {
     }
     fn widget_spec(&self) -> Result<crate::WidgetSpec, failure::Error> {
         Ok(crate::WidgetSpec {
-            id: self.realm_id(),
+            id: self.realm_id().into(),
             config: self.realm_config()?,
         })
     }

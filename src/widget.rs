@@ -1,7 +1,8 @@
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct WidgetSpec {
-    pub id: &'static str,
+    pub id: String,
     pub config: serde_json::Value,
+
 }
 
 pub trait Widget: serde::ser::Serialize {
@@ -14,7 +15,7 @@ pub trait Widget: serde::ser::Serialize {
     }
     fn widget_spec(&self) -> Result<WidgetSpec, failure::Error> {
         Ok(WidgetSpec {
-            id: self.realm_id(),
+            id: self.realm_id().into(),
             config: self.realm_config()?,
         })
     }
