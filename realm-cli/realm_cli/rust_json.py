@@ -6,18 +6,17 @@ import re
 REVERSE_TEMPLATE = """
 use realm::utils::{Maybe, url2path};
 
-
 %s
 """
 
 
-def get_routes(test_dir = None):
+def get_routes(test_dir=None):
     routes = []
-    
+
     routes_dir_path = "src/routes/"
     if test_dir:
         routes_dir_path = test_dir + "/routes/"
-    #print("gr_dir", routes_dir_path)
+
     for root, _, files in os.walk(routes_dir_path):
         directory = root.replace(routes_dir_path, "")
         for fileName in files:
@@ -33,14 +32,17 @@ def get_routes(test_dir = None):
 
             print("routePath:{} routeName:{}".format(routePath, routeName))
             print("filename", fileName)
-
-            if True:
-                if routePath == "":
-                    path = f"/"
-                    module = routeName
-                else:
-                    path = f"/{routePath}/{routeName}/"
-                    module = routePath.replace("/", "::") + "::" + routeName
+            
+            if routePath == "":
+                path = f"/"
+                module = routeName
+            elif routeName == "index":
+                # index routes should be treated as ""
+                path = f"/{routePath}/"
+                module = routePath.replace("/", "::") + "::index"
+            else:
+                path = f"/{routePath}/{routeName}/"
+                module = routePath.replace("/", "::") + "::" + routeName
             print("module", module)
             routes.append((path, module, parse(root + "/" + fileName)[1:]))
 
@@ -60,28 +62,28 @@ def write_formatted_file(file_path, file_data, test_dir):
     elif ext == ".elm":
         os.system("elm-format --yes --elm-version=0.19 %s" % temp_file)
 
-    if  test_dir:
+    if test_dir:
         print(temp_file)
         output = open(temp_file).read()
         os.system("rm %s" % temp_file)
-        
+
         return output
     else:
         if cmp(temp_file, file_path):
             os.system("rm %s" % temp_file)
         else:
             os.system("mv %s %s" % (temp_file, file_path))
-    
+
     return ""
 
 
-def generate_reverse( routes, test_dir= None):
+def generate_reverse(routes, test_dir=None):
     reverse = ""
     for (url, mod, args) in routes:
         if url == "/":
             function_name = mod
             if mod != "index":
-                url = "/"+mod
+                url = "/" + mod+'/'
         else:
             function_name = url[1:].replace("/", "_").replace("_index", "")
             if function_name.endswith("_"):
@@ -114,8 +116,10 @@ pub fn %s(%s) -> String {
 }
 """
     reverse_file_path = "src/reverse.rs"
-    
-    return write_formatted_file(reverse_file_path, REVERSE_TEMPLATE % (reverse,), test_dir= test_dir)
+
+    return write_formatted_file(
+        reverse_file_path, REVERSE_TEMPLATE % (reverse,), test_dir=test_dir
+    )
 
 
 def parse(mod_path: str):
@@ -135,7 +139,6 @@ def parse(mod_path: str):
             (r.split(":")[0], r.split(":")[1]) for r in args_str.split(",") if r != ""
         ]
     return []
-    
 
 
 def main():
@@ -143,25 +146,26 @@ def main():
     print("r", r)
     generate_reverse(r)
 
+
 def test():
     for dir in os.listdir("tests"):
         if dir == "temp.rs":
             continue
+        print("entered", dir)
         test_dir = "tests/" + dir
-        r = get_routes(test_dir = test_dir)
-        #print("tests/" + dir)
+        r = get_routes(test_dir=test_dir)
+        # print("tests/" + dir)
         for i in r:
             print(i)
-        reverse_content = generate_reverse(r, test_dir = test_dir)
+        reverse_content = generate_reverse(r, test_dir=test_dir)
         print("rev", reverse_content)
         gen_reverse_content = open("tests/" + dir + "/reverse.rs").read()
         print(gen_reverse_content)
-        assert(gen_reverse_content ==  reverse_content)
-        
+        assert gen_reverse_content.strip() == reverse_content.strip()
+
         print(dir, " passed")
 
+
 if __name__ == "__main__":
-    #main()
+    # main()
     test()
-
-
