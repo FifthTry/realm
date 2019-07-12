@@ -25,7 +25,7 @@ def compile(
 
     if elm_proj_dir:
         os.chdir(elm_proj_dir)
-    print(os.getcwd(), source_path, destination_path)
+    print("source dest ", os.getcwd(), source_path, destination_path)
     os.system(elm_format_path + " --yes " + source_path)
     os.system(elm_path + " make " + source_path + " --output " + destination_path)
 
@@ -72,23 +72,26 @@ def compile_all_elm(
 
     # handle error
     for file in os.listdir(source_dir):
-        print(file)
+        print("inside cae ", file)
         source_path = source_dir + "/" + file
         dest_path = destination_dir + "/" + file
         # if file is already present handle
 
         if os.path.isdir(source_path):
 
+            print("isdir true for ", source_path)
             if not os.path.isdir(dest_path):
                 os.mkdir(dest_path)
-
+            print("dest_path exists? ", os.path.isdir(dest_path))
             compile_all_elm(
                 source_path, dest_path, elm_path, elm_format_path, go_to_dir
             )
 
         filename, file_extension = os.path.splitext(file)
+
         if file_extension == ".elm" and has_main(source_path):
             dest_path = destination_dir + "/" + filename + ".js"
+
             compile(source_path, dest_path, elm_path, elm_format_path, go_to_dir)
 
 

@@ -3,7 +3,20 @@ from filecmp import cmp
 from string import Template
 import re
 
-REVERSE_TEMPLATE = """
+REVERSE_TEMPLATE = """use itertools::Itertools;
+use chrono::NaiveDate;
+use serde_json::Value as JsonValue;
+use std::{
+
+    fmt::{Debug, Display},
+    fs,
+    io::{Read, Write},
+    ops::{Add, Deref},
+    str::FromStr,
+    string::String,
+};
+use url::Url;
+
 pub fn url2path(url: &Url) -> String {
     let url = url.clone();
     let mut search_str = url
@@ -43,7 +56,7 @@ where
             _ => match s.parse() {
                 Ok(v) => Ok(Maybe(Some(v))),
                 Err(e) => {
-                    Err(error::ErrorKind::ValueError).context(format!("can't parse: {:?}", e))?
+                    Err(failure::err_msg(format!("can't parse: {:?}", e)))
                 }
             },
         }
@@ -73,7 +86,6 @@ impl<T> Default for Maybe<T> {
     }
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct List<T>(pub Vec<T>);
 
@@ -85,7 +97,6 @@ where
         self.0.iter().join("||")
     }
 }
-
 
 // TODO need to write test case for this
 impl<T> FromStr for List<T>
@@ -101,7 +112,7 @@ where
             let element: T = match each_element.parse() {
                 Ok(v) => v,
                 Err(e) => {
-                    Err(error::ClientErrorKind::ValueError.context(format!("can't parse: {:?}", e)))?
+                    Err(failure::err_msg(format!("can't parse")))?
                 }
             };
             vec_t.push(element);
@@ -124,39 +135,34 @@ impl<T> Default for List<T> {
     }
 }
 
-
-use chrono::NaiveDate;
-use serde_json::Value as JsonValue;
-use url::Url;
-
-
 pub fn external_login(next: String) -> String {
     let mut url = Url::parse("http://acko.com/login/").unwrap();
     url.query_pairs_mut().append_pair("next", &next.to_string());
     url2path(&url)
 }
 
+
 %s
 """
 
 
 def get_routes():
-    
     routes = []
 
     for root, _, files in os.walk("src/routes/"):
         directory = root.replace("src/routes/", "")
-        print("dir", directory)
+        print("dir", directory, _, files)
 
-        # Ignore the files outside the ./src of each directory inside acko_routes/
-        # such as Cargo.toml.
+        # Ignore the files outside the ./src of each directory inside
+        # acko_routes/ such as Cargo.toml.
         if directory.find("/src") == -1:
             continue
         # Ignore common directory from acko_routes/
         if directory.find("common/src") != -1:
             continue
-
+        print("here?", files)
         for fileName in files:
+            print("sol", fileName)
             # Ignore non rust files.
             if not fileName.endswith(".rs"):
                 continue
@@ -168,10 +174,9 @@ def get_routes():
             # and directory name should be the route path.
             routeName = fileName.replace(".rs", "")
             routePath = directory.replace("/src", "")
-            
+
             print("filename", fileName)
 
-            
             if routePath == "index":
                 # index route directory should be treated as "/"
                 path = "/"
@@ -185,7 +190,7 @@ def get_routes():
                 module = routePath.replace("/", "::") + "::" + routeName
 
             """ Todo: Below are hacks for removing /workspace/search route and
-            modifying /partner/issue to /policy/issue. These routes are getting
+            modifying /partnessue to /policy/issue. These routes are getting
             generated because of interdependency between crates that end up
             creating cyclic dependency. Figure out a way to remove below hacks.
             """
@@ -202,6 +207,7 @@ def get_routes():
     routes.sort(reverse=True)
     return routes
 
+
 def write_formatted_file(file_path, file_data):
     ext = "." + file_path.split(".")[-1]
     temp_file = "/".join(file_path.split("/")[:-1]) + "/temp" + ext
@@ -216,8 +222,8 @@ def write_formatted_file(file_path, file_data):
         os.system("rm %s" % temp_file)
     else:
         os.system("mv %s %s" % (temp_file, file_path))
-	    
-	    
+
+
 def generate_reverse(routes):
     reverse = ""
     for (url, mod, args) in routes:
@@ -255,11 +261,10 @@ pub fn %s(%s) -> String {
 }
 """
 
-    write_formatted_file(
-        "src/layout/src/reverse.rs", REVERSE_TEMPLATE % (reverse,)
-    )
+    write_formatted_file("src/reverse.rs", REVERSE_TEMPLATE % (reverse,))
 
-def parse(mod_path):
+
+def parse(mod_path: str):
     """
     Given a module name (file path, relative to ., eg src/acko/utils.rs), this
     function returns:
@@ -275,14 +280,11 @@ def parse(mod_path):
         return [
             (r.split(":")[0], r.split(":")[1]) for r in args_str.split(",") if r != ""
         ]
-    
+
     return []
 
 
 def main():
     r = get_routes()
-    print(r)
+    print("r", r)
     generate_reverse(r)
-    
-main()
-
