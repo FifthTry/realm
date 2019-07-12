@@ -1,6 +1,4 @@
 import os
-from filecmp import cmp
-from string import Template
 import re
 
 REVERSE_TEMPLATE = """
@@ -32,7 +30,7 @@ def get_routes(test_dir=None):
 
             print("routePath:{} routeName:{}".format(routePath, routeName))
             print("filename", fileName)
-            
+
             if routePath == "":
                 path = f"/"
                 module = routeName
@@ -50,40 +48,13 @@ def get_routes(test_dir=None):
     return routes
 
 
-def write_formatted_file(file_path, file_data, test_dir):
-    ext = "." + file_path.split(".")[-1]
-    temp_file = "/".join(file_path.split("/")[:-1]) + "/temp" + ext
-    if test_dir:
-        temp_file = "tests/temp.rs"
-    open(temp_file, "w+").write(file_data)
-
-    if ext == ".rs":
-        os.system("rustfmt %s" % temp_file)
-    elif ext == ".elm":
-        os.system("elm-format --yes --elm-version=0.19 %s" % temp_file)
-
-    if test_dir:
-        print(temp_file)
-        output = open(temp_file).read()
-        os.system("rm %s" % temp_file)
-
-        return output
-    else:
-        if cmp(temp_file, file_path):
-            os.system("rm %s" % temp_file)
-        else:
-            os.system("mv %s %s" % (temp_file, file_path))
-
-    return ""
-
-
 def generate_reverse(routes, test_dir=None):
     reverse = ""
     for (url, mod, args) in routes:
         if url == "/":
             function_name = mod
             if mod != "index":
-                url = "/" + mod+'/'
+                url = "/" + mod + "/"
         else:
             function_name = url[1:].replace("/", "_").replace("_index", "")
             if function_name.endswith("_"):
@@ -116,10 +87,11 @@ pub fn %s(%s) -> String {
 }
 """
     reverse_file_path = "src/reverse.rs"
-
-    return write_formatted_file(
-        reverse_file_path, REVERSE_TEMPLATE % (reverse,), test_dir=test_dir
-    )
+    if test_dir:
+        reverse_file_path = test_dir + "/reverse.rs"
+    reverse_content = REVERSE_TEMPLATE % (reverse,)
+    open(reverse_file_path, "w").write(reverse_content)
+    return reverse_content
 
 
 def parse(mod_path: str):
@@ -131,14 +103,13 @@ def parse(mod_path: str):
 
     """
     with open(mod_path, "r") as f:
-        args_str = re.compile(r"(?<=pub fn layout\()[^{]*(?=\) \-\>)").search(
+        args_str = re.compile(r"(?<=pub fn layout\()[^{]*(?=\) ->)").search(
             f.read().replace("\n", " ")
         )
         args_str = "" if not args_str else args_str[0].replace(" ", "")
         return [
             (r.split(":")[0], r.split(":")[1]) for r in args_str.split(",") if r != ""
         ]
-    return []
 
 
 def main():
@@ -148,22 +119,20 @@ def main():
 
 
 def test():
-    for dir in os.listdir("tests"):
-        if dir == "temp.rs":
+    for test_dir in os.listdir("tests"):
+        if test_dir == "temp.rs":
             continue
-        print("entered", dir)
-        test_dir = "tests/" + dir
+        print("entered", test_dir)
+        test_dir = "tests/" + test_dir
         r = get_routes(test_dir=test_dir)
-        # print("tests/" + dir)
         for i in r:
             print(i)
         reverse_content = generate_reverse(r, test_dir=test_dir)
         print("rev", reverse_content)
-        gen_reverse_content = open("tests/" + dir + "/reverse.rs").read()
+        gen_reverse_content = open(test_dir + "/reverse.rs").read()
         print(gen_reverse_content)
         assert gen_reverse_content.strip() == reverse_content.strip()
-
-        print(dir, " passed")
+        print(test_dir, " passed")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,6 @@
-use realm::utils::{url2path, Maybe};
+
+use realm::utils::{Maybe, url2path};
+
 
 pub fn ab_c() -> String {
     "/ab/c/".to_owned()
@@ -19,7 +21,4 @@ pub fn foo() -> String {
 pub fn bar() -> String {
     "/bar/".to_owned()
 }
-
-
-
 

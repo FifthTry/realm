@@ -1,4 +1,6 @@
-use realm::utils::{url2path, Maybe};
+
+use realm::utils::{Maybe, url2path};
+
 
 pub fn index(i: i32, s: String) -> String {
     let mut url = Url::parse("http://127.0.0.1:3000/").unwrap();
@@ -6,3 +8,4 @@ pub fn index(i: i32, s: String) -> String {
     url.query_pairs_mut().append_pair("s", &s.to_string());
     url2path(&url)
 }
+
