@@ -151,21 +151,12 @@ def get_routes():
 
     for root, _, files in os.walk("src/routes/"):
         directory = root.replace("src/routes/", "")
-        print("dir", directory, _, files)
 
-        # Ignore the files outside the ./src of each directory inside
-        # acko_routes/ such as Cargo.toml.
-        if directory.find("/src") == -1:
-            continue
-        # Ignore common directory from acko_routes/
-        if directory.find("common/src") != -1:
-            continue
-        print("here?", files)
         for fileName in files:
-            print("sol", fileName)
-            # Ignore non rust files.
+
             if not fileName.endswith(".rs"):
                 continue
+
             # Ignore lib.rs and mod.rs files.
             if fileName == "lib.rs" or fileName == "mod.rs":
                 continue
@@ -175,33 +166,17 @@ def get_routes():
             routeName = fileName.replace(".rs", "")
             routePath = directory.replace("/src", "")
 
+            print("routePath:{} routeName:{}".format(routePath, routeName))
             print("filename", fileName)
 
-            if routePath == "index":
-                # index route directory should be treated as "/"
-                path = "/"
-                module = "index::index"
-            elif routeName == "index":
-                # index routes should be treated as ""
-                path = f"/{routePath}/"
-                module = routePath.replace("/", "::") + "::index"
-            else:
-                path = f"/{routePath}/{routeName}/"
-                module = routePath.replace("/", "::") + "::" + routeName
-
-            """ Todo: Below are hacks for removing /workspace/search route and
-            modifying /partnessue to /policy/issue. These routes are getting
-            generated because of interdependency between crates that end up
-            creating cyclic dependency. Figure out a way to remove below hacks.
-            """
-
-            if path == "/workspace/search/":
-                continue
-            if path == "/partner/issue/":
-                path = "/policy/issue/"
-
-            """Hacks end here."""
-
+            if True:
+                if routePath == "":
+                    path = f"/"
+                    module = routeName
+                else:
+                    path = f"/{routePath}/{routeName}/"
+                    module = routePath.replace("/", "::") + "::" + routeName
+            print("module", module)
             routes.append((path, module, parse(root + "/" + fileName)[1:]))
 
     routes.sort(reverse=True)
@@ -245,7 +220,7 @@ pub fn %s() -> String {
         else:
             reverse += """
 pub fn %s(%s) -> String {
-    let mut url = Url::parse("http://acko%s").unwrap();""" % (
+    let mut url = Url::parse("http://127.0.0.1:3000%s").unwrap();""" % (
                 function_name,
                 ", ".join("%s: %s" % arg for arg in args),
                 url,
