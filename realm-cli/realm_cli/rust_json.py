@@ -146,21 +146,19 @@ pub fn external_login(next: String) -> String {
 """
 
 
-def get_routes():
+def get_routes(test = False):
     routes = []
-
-    for root, _, files in os.walk("src/routes/"):
-        directory = root.replace("src/routes/", "")
-
+    routes_dir_path = "src/routes/"
+    if test:
+        routes_dir_path = "../tests/basic/routes/"
+    for root, _, files in os.walk(routes_dir_path):
+        directory = root.replace(routes_dir_path, "")
         for fileName in files:
-
             if not fileName.endswith(".rs"):
                 continue
-
             # Ignore lib.rs and mod.rs files.
             if fileName == "lib.rs" or fileName == "mod.rs":
                 continue
-
             # Generally file name should be the route name
             # and directory name should be the route path.
             routeName = fileName.replace(".rs", "")
@@ -183,10 +181,12 @@ def get_routes():
     return routes
 
 
-def write_formatted_file(file_path, file_data):
+def write_formatted_file(file_path, file_data, test =False):
     ext = "." + file_path.split(".")[-1]
     temp_file = "/".join(file_path.split("/")[:-1]) + "/temp" + ext
-    open(temp_file, "w").write(file_data)
+    if test:
+        temp_file = "../tests/basic/temp.rs"
+    open(temp_file, "w+").write(file_data)
 
     if ext == ".rs":
         os.system("rustfmt %s" % temp_file)
@@ -199,7 +199,7 @@ def write_formatted_file(file_path, file_data):
         os.system("mv %s %s" % (temp_file, file_path))
 
 
-def generate_reverse(routes):
+def generate_reverse( routes, test= False):
     reverse = ""
     for (url, mod, args) in routes:
         if url == "/":
@@ -235,8 +235,11 @@ pub fn %s(%s) -> String {
     url2path(&url)
 }
 """
+    reverse_file_path = "src/reverse.rs"
+    if test:
+        reverse_file_path = "../tests/basic/reverse_gen.rs"
 
-    write_formatted_file("src/reverse.rs", REVERSE_TEMPLATE % (reverse,))
+    write_formatted_file(reverse_file_path, REVERSE_TEMPLATE % (reverse,), test= True)
 
 
 def parse(mod_path: str):
@@ -263,3 +266,14 @@ def main():
     r = get_routes()
     print("r", r)
     generate_reverse(r)
+
+def test():
+    r = get_routes(test = True)
+    generate_reverse(r, test=True)
+    assert(open("../tests/basic/reverse.rs").read() ==  open("../tests/basic/reverse_gen.rs").read())
+
+if __name__ == "__main__":
+    #main()
+    test()
+
+

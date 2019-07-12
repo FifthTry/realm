@@ -1,0 +1,5 @@
+{
+     "static_dir": "src/static",
+     "elm_source_dirs": ["src/frontend"],
+     "catchall_route": "crate::cms"
+}
