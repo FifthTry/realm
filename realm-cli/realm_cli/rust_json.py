@@ -136,7 +136,7 @@ impl<T> Default for List<T> {
 }
 
 pub fn external_login(next: String) -> String {
-    let mut url = Url::parse("http://acko.com/login/").unwrap();
+    let mut url = Url::parse("http://127.0.0.1:3000/login/").unwrap();
     url.query_pairs_mut().append_pair("next", &next.to_string());
     url2path(&url)
 }
@@ -203,7 +203,9 @@ def generate_reverse( routes, test= False):
     reverse = ""
     for (url, mod, args) in routes:
         if url == "/":
-            function_name = "index"
+            function_name = mod
+            if mod != "index":
+                url = "/"+mod
         else:
             function_name = url[1:].replace("/", "_").replace("_index", "")
             if function_name.endswith("_"):

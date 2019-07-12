@@ -126,11 +126,18 @@ impl<T> Default for List<T> {
 }
 
 pub fn external_login(next: String) -> String {
-    let mut url = Url::parse("http://acko.com/login/").unwrap();
+    let mut url = Url::parse("http://127.0.0.1:3000/login/").unwrap();
     url.query_pairs_mut().append_pair("next", &next.to_string());
     url2path(&url)
 }
 
 pub fn index() -> String {
     "/".to_owned()
+}
+
+pub fn foo(a: String, b: String) -> String {
+    let mut url = Url::parse("http://127.0.0.1:3000/foo").unwrap();
+    url.query_pairs_mut().append_pair("a", &a.to_string());
+    url.query_pairs_mut().append_pair("b", &b.to_string());
+    url2path(&url)
 }
