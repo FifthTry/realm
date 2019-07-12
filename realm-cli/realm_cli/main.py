@@ -4,6 +4,7 @@ from cookiecutter.main import cookiecutter
 import os
 
 import realm_cli.compile_elm as ce
+import realm_cli.rust_json as rj
 import json
 
 
@@ -43,6 +44,10 @@ def main():
             ce.compile_all_elm(src_dir, elm_dest_dir, elm_path, elm_format_path,
                                "")
         os.system("RUST_BACKTRACE=1 cargo run")
+
+    elif sys.argv[1] == 'build':
+        rj.main()
+        
         
         
         
