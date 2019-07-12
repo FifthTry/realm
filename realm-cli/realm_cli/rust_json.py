@@ -3,154 +3,21 @@ from filecmp import cmp
 from string import Template
 import re
 
-REVERSE_TEMPLATE = """use itertools::Itertools;
-use chrono::NaiveDate;
-use serde_json::Value as JsonValue;
-use std::{
-
-    fmt::{Debug, Display},
-    fs,
-    io::{Read, Write},
-    ops::{Add, Deref},
-    str::FromStr,
-    string::String,
-};
-use url::Url;
-
-pub fn url2path(url: &Url) -> String {
-    let url = url.clone();
-    let mut search_str = url
-        .query_pairs()
-        .filter(|(_, v)| v != "null")
-        .map(|(k, v)| format!("{}={}", k, v))
-        .join("&");
-    if search_str != "" {
-        search_str = format!("?{}", search_str);
-    };
-    format!("{}{}", url.path(), search_str)
-}
-
-pub fn uri2path(uri: &hyper::Uri) -> String {
-    format!(
-        "{}{}",
-        uri.path(),
-        uri.query()
-            .map(|q| format!("?{}", q))
-            .unwrap_or("".to_owned())
-    )
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Maybe<T>(pub Option<T>);
-
-impl<T> FromStr for Maybe<T>
-where
-    T: FromStr,
-    <T as FromStr>::Err: Debug,
-{
-    type Err = failure::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "null" => Ok(Maybe(None)),
-            _ => match s.parse() {
-                Ok(v) => Ok(Maybe(Some(v))),
-                Err(e) => {
-                    Err(failure::err_msg(format!("can't parse: {:?}", e)))
-                }
-            },
-        }
-    }
-}
-
-impl<T: ToString> ToString for Maybe<T> {
-    fn to_string(&self) -> String {
-        match self.0 {
-            Some(ref t) => t.to_string(),
-            None => "null".to_owned(),
-        }
-    }
-}
-
-impl<T> Deref for Maybe<T> {
-    type Target = Option<T>;
-
-    fn deref(&self) -> &Option<T> {
-        &self.0
-    }
-}
-
-impl<T> Default for Maybe<T> {
-    fn default() -> Self {
-        Maybe(None)
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct List<T>(pub Vec<T>);
-
-impl<T: ToString> ToString for List<T>
-where
-    T: Display,
-{
-    fn to_string(&self) -> String {
-        self.0.iter().join("||")
-    }
-}
-
-// TODO need to write test case for this
-impl<T> FromStr for List<T>
-where
-    T: FromStr,
-    <T as FromStr>::Err: Debug,
-{
-    type Err = failure::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut vec_t = Vec::new();
-        for each_element in s.split("||") {
-            let element: T = match each_element.parse() {
-                Ok(v) => v,
-                Err(e) => {
-                    Err(failure::err_msg(format!("can't parse")))?
-                }
-            };
-            vec_t.push(element);
-        }
-        Ok(List(vec_t))
-    }
-}
-
-impl<T> Deref for List<T> {
-    type Target = Vec<T>;
-
-    fn deref(&self) -> &Vec<T> {
-        &self.0
-    }
-}
-
-impl<T> Default for List<T> {
-    fn default() -> Self {
-        List(Vec::new())
-    }
-}
-
-pub fn external_login(next: String) -> String {
-    let mut url = Url::parse("http://127.0.0.1:3000/login/").unwrap();
-    url.query_pairs_mut().append_pair("next", &next.to_string());
-    url2path(&url)
-}
+REVERSE_TEMPLATE = """
+use realm::utils::{Maybe, url2path};
 
 
 %s
 """
 
 
-def get_routes(test = False):
+def get_routes(test_dir = None):
     routes = []
+    
     routes_dir_path = "src/routes/"
-    if test:
-        routes_dir_path = "../tests/basic/routes/"
+    if test_dir:
+        routes_dir_path = test_dir + "/routes/"
+    #print("gr_dir", routes_dir_path)
     for root, _, files in os.walk(routes_dir_path):
         directory = root.replace(routes_dir_path, "")
         for fileName in files:
@@ -181,11 +48,11 @@ def get_routes(test = False):
     return routes
 
 
-def write_formatted_file(file_path, file_data, test =False):
+def write_formatted_file(file_path, file_data, test_dir):
     ext = "." + file_path.split(".")[-1]
     temp_file = "/".join(file_path.split("/")[:-1]) + "/temp" + ext
-    if test:
-        temp_file = "../tests/basic/temp.rs"
+    if test_dir:
+        temp_file = "tests/temp.rs"
     open(temp_file, "w+").write(file_data)
 
     if ext == ".rs":
@@ -193,13 +60,22 @@ def write_formatted_file(file_path, file_data, test =False):
     elif ext == ".elm":
         os.system("elm-format --yes --elm-version=0.19 %s" % temp_file)
 
-    if cmp(temp_file, file_path):
+    if  test_dir:
+        print(temp_file)
+        output = open(temp_file).read()
         os.system("rm %s" % temp_file)
+        
+        return output
     else:
-        os.system("mv %s %s" % (temp_file, file_path))
+        if cmp(temp_file, file_path):
+            os.system("rm %s" % temp_file)
+        else:
+            os.system("mv %s %s" % (temp_file, file_path))
+    
+    return ""
 
 
-def generate_reverse( routes, test= False):
+def generate_reverse( routes, test_dir= None):
     reverse = ""
     for (url, mod, args) in routes:
         if url == "/":
@@ -238,10 +114,8 @@ pub fn %s(%s) -> String {
 }
 """
     reverse_file_path = "src/reverse.rs"
-    if test:
-        reverse_file_path = "../tests/basic/reverse_gen.rs"
-
-    write_formatted_file(reverse_file_path, REVERSE_TEMPLATE % (reverse,), test= True)
+    
+    return write_formatted_file(reverse_file_path, REVERSE_TEMPLATE % (reverse,), test_dir= test_dir)
 
 
 def parse(mod_path: str):
@@ -260,8 +134,8 @@ def parse(mod_path: str):
         return [
             (r.split(":")[0], r.split(":")[1]) for r in args_str.split(",") if r != ""
         ]
-
     return []
+    
 
 
 def main():
@@ -270,9 +144,21 @@ def main():
     generate_reverse(r)
 
 def test():
-    r = get_routes(test = True)
-    generate_reverse(r, test=True)
-    assert(open("../tests/basic/reverse.rs").read() ==  open("../tests/basic/reverse_gen.rs").read())
+    for dir in os.listdir("tests"):
+        if dir == "temp.rs":
+            continue
+        test_dir = "tests/" + dir
+        r = get_routes(test_dir = test_dir)
+        #print("tests/" + dir)
+        for i in r:
+            print(i)
+        reverse_content = generate_reverse(r, test_dir = test_dir)
+        print("rev", reverse_content)
+        gen_reverse_content = open("tests/" + dir + "/reverse.rs").read()
+        print(gen_reverse_content)
+        assert(gen_reverse_content ==  reverse_content)
+        
+        print(dir, " passed")
 
 if __name__ == "__main__":
     #main()
