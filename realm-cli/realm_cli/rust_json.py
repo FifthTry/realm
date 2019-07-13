@@ -9,15 +9,15 @@ use realm::utils::{Maybe, url2path};
 """
 
 
-def get_routes(test_dir: str = "") -> List[Tuple[str, str, List[Tuple[str, str]]]]:
-    routes = []
+def get_routes(test_dir: Optional[str] = None) -> List[Tuple[str, str, List[Tuple[str, str]]]]:
+    routes: List[Tuple[str, str, List[Tuple[str, str]]]]= []
 
-    routes_dir_path = "src/routes/"
-    if test_dir != "":
+    routes_dir_path: str = "src/routes/"
+    if test_dir:
         routes_dir_path = test_dir + "/routes/"
 
     for root, _, files in os.walk(routes_dir_path):
-        directory = root.replace(routes_dir_path, "")
+        directory: str = root.replace(routes_dir_path, "")
         for fileName in files:
             if not fileName.endswith(".rs"):
                 continue
@@ -26,12 +26,14 @@ def get_routes(test_dir: str = "") -> List[Tuple[str, str, List[Tuple[str, str]]
                 continue
             # Generally file name should be the route name
             # and directory name should be the route path.
-            routeName = fileName.replace(".rs", "")
-            routePath = directory.replace("/src", "")
+            routeName: str = fileName.replace(".rs", "")
+            routePath: str = directory.replace("/src", "")
 
             print("routePath:{} routeName:{}".format(routePath, routeName))
             print("filename", fileName)
-
+            
+            path: str = ""
+            module: str = ""
             if routePath == "":
                 path = f"/"
                 module = routeName
@@ -49,8 +51,8 @@ def get_routes(test_dir: str = "") -> List[Tuple[str, str, List[Tuple[str, str]]
     return routes
 
 
-def generate_reverse(routes, test_dir: str = "") -> str:
-    reverse = ""
+def generate_reverse(routes: List[Tuple[str, str, List[Tuple[str, str]]]], test_dir: Optional[str] = None) -> str:
+    reverse: str = ""
     for (url, mod, args) in routes:
         if url == "/":
             function_name = mod
@@ -87,8 +89,8 @@ pub fn %s(%s) -> String {
     url2path(&url)
 }
 """
-    reverse_file_path = "src/reverse.rs"
-    if test_dir != "":
+    reverse_file_path: str = "src/reverse.rs"
+    if test_dir:
         reverse_file_path = test_dir + "/reverse.rs"
     reverse_content = REVERSE_TEMPLATE % (reverse,)
     open(reverse_file_path, "w").write(reverse_content)

@@ -1,18 +1,17 @@
 import os
 from os.path import expanduser
 import re
+from typing import List, Tuple, Optional, Match
 
-import json
+home: str = expanduser("~")
 
-home = expanduser("~")
+elm_path_G: str = "forgit/dwelm/elm_latest/node_modules/elm/bin/elm"
+elm_path_G= home + "/" + elm_path_G
 
-elm_path_G = "forgit/dwelm/elm_latest/node_modules/elm/bin/elm"
-elm_path_G = home + "/" + elm_path_G
-
-elm_format_path_G = "forgit/dwelm/elm_latest/node_modules/elm-format/bin/elm-format"
+elm_format_path_G: str = "forgit/dwelm/elm_latest/node_modules/elm-format/bin/elm-format"
 elm_format_path_G = home + "/" + elm_format_path_G
 
-go_to_dir_G = home + "/forgit/dwelm/graftpress/"
+go_to_dir_G: str = home + "/forgit/dwelm/graftpress/"
 
 
 def compile(
