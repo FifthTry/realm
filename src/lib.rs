@@ -5,12 +5,17 @@ extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate url;
+extern crate itertools;
+extern crate chrono;
+
 mod config;
 mod html;
 mod mode;
 mod page;
 mod serve;
 mod widget;
+pub mod utils;
 
 pub(crate) use crate::config::{Config, CONFIG};
 pub use crate::html::HTML;

@@ -1,5 +1,6 @@
 import os
 import re
+from typing import List, Tuple, Optional, Match
 
 REVERSE_TEMPLATE = """
 use realm::utils::{Maybe, url2path};
@@ -8,11 +9,11 @@ use realm::utils::{Maybe, url2path};
 """
 
 
-def get_routes(test_dir=None):
+def get_routes(test_dir: str = "") -> List[Tuple[str, str, List[Tuple[str, str]]]]:
     routes = []
 
     routes_dir_path = "src/routes/"
-    if test_dir:
+    if test_dir != "":
         routes_dir_path = test_dir + "/routes/"
 
     for root, _, files in os.walk(routes_dir_path):
@@ -48,7 +49,7 @@ def get_routes(test_dir=None):
     return routes
 
 
-def generate_reverse(routes, test_dir=None):
+def generate_reverse(routes, test_dir: str = "") -> str:
     reverse = ""
     for (url, mod, args) in routes:
         if url == "/":
@@ -87,14 +88,14 @@ pub fn %s(%s) -> String {
 }
 """
     reverse_file_path = "src/reverse.rs"
-    if test_dir:
+    if test_dir != "":
         reverse_file_path = test_dir + "/reverse.rs"
     reverse_content = REVERSE_TEMPLATE % (reverse,)
     open(reverse_file_path, "w").write(reverse_content)
     return reverse_content
 
 
-def parse(mod_path: str):
+def parse(mod_path: str) -> List[Tuple[str, str]]:
     """
     Given a module name (file path, relative to ., eg src/acko/utils.rs), this
     function returns:
@@ -103,22 +104,22 @@ def parse(mod_path: str):
 
     """
     with open(mod_path, "r") as f:
-        args_str = re.compile(r"(?<=pub fn layout\()[^{]*(?=\) ->)").search(
-            f.read().replace("\n", " ")
-        )
-        args_str = "" if not args_str else args_str[0].replace(" ", "")
+        args_str_: Optional[Match[str]] = re.compile(
+            r"(?<=pub fn layout\()[^{]*(?=\) ->)"
+        ).search(f.read().replace("\n", " "))
+        args_str: str = "" if not args_str_ else args_str_[0].replace(" ", "")
         return [
             (r.split(":")[0], r.split(":")[1]) for r in args_str.split(",") if r != ""
         ]
 
 
-def main():
+def main() -> None:
     r = get_routes()
     print("r", r)
     generate_reverse(r)
 
 
-def test():
+def test() -> None:
     for test_dir in os.listdir("tests"):
         if test_dir == "temp.rs":
             continue

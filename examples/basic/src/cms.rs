@@ -58,7 +58,7 @@ struct C {
     pub widget: serde_json::Value,
 }
 
-pub fn serve(in_: &In, url: &str) -> acko_base::Result<AckoResponse> {
+pub fn layout(in_: &In, url: &str) -> acko_base::Result<AckoResponse> {
     if !CONFIG.enable_cms {
         slog_info!(
             in_.logger, "cms_disabled";
