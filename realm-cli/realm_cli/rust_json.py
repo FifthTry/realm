@@ -1,6 +1,7 @@
 import os
 import re
 from typing import List, Tuple, Optional, Match
+from string import Template
 
 REVERSE_TEMPLATE = """
 use realm::utils::{Maybe, url2path};
@@ -8,15 +9,49 @@ use realm::utils::{Maybe, url2path};
 %s
 """
 
+FORWARD_TEMPLATE = """
+use crate::routes;
+use realm::utils::get_slash_complete_path;
+pub fn magic(req: &realm::Request) -> realm::Result {
+    let path = get_slash_complete_path(req.uri().path());
+    match path.as_ref() {
+        %s
+        _ => unimpemented!()
+    }
+}
 
-def get_routes(test_dir: Optional[str] = None) -> List[Tuple[str, str, List[Tuple[str, str]]]]:
-    routes: List[Tuple[str, str, List[Tuple[str, str]]]]= []
+"""
+
+
+def get_route_entities(test_dir: Optional[str] = None) -> List[str]:
+    """
+    Gets a list of all directories which are also routes in routes/
+    """
+    route_dir: str = "src"
+    if test_dir:
+        route_dir = test_dir
+    route_dir += "/routes/"
+    route_entities: List[str] = []
+    for entity in os.scandir(route_dir):
+        if entity.is_dir():
+            directory: str = entity.name
+            if directory == "common" or directory == "src":
+                continue
+            route_entities.append(directory)
+
+    route_entities.sort()
+    return route_entities
+
+
+def get_routes(test_dir: Optional[str] = None):
+    routes: List[Tuple[str, str, List[Tuple[str, str]]]] = []
 
     routes_dir_path: str = "src/routes/"
     if test_dir:
         routes_dir_path = test_dir + "/routes/"
 
     for root, _, files in os.walk(routes_dir_path):
+        print("root, _, files", root, _, files)
         directory: str = root.replace(routes_dir_path, "")
         for fileName in files:
             if not fileName.endswith(".rs"):
@@ -31,7 +66,7 @@ def get_routes(test_dir: Optional[str] = None) -> List[Tuple[str, str, List[Tupl
 
             print("routePath:{} routeName:{}".format(routePath, routeName))
             print("filename", fileName)
-            
+
             path: str = ""
             module: str = ""
             if routePath == "":
@@ -51,7 +86,67 @@ def get_routes(test_dir: Optional[str] = None) -> List[Tuple[str, str, List[Tupl
     return routes
 
 
-def generate_reverse(routes: List[Tuple[str, str, List[Tuple[str, str]]]], test_dir: Optional[str] = None) -> str:
+def generate_forward(directories, routes, test_dir=None):
+    # filter routes and directories based on whitelist
+
+    template = Template("use $crate;")
+    use_crates = []
+    for directory in directories:
+        use_crates.append(template.substitute(crate=directory))
+    use_crates = "\n".join(use_crates)
+    forward = ""
+    for (url, mod, args) in routes:
+
+        print("uma, ", url, mod, args)
+
+        if url == "/" and mod != "index":
+            url += mod + "/"
+
+        mod = mod.replace("::", "_").replace("_index", "")
+
+        if len(args) == 0:
+            forward += """
+        "%s" => %s::layout(in_),""" % (
+                url,
+                mod,
+            )
+        else:
+            forward += (
+                """
+            "%s" => {
+                """
+                % url
+            )
+
+            for (name, type) in args:
+                is_optional = "false"
+                if type.startswith("Maybe<"):
+                    is_optional = "true"
+                forward += """
+            let %s = router::get("%s", &query_, data_, &mut rest, %s)?;""" % (
+                    name,
+                    name,
+                    is_optional,
+                )
+
+            forward += """
+            %s::layout(in_, %s)
+        }""" % (
+                mod,
+                ", ".join(arg[0] for arg in args),
+            )
+
+    forward_file_path: str = "src/forward.rs"
+    forward_content = FORWARD_TEMPLATE % (forward,)
+    if not test_dir:
+        open(forward_file_path, "w").write(forward_content)
+
+    return forward_content
+
+
+def generate_reverse(
+    routes: List[Tuple[str, str, List[Tuple[str, str]]]], test_dir: Optional[str] = None
+) -> str:
     reverse: str = ""
     for (url, mod, args) in routes:
         if url == "/":
@@ -62,6 +157,7 @@ def generate_reverse(routes: List[Tuple[str, str, List[Tuple[str, str]]]], test_
             function_name = url[1:].replace("/", "_").replace("_index", "")
             if function_name.endswith("_"):
                 function_name = function_name[:-1]
+
         if len(args) == 0:
             reverse += """
 pub fn %s() -> String {
@@ -90,10 +186,10 @@ pub fn %s(%s) -> String {
 }
 """
     reverse_file_path: str = "src/reverse.rs"
-    if test_dir:
-        reverse_file_path = test_dir + "/reverse.rs"
     reverse_content = REVERSE_TEMPLATE % (reverse,)
-    open(reverse_file_path, "w").write(reverse_content)
+    if not test_dir:
+        open(reverse_file_path, "w").write(reverse_content)
+
     return reverse_content
 
 
@@ -119,6 +215,8 @@ def main() -> None:
     r = get_routes()
     print("r", r)
     generate_reverse(r)
+    route_entities = get_route_entities()
+    print(route_entities)
 
 
 def test() -> None:
@@ -130,12 +228,19 @@ def test() -> None:
         r = get_routes(test_dir=test_dir)
         for i in r:
             print(i)
-        reverse_content = generate_reverse(r, test_dir=test_dir)
+        """gen_reverse_content = generate_reverse(r, test_dir=test_dir)
+        reverse_content = open(test_dir + "/reverse.rs").read()
         print("rev", reverse_content)
-        gen_reverse_content = open(test_dir + "/reverse.rs").read()
         print(gen_reverse_content)
         assert gen_reverse_content.strip() == reverse_content.strip()
-        print(test_dir, " passed")
+        print(test_dir, " passed")"""
+        route_entities = get_route_entities(test_dir=test_dir)
+        gen_forward_content = generate_forward(
+            directories=route_entities, routes=r, test_dir=test_dir
+        )
+        forward_content = open(test_dir + "/forward.rs").read()
+        print("gen forward")
+        print(gen_forward_content)
 
 
 if __name__ == "__main__":
