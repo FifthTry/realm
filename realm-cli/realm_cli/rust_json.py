@@ -116,14 +116,14 @@ def generate_forward(directories, routes, test_dir=None):
 
         if len(args) == 0:
             forward += """
-        "%s" => routes::%s::layout(in_),""" % (
+        "%s" => routes::%s::layout(req),""" % (
                 url,
                 mod,
             )
         else:
             forward += (
                 """
-            "%s" => {"""
+        "%s" => {"""
                 % url
             )
 
@@ -139,7 +139,7 @@ def generate_forward(directories, routes, test_dir=None):
                 )
 
             forward += """
-            routes::%s::layout(in_, %s)
+            routes::%s::layout(req, %s)
         },""" % (
                 mod,
                 ", ".join(arg[0] for arg in args),
@@ -239,20 +239,17 @@ def test() -> None:
             print(i)
         gen_reverse_content = generate_reverse(r, test_dir=test_dir)
         reverse_content = open(test_dir + "/reverse.rs").read()
-        print("rev", reverse_content)
-        print(gen_reverse_content)
+        
         assert gen_reverse_content.strip() == reverse_content.strip()
-        print(test_dir, " passed")
+        print(test_dir, " passed reverse")
+        
         route_entities = get_route_entities(test_dir=test_dir)
         gen_forward_content = generate_forward(
             directories=route_entities, routes=r, test_dir=test_dir
         )
         forward_content = open(test_dir + "/forward.rs").read()
-        print("gen forward")
-        print(gen_forward_content)
-
         assert gen_forward_content.strip() == forward_content.strip()
-        print(test_dir, " passed")
+        print(test_dir, " passed forward")
 
 
 if __name__ == "__main__":
