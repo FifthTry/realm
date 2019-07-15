@@ -1,9 +1,17 @@
 use crate::routes;
+use crate::cms;
 use realm::utils::{get_slash_complete_path, get, sub_string};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::{collections::HashMap, env};
 use url::Url;
+use graft::{self, Context, DirContext};
 
+pub fn get_default_context(cms_path: &str) -> impl Context {
+     let mut proj_dir = env::current_dir().expect("could not find current dir");
+
+
+    DirContext::new(proj_dir.join(cms_path).join("includes"))
+}
 
 pub fn magic(req: &realm::Request) -> realm::Result {
     let url = req.uri();
@@ -16,6 +24,6 @@ pub fn magic(req: &realm::Request) -> realm::Result {
     match path.as_ref() {
         "/" => routes::index::layout(req),
         url_ => cms::layout(req, get_default_context("cms"), url_),
-        _ => unimpemented!()
+        _ => unimplemented!()
     }
 }

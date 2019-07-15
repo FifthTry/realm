@@ -3,7 +3,7 @@ import re
 from typing import List, Tuple, Optional, Match
 from string import Template
 import json
-
+import realm_cli.p_assert as pa
 
 REALM_CONFIG = {}
 
@@ -16,11 +16,19 @@ use realm::utils::{Maybe, url2path};
 
 FORWARD_TEMPLATE = """
 use crate::routes;
+use crate::cms;
 use realm::utils::{get_slash_complete_path, get, sub_string};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::{collections::HashMap, env};
 use url::Url;
+use graft::{self, Context, DirContext};
 
+pub fn get_default_context(cms_path: &str) -> impl Context {
+     let mut proj_dir = env::current_dir().expect("could not find current dir");
+
+
+    DirContext::new(proj_dir.join(cms_path).join("includes"))
+}
 
 pub fn magic(req: &realm::Request) -> realm::Result {
     let url = req.uri();
@@ -31,7 +39,7 @@ pub fn magic(req: &realm::Request) -> realm::Result {
     let data_: serde_json::Value = serde_json::from_slice(req.body().as_slice()).unwrap_or_else(|e| json!(null));
     let query_: HashMap<_, _> = url.query_pairs().into_owned().collect();
     match path.as_ref() {%s
-        _ => unimpemented!()
+        _ => unimplemented!()
     }
 }
 
@@ -60,7 +68,7 @@ def get_route_entities(test_dir: Optional[str] = None) -> List[str]:
 
 def get_routes(test_dir: Optional[str] = None):
     routes: List[Tuple[str, str, List[Tuple[str, str]]]] = []
-    global  REALM_CONFIG
+    global REALM_CONFIG
     if os.path.exists("realm.json"):
         with open("realm.json") as f:
             REALM_CONFIG = json.load(f)
@@ -155,20 +163,21 @@ def generate_forward(directories, routes, test_dir=None):
                 mod,
                 ", ".join(arg[0] for arg in args),
             )
-        
-        print("config", REALM_CONFIG)
-        if "catchall" in REALM_CONFIG and REALM_CONFIG["catchall"]:
-            if "catchall_context" in REALM_CONFIG:
-                context_func = REALM_CONFIG["catchall_context"]
-            elif "cms_dir" in REALM_CONFIG:
-                print('inside cms_dir')
-                context_func = 'get_default_context("%s")'%(REALM_CONFIG["cms_dir"])
-            else:
-                raise("config is incomplete")
-        
-            
-            forward += """
-        url_ => cms::layout(req, %s, url_),"""%(context_func)
+
+    print("config", REALM_CONFIG)
+    if "catchall" in REALM_CONFIG and REALM_CONFIG["catchall"]:
+        if "catchall_context" in REALM_CONFIG:
+            context_func = REALM_CONFIG["catchall_context"]
+        elif "cms_dir" in REALM_CONFIG:
+            print("inside cms_dir")
+            context_func = 'get_default_context("%s")' % (REALM_CONFIG["cms_dir"])
+        else:
+            raise ("config is incomplete")
+
+        forward += """
+        url_ => cms::layout(req, %s, url_),""" % (
+            context_func
+        )
 
     forward_file_path: str = "src/forward.rs"
     forward_content = FORWARD_TEMPLATE % (forward,)
@@ -251,9 +260,7 @@ def main() -> None:
     generate_reverse(r)
     route_entities = get_route_entities()
     print(route_entities)
-    gen_forward_content = generate_forward(
-        directories=route_entities, routes=r
-    )
+    gen_forward_content = generate_forward(directories=route_entities, routes=r)
     print("gen", gen_forward_content)
 
 
@@ -278,10 +285,10 @@ def test() -> None:
         )
         forward_content = open(test_dir + "/forward.rs").read()
         print("gen", gen_forward_content)
-        assert gen_forward_content.strip() == forward_content.strip()
+        pa.pretty_assert(test_dir, gen_forward_content.strip(), forward_content.strip())
         print(test_dir, " passed forward")
 
 
 if __name__ == "__main__":
-    # main()
-    test()
+    main()
+    # test()
