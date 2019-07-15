@@ -106,7 +106,7 @@ def generate_forward(directories, routes, test_dir=None):
 
         if len(args) == 0:
             forward += """
-        "%s" => %s::layout(in_),""" % (
+        "%s" => routes::%s::layout(in_),""" % (
                 url,
                 mod,
             )
@@ -130,7 +130,7 @@ def generate_forward(directories, routes, test_dir=None):
                 )
 
             forward += """
-            %s::layout(in_, %s)
+            routes::%s::layout(in_, %s)
         }""" % (
                 mod,
                 ", ".join(arg[0] for arg in args),
@@ -241,6 +241,9 @@ def test() -> None:
         forward_content = open(test_dir + "/forward.rs").read()
         print("gen forward")
         print(gen_forward_content)
+
+        # assert gen_forward_content.strip() == forward_content.strip()
+        print(test_dir, " passed")
 
 
 if __name__ == "__main__":
