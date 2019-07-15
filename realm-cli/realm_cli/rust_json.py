@@ -4,8 +4,8 @@ from typing import List, Tuple, Optional, Match
 from string import Template
 import json
 
-with open("realm.json") as f:
-    REALM_CONFIG = json.load(f)
+
+REALM_CONFIG = {}
 
 
 REVERSE_TEMPLATE = """
@@ -60,10 +60,16 @@ def get_route_entities(test_dir: Optional[str] = None) -> List[str]:
 
 def get_routes(test_dir: Optional[str] = None):
     routes: List[Tuple[str, str, List[Tuple[str, str]]]] = []
-
+    global  REALM_CONFIG
+    if os.path.exists("realm.json"):
+        with open("realm.json") as f:
+            REALM_CONFIG = json.load(f)
     routes_dir_path: str = "src/routes/"
     if test_dir:
         routes_dir_path = test_dir + "/routes/"
+        if os.path.exists(test_dir + "/realm.json"):
+            with open(test_dir + "/realm.json") as f:
+                REALM_CONFIG = json.load(f)
 
     for root, _, files in os.walk(routes_dir_path):
         print("root, _, files", root, _, files)
@@ -150,18 +156,19 @@ def generate_forward(directories, routes, test_dir=None):
                 ", ".join(arg[0] for arg in args),
             )
         
-        if REALM_CONFIG["catchall"]:
+        print("config", REALM_CONFIG)
+        if "catchall" in REALM_CONFIG and REALM_CONFIG["catchall"]:
             if "catchall_context" in REALM_CONFIG:
                 context_func = REALM_CONFIG["catchall_context"]
             elif "cms_dir" in REALM_CONFIG:
+                print('inside cms_dir')
                 context_func = 'get_default_context("%s")'%(REALM_CONFIG["cms_dir"])
             else:
                 raise("config is incomplete")
         
             
             forward += """
-        url_ => cms::layout(req, %s, url_),
-            """%(context_func)
+        url_ => cms::layout(req, %s, url_),"""%(context_func)
 
     forward_file_path: str = "src/forward.rs"
     forward_content = FORWARD_TEMPLATE % (forward,)
@@ -270,10 +277,11 @@ def test() -> None:
             directories=route_entities, routes=r, test_dir=test_dir
         )
         forward_content = open(test_dir + "/forward.rs").read()
+        print("gen", gen_forward_content)
         assert gen_forward_content.strip() == forward_content.strip()
         print(test_dir, " passed forward")
 
 
 if __name__ == "__main__":
-    main()
-    # test()
+    # main()
+    test()

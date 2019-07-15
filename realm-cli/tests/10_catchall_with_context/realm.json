@@ -1,0 +1,4 @@
+{
+  "catchall": true,
+  "catchall_context": "cms::context()"
+}

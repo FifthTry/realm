@@ -1,5 +1,3 @@
 {
-  "catchall": true,
-  "cms_dir": "cms",
-  "catchall_context": "cms::context()"
+
 }
