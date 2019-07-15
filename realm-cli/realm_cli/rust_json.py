@@ -2,6 +2,10 @@ import os
 import re
 from typing import List, Tuple, Optional, Match
 from string import Template
+import json
+
+REALM_CONFIG = json.load("realm.json")
+
 
 REVERSE_TEMPLATE = """
 use realm::utils::{Maybe, url2path};
@@ -144,6 +148,19 @@ def generate_forward(directories, routes, test_dir=None):
                 mod,
                 ", ".join(arg[0] for arg in args),
             )
+        
+        if REALM_CONFIG["catchall"]:
+            if "catchall_context" in REALM_CONFIG:
+                context_func = REALM_CONFIG["catchall_context"]
+            elif "cms_dir" in REALM_CONFIG:
+                context_func = 'get_default_context("%s")'%(REALM_CONFIG["cms_dir"])
+            else:
+                raise("config is incomplete")
+        
+            
+            forward += """
+        url_ => cms::layout(req, %s, url_),
+            """%(context_func)
 
     forward_file_path: str = "src/forward.rs"
     forward_content = FORWARD_TEMPLATE % (forward,)
@@ -239,10 +256,10 @@ def test() -> None:
             print(i)
         gen_reverse_content = generate_reverse(r, test_dir=test_dir)
         reverse_content = open(test_dir + "/reverse.rs").read()
-        
+
         assert gen_reverse_content.strip() == reverse_content.strip()
         print(test_dir, " passed reverse")
-        
+
         route_entities = get_route_entities(test_dir=test_dir)
         gen_forward_content = generate_forward(
             directories=route_entities, routes=r, test_dir=test_dir
