@@ -4,7 +4,8 @@ from typing import List, Tuple, Optional, Match
 from string import Template
 import json
 
-REALM_CONFIG = json.load("realm.json")
+with open("realm.json") as f:
+    REALM_CONFIG = json.load(f)
 
 
 REVERSE_TEMPLATE = """
@@ -243,6 +244,10 @@ def main() -> None:
     generate_reverse(r)
     route_entities = get_route_entities()
     print(route_entities)
+    gen_forward_content = generate_forward(
+        directories=route_entities, routes=r
+    )
+    print("gen", gen_forward_content)
 
 
 def test() -> None:
@@ -270,5 +275,5 @@ def test() -> None:
 
 
 if __name__ == "__main__":
-    # main()
-    test()
+    main()
+    # test()
