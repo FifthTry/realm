@@ -1,8 +1,9 @@
 use itertools::Itertools;
 use chrono::NaiveDate;
 use serde_json::Value as JsonValue;
+use serde::de::DeserializeOwned;
 use std::{
-
+    collections::HashMap,
     fmt::{Debug, Display},
     fs,
     io::{Read, Write},
@@ -134,3 +135,70 @@ impl<T> Default for List<T> {
         List(Vec::new())
     }
 }
+
+
+
+fn first_rest(s: &str) -> (Option<String>, String) {
+    let mut parts = s.split("/");
+    match parts.nth(0) {
+        Some(v) => (Some(v.to_string()), sub_string(s, v.len() + 1, None)),
+        None => (None, s.to_owned()),
+    }
+}
+
+
+pub fn sub_string(s: &str, start: usize, len: Option<usize>) -> String {
+    match len {
+        Some(len) => s.chars().skip(start).take(len).collect(),
+        None => s.chars().skip(start).collect(),
+    }
+}
+
+
+
+pub fn get<T>(
+    name: &str,
+    query: &HashMap<String, String>,
+    data: &serde_json::Value,
+    rest: &mut String,
+    is_optional: bool,
+) -> Result<T, failure::Error>
+where
+    T: FromStr + DeserializeOwned,
+    <T as FromStr>::Err: Debug,
+    T: Default,
+{
+    // handle path
+    if rest.len() != 0 {
+        let (first, last) = first_rest(&rest);
+        rest.truncate(0);
+        rest.push_str(&last);
+        if let Some(v) = first {
+            return match v.parse() {
+                Ok(v) => Ok(v),
+                Err(e) => Err(failure::err_msg(format!("can't parse rest: {:?}", e)))?,
+            };
+        }
+    }
+
+    if let Some(v) = query.get(name) {
+        return match v.parse() {
+            Ok(v) => Ok(v),
+            Err(e) => Err(failure::err_msg(format!("can't parse query: {:?}", e)))?,
+        };
+    }
+
+    // TODO: if T is Option<X>, then we should not fail if key is not present in json
+    if let Some(v) = data.get(name) {
+        return match serde_json::from_value(v.to_owned()) {
+            Ok(v) => Ok(v),
+            Err(e) => Err(failure::err_msg(format!("can't parse data: {:?}", e)))?,
+        };
+    }
+
+    if is_optional {
+        return Ok(T::default());
+    }
+    Err(failure::err_msg(format!("\"{}\" not found", name)))?
+}
+

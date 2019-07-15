@@ -11,11 +11,21 @@ use realm::utils::{Maybe, url2path};
 
 FORWARD_TEMPLATE = """
 use crate::routes;
-use realm::utils::get_slash_complete_path;
+use realm::utils::{get_slash_complete_path, get, sub_string};
+use serde_json::Value;
+use std::collections::HashMap;
+use url::Url;
+
+
 pub fn magic(req: &realm::Request) -> realm::Result {
-    let path = get_slash_complete_path(req.uri().path());
-    match path.as_ref() {
-        %s
+    let url = req.uri();
+    let site_url = "http://127.0.0.1:3000".to_string();
+    let path = get_slash_complete_path(url.path());
+    let url = Url::parse(&format!("{}{}", &site_url, req.uri()).as_str())?;
+    let mut rest = sub_string(path.as_ref(), path.len(), None);
+    let data_: serde_json::Value = serde_json::from_slice(req.body().as_slice()).unwrap_or_else(|e| json!(null));
+    let query_: HashMap<_, _> = url.query_pairs().into_owned().collect();
+    match path.as_ref() {%s
         _ => unimpemented!()
     }
 }
@@ -113,8 +123,7 @@ def generate_forward(directories, routes, test_dir=None):
         else:
             forward += (
                 """
-            "%s" => {
-                """
+            "%s" => {"""
                 % url
             )
 
@@ -123,7 +132,7 @@ def generate_forward(directories, routes, test_dir=None):
                 if type.startswith("Maybe<"):
                     is_optional = "true"
                 forward += """
-            let %s = router::get("%s", &query_, data_, &mut rest, %s)?;""" % (
+            let %s = get("%s", &query_, data_, &mut rest, %s)?;""" % (
                     name,
                     name,
                     is_optional,
@@ -131,7 +140,7 @@ def generate_forward(directories, routes, test_dir=None):
 
             forward += """
             routes::%s::layout(in_, %s)
-        }""" % (
+        },""" % (
                 mod,
                 ", ".join(arg[0] for arg in args),
             )
@@ -228,12 +237,12 @@ def test() -> None:
         r = get_routes(test_dir=test_dir)
         for i in r:
             print(i)
-        """gen_reverse_content = generate_reverse(r, test_dir=test_dir)
+        gen_reverse_content = generate_reverse(r, test_dir=test_dir)
         reverse_content = open(test_dir + "/reverse.rs").read()
         print("rev", reverse_content)
         print(gen_reverse_content)
         assert gen_reverse_content.strip() == reverse_content.strip()
-        print(test_dir, " passed")"""
+        print(test_dir, " passed")
         route_entities = get_route_entities(test_dir=test_dir)
         gen_forward_content = generate_forward(
             directories=route_entities, routes=r, test_dir=test_dir
@@ -242,7 +251,7 @@ def test() -> None:
         print("gen forward")
         print(gen_forward_content)
 
-        # assert gen_forward_content.strip() == forward_content.strip()
+        assert gen_forward_content.strip() == forward_content.strip()
         print(test_dir, " passed")
 
 
