@@ -6,12 +6,6 @@ use std::{collections::HashMap, env};
 use url::Url;
 use graft::{self, Context, DirContext};
 
-pub fn get_default_context(cms_path: &str) -> impl Context {
-     let mut proj_dir = env::current_dir().expect("could not find current dir");
-
-
-    DirContext::new(proj_dir.join(cms_path).join("includes"))
-}
 
 pub fn magic(req: &realm::Request) -> realm::Result {
     let url = req.uri();
@@ -23,7 +17,7 @@ pub fn magic(req: &realm::Request) -> realm::Result {
     let query_: HashMap<_, _> = url.query_pairs().into_owned().collect();
     match path.as_ref() {
         "/" => routes::index::layout(req),
-        url_ => cms::layout(req, get_default_context("cms"), url_),
+        url_ => cms::layout(req, cms::get_default_context(), url_),
         _ => unimplemented!()
     }
 }

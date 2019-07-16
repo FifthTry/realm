@@ -23,12 +23,6 @@ use std::{collections::HashMap, env};
 use url::Url;
 use graft::{self, Context, DirContext};
 
-pub fn get_default_context(cms_path: &str) -> impl Context {
-     let mut proj_dir = env::current_dir().expect("could not find current dir");
-
-
-    DirContext::new(proj_dir.join(cms_path).join("includes"))
-}
 
 pub fn magic(req: &realm::Request) -> realm::Result {
     let url = req.uri();
@@ -170,9 +164,9 @@ def generate_forward(directories, routes, test_dir=None):
             context_func = REALM_CONFIG["catchall_context"]
         elif "cms_dir" in REALM_CONFIG:
             print("inside cms_dir")
-            context_func = 'get_default_context("%s")' % (REALM_CONFIG["cms_dir"])
+            context_func = 'cms::get_context("%s")' % (REALM_CONFIG["cms_dir"])
         else:
-            context_func = 'get_default_context("%s")' % ("cms")
+            context_func = 'cms::get_default_context()'
 
         forward += """
         url_ => cms::layout(req, %s, url_),""" % (
@@ -285,10 +279,14 @@ def test() -> None:
         )
         forward_content = open(test_dir + "/forward.rs").read()
         print("gen", gen_forward_content)
-        pa.pretty_assert(test_dir, gen_forward_content.strip(), forward_content.strip())
+        try:
+            assert( gen_forward_content.strip() == forward_content.strip())
+        except:
+            print("test_dir failed", test_dir)
+            pa.pretty_assert(test_dir, gen_forward_content.strip(), forward_content.strip())
         print(test_dir, " passed forward")
 
 
 if __name__ == "__main__":
-    main()
-    # test()
+    # main()
+    test()
