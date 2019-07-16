@@ -172,7 +172,7 @@ def generate_forward(directories, routes, test_dir=None):
             print("inside cms_dir")
             context_func = 'get_default_context("%s")' % (REALM_CONFIG["cms_dir"])
         else:
-            raise ("config is incomplete")
+            context_func = 'get_default_context("%s")' % ("cms")
 
         forward += """
         url_ => cms::layout(req, %s, url_),""" % (
