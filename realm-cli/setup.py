@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="realm_cli",
-    version="0.0.4",
+    version="0.0.5",
     entry_points={"console_scripts": ["realm-cli=realm_cli.main:main"]},
     author="nilinswap",
     author_email="nilinswap@gmail.com",
@@ -18,4 +18,5 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/ackotech/realm/",
     packages=find_packages(),
+    install_requires=["cookiecutter>=1.6.0"],
 )
