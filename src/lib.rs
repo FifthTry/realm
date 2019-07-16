@@ -16,6 +16,7 @@ mod page;
 mod serve;
 mod widget;
 pub mod utils;
+pub mod request_config;
 
 pub(crate) use crate::config::{Config, CONFIG};
 pub use crate::html::HTML;
@@ -26,3 +27,4 @@ pub use crate::widget::{Widget, WidgetSpec};
 pub type Result = std::result::Result<http::Response<Vec<u8>>, failure::Error>;
 pub type Request = http::request::Request<Vec<u8>>;
 pub type Response = http::response::Response<Vec<u8>>;
+

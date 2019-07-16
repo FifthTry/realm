@@ -15,24 +15,10 @@ use realm::utils::{Maybe, url2path};
 """
 
 FORWARD_TEMPLATE = """
-use crate::routes;
-use crate::cms;
-use realm::utils::{get_slash_complete_path, get, sub_string};
-use serde_json::Value;
-use std::{collections::HashMap, env};
-use url::Url;
-use graft::{self, Context, DirContext};
-
-
-pub fn magic(req: &realm::Request) -> realm::Result {
-    let url = req.uri();
-    let site_url = "http://127.0.0.1:3000".to_string();
-    let path = get_slash_complete_path(url.path());
-    let url = Url::parse(&format!("{}{}", &site_url, req.uri()).as_str())?;
-    let mut rest = sub_string(path.as_ref(), path.len(), None);
-    let data_: serde_json::Value = serde_json::from_slice(req.body().as_slice()).unwrap_or_else(|e| json!(null));
-    let query_: HashMap<_, _> = url.query_pairs().into_owned().collect();
-    match path.as_ref() {%s
+pub fn magic(ireq: %s) -> realm::Result {
+    let req = ireq.realm_request;
+    let input = realm::request_config::RequestConfig::new(req)?;
+    match input.path.as_str() {%s
         _ => unimplemented!()
     }
 }
@@ -112,12 +98,24 @@ def get_routes(test_dir: Optional[str] = None):
 def generate_forward(directories, routes, test_dir=None):
     # filter routes and directories based on whitelist
 
-    template = Template("use $crate;")
-    use_crates = []
-    for directory in directories:
-        use_crates.append(template.substitute(crate=directory))
-    use_crates = "\n".join(use_crates)
     forward = ""
+    print("config", REALM_CONFIG)
+    if "catchall" in REALM_CONFIG and REALM_CONFIG["catchall"]:
+        if "catchall_context" in REALM_CONFIG:
+            context_func = REALM_CONFIG["catchall_context"]
+        elif "cms_dir" in REALM_CONFIG:
+            print("inside cms_dir")
+            context_func = 'crate::cms::get_context("%s")' % (REALM_CONFIG["cms_dir"])
+        else:
+            context_func = "crate::cms::get_default_context()"
+
+        forward += """
+            url_ => crate::cms::layout(&input.req, %s, url_),""" % (
+            context_func
+        )
+    if "context" in REALM_CONFIG:
+        ireq_type = REALM_CONFIG["context"]
+
     for (url, mod, args) in routes:
 
         print("uma, ", url, mod, args)
@@ -129,7 +127,7 @@ def generate_forward(directories, routes, test_dir=None):
 
         if len(args) == 0:
             forward += """
-        "%s" => routes::%s::layout(req),""" % (
+        "%s" => crate::routes::%s::layout(&input.req,),""" % (
                 url,
                 mod,
             )
@@ -145,36 +143,21 @@ def generate_forward(directories, routes, test_dir=None):
                 if type.startswith("Maybe<"):
                     is_optional = "true"
                 forward += """
-            let %s = get("%s", &query_, data_, &mut rest, %s)?;""" % (
+            let %s = realm::utils::get("%s", &query_, data_, &mut rest, %s)?;""" % (
                     name,
                     name,
                     is_optional,
                 )
 
             forward += """
-            routes::%s::layout(req, %s)
+            crate::routes::%s::layout(&input, %s)
         },""" % (
                 mod,
                 ", ".join(arg[0] for arg in args),
             )
 
-    print("config", REALM_CONFIG)
-    if "catchall" in REALM_CONFIG and REALM_CONFIG["catchall"]:
-        if "catchall_context" in REALM_CONFIG:
-            context_func = REALM_CONFIG["catchall_context"]
-        elif "cms_dir" in REALM_CONFIG:
-            print("inside cms_dir")
-            context_func = 'cms::get_context("%s")' % (REALM_CONFIG["cms_dir"])
-        else:
-            context_func = 'cms::get_default_context()'
-
-        forward += """
-        url_ => cms::layout(req, %s, url_),""" % (
-            context_func
-        )
-
     forward_file_path: str = "src/forward.rs"
-    forward_content = FORWARD_TEMPLATE % (forward,)
+    forward_content = FORWARD_TEMPLATE % (ireq_type, forward)
     if not test_dir:
         open(forward_file_path, "w").write(forward_content)
 
@@ -259,7 +242,9 @@ def main() -> None:
 
 
 def test() -> None:
-    for test_dir in os.listdir("tests"):
+    test_dirs = os.listdir("tests")
+    #test_dirs = ["11_middleware"]
+    for test_dir in test_dirs:
         if test_dir == "temp.rs":
             continue
         print("entered", test_dir)
@@ -280,10 +265,12 @@ def test() -> None:
         forward_content = open(test_dir + "/forward.rs").read()
         print("gen", gen_forward_content)
         try:
-            assert( gen_forward_content.strip() == forward_content.strip())
+            assert gen_forward_content.strip() == forward_content.strip()
         except:
             print("test_dir failed", test_dir)
-            pa.pretty_assert(test_dir, gen_forward_content.strip(), forward_content.strip())
+            pa.pretty_assert(
+                test_dir, gen_forward_content.strip(), forward_content.strip()
+            )
         print(test_dir, " passed forward")
 
 

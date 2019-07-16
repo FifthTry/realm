@@ -27,7 +27,8 @@ macro_rules! realm {
             pub fn handle_sync(
                 req: realm::Request,
             ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
-                match $e(&req).map(|r| http_to_hyper(r)) {
+
+                match $e(req).map(|r| http_to_hyper(r)) {
                     Ok(a) => Ok(a),
                     Err(e) => {
                         println!("error : {:?}", e);
