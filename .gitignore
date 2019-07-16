@@ -1,8 +1,11 @@
 target
 __pycache__/
+dist/
 *.pyc
 elm-stuff/
+build/
 .idea/
 regenerated/
 scripts/output.txt
 UNKNOWN.egg-info/
+realm_cli.egg-info/

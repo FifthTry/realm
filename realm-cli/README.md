@@ -7,7 +7,8 @@
 ##### example -> `realm-cli startproject hello`
 
 ### To build project
-Move to the project directory and run `realm-cli build`
+Move to the project directory and run `realm-cli build`  
+In our example   
 `
 cd hello
 `  
