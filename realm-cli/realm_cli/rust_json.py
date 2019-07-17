@@ -99,20 +99,7 @@ def generate_forward(directories, routes, test_dir=None):
     # filter routes and directories based on whitelist
 
     forward = ""
-    print("config", REALM_CONFIG)
-    if "catchall" in REALM_CONFIG and REALM_CONFIG["catchall"]:
-        if "catchall_context" in REALM_CONFIG:
-            context_func = REALM_CONFIG["catchall_context"]
-        elif "cms_dir" in REALM_CONFIG:
-            print("inside cms_dir")
-            context_func = 'crate::cms::get_context("%s")' % (REALM_CONFIG["cms_dir"])
-        else:
-            context_func = "crate::cms::get_default_context()"
-
-        forward += """
-            url_ => crate::cms::layout(&input.req, %s, url_),""" % (
-            context_func
-        )
+    
     try:
         ireq_type = REALM_CONFIG["context"]
     except KeyError as e:
@@ -142,20 +129,35 @@ def generate_forward(directories, routes, test_dir=None):
                 if type.startswith("Maybe<"):
                     is_optional = "true"
                 forward += """
-            let %s = realm::utils::get("%s", &query_, data_, &mut rest, %s)?;""" % (
+            let %s = input.get("%s", %s)?;""" % (
                     name,
                     name,
                     is_optional,
                 )
 
             forward += """
-            crate::routes::%s::layout(&input, %s)
+            crate::routes::%s::layout(&input.req, %s)
         },""" % (
                 mod,
                 ", ".join(arg[0] for arg in args),
             )
 
     forward_file_path: str = "src/forward.rs"
+    print("config", REALM_CONFIG)
+    if "catchall" in REALM_CONFIG and REALM_CONFIG["catchall"]:
+        if "catchall_context" in REALM_CONFIG:
+            context_func = REALM_CONFIG["catchall_context"]
+        elif "cms_dir" in REALM_CONFIG:
+            print("inside cms_dir")
+            context_func = 'crate::cms::get_context("%s")' % (
+            REALM_CONFIG["cms_dir"])
+        else:
+            context_func = "crate::cms::get_default_context()"
+    
+        forward += """
+        url_ => crate::cms::layout(&input.req, %s, url_),""" % (
+            context_func
+        )
     forward_content = FORWARD_TEMPLATE % (ireq_type, forward)
     if not test_dir:
         open(forward_file_path, "w").write(forward_content)
@@ -189,7 +191,7 @@ pub fn %s() -> String {
         else:
             reverse += """
 pub fn %s(%s) -> String {
-    let mut url = Url::parse("http://127.0.0.1:3000%s").unwrap();""" % (
+    let mut url = url::Url::parse("http://127.0.0.1:3000%s").unwrap();""" % (
                 function_name,
                 ", ".join("%s: %s" % arg for arg in args),
                 url,

@@ -1,0 +1,8 @@
+{
+  "id": "Markdown",
+  "config": {
+    "body": {
+      "$ref": "body"
+    }
+  }
+}

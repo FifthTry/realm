@@ -1,4 +1,4 @@
 
 mod text_widget;
-pub use text_widget::TextWidget;
+pub use self::text_widget::TextWidget;
 

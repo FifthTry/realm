@@ -1,0 +1,13 @@
+{
+  "title": "title",
+  "permission": "permission",
+  "widget": {
+    "id": "Widgets.AckoWidgets.Markdown",
+    "config": {
+      "body": {
+        "$ref": "body"
+      }
+    }
+  }
+}
+

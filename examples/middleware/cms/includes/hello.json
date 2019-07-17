@@ -1,0 +1,13 @@
+{
+  "title": "title",
+  "permission": "permission",
+  "widget": {
+    "id": "Markdown",
+    "config": {
+      "body": {
+        "$ref": "body"
+      }
+    }
+  }
+}
+
