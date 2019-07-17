@@ -1,0 +1,5 @@
+{
+     "static_dir": "src/static",
+     "elm_source_dirs": ["src/frontend"],
+     "context":  "crate::middleware::Context"
+}

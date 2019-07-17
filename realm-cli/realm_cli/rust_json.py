@@ -113,10 +113,10 @@ def generate_forward(directories, routes, test_dir=None):
             url_ => crate::cms::layout(&input.req, %s, url_),""" % (
             context_func
         )
-    if "context" in REALM_CONFIG:
+    try:
         ireq_type = REALM_CONFIG["context"]
-    else:
-        raise("context parameter missing in realm.json")
+    except KeyError as e:
+        raise(e)
 
     for (url, mod, args) in routes:
         if url == "/" and mod != "index":
