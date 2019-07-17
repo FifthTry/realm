@@ -23,13 +23,6 @@ FORWARD_TEMPLATE = """pub fn magic(ireq: %s) -> realm::Result {
 }
 
 """
-MIDDLEWARE_TEMPLATE = """pub fn middleware(req: realm::Request) -> realm::Result{
-    let ireq  = %s{
-        realm_request: req,
-    };
-    crate::forward::magic(ireq)
-}
-"""
 
 
 
@@ -220,18 +213,6 @@ pub fn %s(%s) -> String {
 
 
 
-def generate_middleware(test_dir = None):
-    if "context" in REALM_CONFIG:
-        ireq_type = REALM_CONFIG["context"]
-    else:
-        raise("context parameter missing in realm.json")
-    
-    middleware_content = MIDDLEWARE_TEMPLATE % (ireq_type)
-    middleware_file_path: str = "src/middleware.rs"
-    if not test_dir:
-        open(middleware_file_path, "w").write(middleware_content)
-    
-    return middleware_content
 
     
 
@@ -262,7 +243,7 @@ def main() -> None:
     gen_forward_content = generate_forward(directories=route_entities, routes=r)
     print("gen", gen_forward_content)
     
-    generate_middleware()
+    
 
 
 def test() -> None:
