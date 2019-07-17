@@ -18,6 +18,7 @@ mod widget;
 pub mod utils;
 pub mod request_config;
 
+
 pub(crate) use crate::config::{Config, CONFIG};
 pub use crate::html::HTML;
 pub use crate::page::Page;
