@@ -1,3 +1,25 @@
+//! Rust / Elm base full stack web framework.
+//!
+//! [Crate's Description]. [what is found through what.]
+//!
+//!
+//! ## Realm!
+//!
+//! Something about the macro
+//!
+//! ## forward function
+//!
+//! ## middleware function
+//!
+//! examples
+//!
+//! ```
+//! some example
+//! ```
+//!
+
+
+
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
