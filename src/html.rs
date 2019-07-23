@@ -1,6 +1,5 @@
 use crate::CONFIG;
 use htmlescape;
-use serde_json::Value;
 use std::collections::HashMap;
 pub struct HTML {
     pub title: String,
@@ -62,8 +61,7 @@ impl HTML {
     </body>
 </html>"#,
             title, &CONFIG.site_icon, data, /*rendered,*/ loader,
-        )
-        .into())
+        ).into())
     }
 
     pub fn render_to_response(&self, spec: crate::WidgetSpec) -> crate::Result {
@@ -198,13 +196,12 @@ fn fetch_ids(data: &serde_json::Value) -> Vec<String> {
     }
 }
 
-fn attach_uids(data: &mut serde_json::Value, count_map: &mut HashMap<String, u64>){
+fn attach_uids(data: &mut serde_json::Value, count_map: &mut HashMap<String, u64>) {
     let mut edit_flag = false;
     match data {
         serde_json::Value::Object(o) => {
             if o.get("id") != None && o.get("config") != None && o.keys().len() == 2 {
                 edit_flag = true;
-
             }
 
             if let Some(serde_json::Value::String(id)) = o.get("id") {

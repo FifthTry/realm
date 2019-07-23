@@ -2,7 +2,6 @@
 pub struct WidgetSpec {
     pub id: String,
     pub config: serde_json::Value,
-
 }
 
 pub trait Widget: serde::ser::Serialize {

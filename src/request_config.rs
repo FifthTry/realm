@@ -1,13 +1,7 @@
-
-use std::{
-    collections::HashMap,
-    str::FromStr,
-    fmt::{Debug, Display},
-};
-use serde_json::Value as JsonValue;
 use serde::de::DeserializeOwned;
+use std::{collections::HashMap, fmt::Debug, str::FromStr};
 #[derive(Debug)]
-pub struct RequestConfig{
+pub struct RequestConfig {
     pub req: crate::Request,
     pub query: std::collections::HashMap<String, String>,
     pub data: serde_json::Value,
@@ -31,17 +25,18 @@ fn first_rest(s: &str) -> (Option<String>, String) {
     }
 }
 
-impl RequestConfig{
+impl RequestConfig {
     pub fn new(req: crate::Request) -> std::result::Result<RequestConfig, failure::Error> {
         let url = req.uri();
         let path = crate::utils::get_slash_complete_path(url.path());
         let site_url = "http://127.0.0.1:3000".to_string();
         let url = url::Url::parse(&format!("{}{}", &site_url, req.uri()).as_str())?;
-        let mut rest = crate::utils::sub_string(path.as_ref(), path.len(), None);
-        let data: serde_json::Value = serde_json::from_slice(req.body().as_slice()).unwrap_or_else(|e| json!(null));
+        let rest = crate::utils::sub_string(path.as_ref(), path.len(), None);
+        let data: serde_json::Value =
+            serde_json::from_slice(req.body().as_slice()).unwrap_or_else(|_e| json!(null));
         let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
         //let req_ = req.clone();
-        let req_config = RequestConfig{
+        let req_config = RequestConfig {
             url,
             rest,
             query,
@@ -52,11 +47,7 @@ impl RequestConfig{
         Ok(req_config)
     }
 
-
-    pub fn get<T>(&mut self,
-        name: &str,
-        is_optional: bool,
-    ) -> Result<T, failure::Error>
+    pub fn get<T>(&mut self, name: &str, is_optional: bool) -> Result<T, failure::Error>
     where
         T: FromStr + DeserializeOwned,
         <T as FromStr>::Err: Debug,
@@ -67,7 +58,6 @@ impl RequestConfig{
         let query: &HashMap<String, String> = &self.query;
         let data: &serde_json::Value = &self.data;
         let rest: &mut String = &mut self.rest;
-
 
         if rest.len() != 0 {
             let (first, last) = first_rest(&rest);
