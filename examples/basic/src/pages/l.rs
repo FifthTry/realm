@@ -5,9 +5,9 @@ pub struct L {
     footer: crate::widgets::Footer,
 }
 
-impl  L{
+impl L {
     pub fn new(req: &realm::Request, body: realm::WidgetSpec) -> L {
-         L {
+        L {
             header: crate::widgets::Header::new(req),
             body,
             footer: crate::widgets::Footer::new(req),

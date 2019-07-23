@@ -1,24 +1,25 @@
-use failure::{self};
+use failure;
 use graft::{self, Context, DirContext};
 use serde_json;
 use std::collections::HashMap;
-use std::{env, fs::{File, canonicalize}, panic, path::PathBuf};
 use std::io;
 use std::io::Read;
-
+use std::{
+    env,
+    fs::{canonicalize, File},
+    panic,
+    path::PathBuf,
+};
 
 pub fn get_context(cms_path: &str) -> impl Context {
-     let mut proj_dir = env::current_dir().expect("could not find current dir");
+    let mut proj_dir = env::current_dir().expect("could not find current dir");
     DirContext::new(proj_dir.join(cms_path).join("includes"))
 }
 
 pub fn get_default_context() -> impl Context {
-     let mut proj_dir = env::current_dir().expect("could not find current dir");
+    let mut proj_dir = env::current_dir().expect("could not find current dir");
     DirContext::new(proj_dir.join("cms").join("includes"))
 }
-
-
-
 
 fn try_cms(path: &str) -> crate::Result<String> {
     let mut proj_dir = env::current_dir().expect("could not find current dir");
@@ -35,7 +36,6 @@ fn try_cms(path: &str) -> crate::Result<String> {
     Ok(content)
 }
 
-
 pub fn cms_content(path: &str) -> crate::Result<String> {
     let path: String = if path.ends_with("/") {
         path.chars().skip(1).take(path.len() - 2).collect()
@@ -48,7 +48,6 @@ pub fn cms_content(path: &str) -> crate::Result<String> {
     }
 }
 
-
 #[derive(Debug, Deserialize, Clone)]
 struct C {
     pub title: String,
@@ -56,7 +55,7 @@ struct C {
     pub widget: serde_json::Value,
 }
 
-pub fn layout( req: &realm::Request, context: impl Context, url: &str) -> realm::Result {
+pub fn layout(req: &realm::Request, context: impl Context, url: &str) -> realm::Result {
     let content = match cms_content(url) {
         Ok(content) => content,
         Err(e) => {
@@ -66,7 +65,6 @@ pub fn layout( req: &realm::Request, context: impl Context, url: &str) -> realm:
     };
 
     println!("content {:?}", content);
-
 
     //println!("context {:?}", context);
     let v = graft::convert(&content, &context)?;

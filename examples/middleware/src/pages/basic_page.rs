@@ -1,5 +1,5 @@
 #[derive(Serialize)]
-pub struct BasicPage{
+pub struct BasicPage {
     header: crate::widgets::Header,
     body: realm::WidgetSpec,
     footer: crate::widgets::Footer,
