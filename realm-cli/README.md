@@ -29,10 +29,12 @@ $ realm-cli build
 
 ## Development
 
-### Use local package
+1. Use local package:
 
-`
-$ python setup.py develop 
-`
+  `
+  $ python setup.py develop
+  `
 
+2. use black `black realm-cli` from time to time.
+3. run test: `realm-cli test`.
 
