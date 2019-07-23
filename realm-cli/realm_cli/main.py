@@ -9,49 +9,92 @@ import json
 from typing import List
 
 
+VERSION = "0.1.0"
+
 def main():
-    print(sys.argv)
-    if sys.argv[1] == "startproject":
-        project_name: str = "hello"
-        if len(sys.argv) > 2 and sys.argv[2] != "":
-            project_name = sys.argv[2]
-            cookiecutter(
-                "gh:nilinswap/realm-startapp",
-                extra_context={
-                    "project_name": project_name,
-                    "project_slug": project_name,
-                },
-                no_input=True,
-            )
+    if len(sys.argv) == 1:
+        print(f"""\
+Hi, thank you for trying out realm-cli {VERSION} . I hope you like it!
 
-        os.chdir(project_name)
-        os.system("yarn add package.json")  # make exception friendly
+----------------------------------------------------------------------------
+I highly recommend walking throught https://www.realmproject.dev to get 
+started. It teaches many important concepts, including how to use realm-cli 
+in terminal.
+----------------------------------------------------------------------------
 
-        curr_dir: str = os.getcwd()
-        print("curr_dir", curr_dir)
-        bin_path: str = os.path.join(curr_dir, "node_modules", ".bin")
-        elm_path: str = os.path.join(bin_path, "elm")
-        os.system(elm_path + " make")
+The most common commonds are:
 
+    realm-cli startproject <proj_name>
+        create a new project realm project.
+
+    realm-cli build
+         build the current realm project.
+
+    realm-cli run
+         run the current realm project.
+
+Be sure to ask on https://gitter.im/amitu/realm if you run into trouble! Folks
+are friendly and happy to help out. They hang out there because it is fun, so
+be kind to get best results!
+        """)
+        return
+
+    if sys.argv[1] == "version":
+        handle_version()
+    elif sys.argv[1] == "startproject":
+        handle_startproject()
     elif sys.argv[1] == "debug":
-        curr_dir: str = os.getcwd()
-        print("curr_dir, ", curr_dir)
-        bin_path: str = os.path.join(curr_dir, "node_modules", ".bin")
-        elm_path: str = os.path.join(bin_path, "elm")
-        elm_format_path: str = os.path.join(bin_path, "elm-format")
-        elm_dest_dir: str = "src/static/realm/elatest/"
-        elm_src_dirs: List[str] = ["src/frontend"]
-        with open("realm.json", "r") as f:
-            config = json.load(f)
-            elm_src_dirs: List[str] = config["elm_source_dirs"]
-
-        ce.check_conflicts(elm_src_dirs)
-        for src_dir in elm_src_dirs:
-            ce.compile_all_elm(src_dir, elm_dest_dir, elm_path, elm_format_path, "")
-        os.system("RUST_BACKTRACE=1 cargo run")
-
+        handle_debug()
     elif sys.argv[1] == "build":
         rj.main()
+    elif sys.argv[1] == "test":
+        rj.test()
+    else:
+        print(f"unknown command: {sys.argv[1]}")
 
+
+def handle_version():
+    print(VERSION)
+
+
+def handle_startproject():
+    project_name: str = "hello"
+    if len(sys.argv) > 2 and sys.argv[2] != "":
+        project_name = sys.argv[2]
+        cookiecutter(
+            "gh:nilinswap/realm-startapp",
+            extra_context={
+                "project_name": project_name,
+                "project_slug": project_name,
+            },
+            no_input=True,
+        )
+
+    os.chdir(project_name)
+    os.system("yarn add package.json")  # make exception friendly
+
+    curr_dir: str = os.getcwd()
+    print("curr_dir", curr_dir)
+    bin_path: str = os.path.join(curr_dir, "node_modules", ".bin")
+    elm_path: str = os.path.join(bin_path, "elm")
+    os.system(elm_path + " make")
+
+
+def handle_debug():
+    curr_dir: str = os.getcwd()
+    print("curr_dir, ", curr_dir)
+    bin_path: str = os.path.join(curr_dir, "node_modules", ".bin")
+    elm_path: str = os.path.join(bin_path, "elm")
+    elm_format_path: str = os.path.join(bin_path, "elm-format")
+    elm_dest_dir: str = "src/static/realm/elatest/"
+    elm_src_dirs: List[str] = ["src/frontend"]
+    with open("realm.json", "r") as f:
+        config = json.load(f)
+        elm_src_dirs: List[str] = config["elm_source_dirs"]
+
+    ce.check_conflicts(elm_src_dirs)
+    for src_dir in elm_src_dirs:
+        ce.compile_all_elm(src_dir, elm_dest_dir, elm_path, elm_format_path, "")
+    os.system("RUST_BACKTRACE=1 cargo run")
 
 # ToDo: make main clean; in fact, read the whole thing for grace.

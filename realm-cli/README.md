@@ -1,22 +1,38 @@
 # realm-cli
 
-## A command line utitily to provide services offered by realm( a rust-elm web framework).
+A command line utitily to provide services offered by realm (a rust-elm web 
+framework).
+
+## Usage
 
 ### To create a new realm project 
+
 `realm-cli startproject <project_name>`
-##### example -> `realm-cli startproject hello`
+
+eg: `realm-cli startproject hello`
+
 
 ### To build project
+
 Move to the project directory and run `realm-cli build`  
-In our example   
+
+In our example:
+   
 `
-cd hello
-`  
-`realm-cli build`
+$ cd hello
+$ realm-cli build
+`
 
 ### To get server up and running
-run `realm-cli debug`  
 
+`$ realm-cli debug`  
 
+## Development
+
+### Use local package
+
+`
+$ python setup.py develop 
+`
 
 

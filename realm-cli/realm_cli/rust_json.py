@@ -250,6 +250,7 @@ def main() -> None:
 
 def test() -> None:
     test_dirs = os.listdir("tests")
+    test_dirs.sort()
     #test_dirs = ["11_middleware"]
     for test_dir in test_dirs:
         if test_dir == "temp.rs":
@@ -280,8 +281,6 @@ def test() -> None:
                 test_dir, gen_forward_content.strip(), forward_content.strip()
             )
         print(test_dir, " passed forward")
-        
-        
         
 
 
