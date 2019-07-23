@@ -5,6 +5,7 @@ dist/
 elm-stuff/
 build/
 .idea/
+builds
 regenerated/
 scripts/output.txt
 UNKNOWN.egg-info/
