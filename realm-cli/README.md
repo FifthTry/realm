@@ -32,7 +32,7 @@ $ realm-cli build
 1. Use local package:
 
   `
-  $ python setup.py develop
+  $ pip install -e .
   `
 
 2. use black `black realm-cli` from time to time.
