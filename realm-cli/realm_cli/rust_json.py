@@ -15,7 +15,7 @@ use realm::utils::{Maybe, url2path};
 """
 
 FORWARD_TEMPLATE = """pub fn magic(%s) -> realm::Result {%s
-    let input = realm::request_config::RequestConfig::new(req)?;
+    let mut input = realm::request_config::RequestConfig::new(req)?;
     match input.path.as_str() {%s
         _ => unimplemented!()
     }
@@ -103,8 +103,6 @@ def generate_forward(directories, routes, test_dir=None):
     else:
         print("'context' key is absent in realm.json")
         ireq_type = None
-    
-    
 
     for (url, mod, args) in routes:
         if url == "/" and mod != "index":
@@ -158,17 +156,17 @@ def generate_forward(directories, routes, test_dir=None):
         url_ => crate::cms::layout(&input.req, %s, url_),""" % (
             context_func
         )
-        
+
     if not ireq_type:
         default_arg_st = "req: realm::Request"
-        forward_content = FORWARD_TEMPLATE % (default_arg_st,"", forward)
+        forward_content = FORWARD_TEMPLATE % (default_arg_st, "", forward)
     else:
-        arg_st  = "ireq: %s"%(ireq_type)
+        arg_st = "ireq: %s" % (ireq_type)
         extra_st = "let req = ireq.realm_request;\n"
-        forward_content = FORWARD_TEMPLATE % (arg_st,extra_st, forward )
+        forward_content = FORWARD_TEMPLATE % (arg_st, extra_st, forward)
     if not test_dir:
         open(forward_file_path, "w").write(forward_content)
-    
+
     return forward_content
 
 
