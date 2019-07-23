@@ -261,7 +261,15 @@ def test() -> None:
         gen_reverse_content = generate_reverse(r, test_dir=test_dir)
         reverse_content = open(test_dir + "/reverse.rs").read()
 
-        assert gen_reverse_content.strip() == reverse_content.strip()
+        try:
+            assert gen_reverse_content.strip() == reverse_content.strip()
+        except:
+            print("reverse test_dir failed", test_dir)
+            pa.pretty_assert(
+                test_dir, gen_reverse_content.strip(), reverse_content.strip()
+            )
+            print("reverse test_dir failed", test_dir)
+            
         print(test_dir, " passed reverse")
 
         route_entities = get_route_entities(test_dir=test_dir)
@@ -273,7 +281,7 @@ def test() -> None:
         try:
             assert gen_forward_content.strip() == forward_content.strip()
         except:
-            print("test_dir failed", test_dir)
+            print("forward test_dir failed", test_dir)
             pa.pretty_assert(
                 test_dir, gen_forward_content.strip(), forward_content.strip()
             )

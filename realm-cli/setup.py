@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="realm_cli",
-    version="0.0.6",
+    version="0.0.7.1",
     entry_points={"console_scripts": ["realm-cli=realm_cli.main:main"]},
     author="nilinswap",
     author_email="nilinswap@gmail.com",
