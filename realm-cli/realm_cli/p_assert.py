@@ -1,14 +1,14 @@
 import os
 
 
-def pretty_assert(context, st1, st2):
+def pretty_assert(context, dir,  st1, st2):
 
     try:
         assert st1 == st2
     except:
-        print("context", context)
-        context = context.split("/")[-1]
+        print("context", dir)
+        dir = dir.split("/")[-1]
 
-        open("/tmp/1_" + context, "w").write(st1)
-        open("/tmp/2_" + context, "w").write(st2)
-        os.system("git diff /tmp/1_"+ context + " /tmp/2_"+ context)
+        open("/tmp/"+ context+ "_gen_" + dir, "w").write(st1)
+        open("/tmp/"+ context+ "_tar_" + dir, "w").write(st2)
+        os.system("git diff "+ "/tmp/"+ context+ "_gen_" + dir + " /tmp/"+ context+ "_tar_" + dir)

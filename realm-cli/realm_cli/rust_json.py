@@ -8,8 +8,7 @@ import realm_cli.p_assert as pa
 REALM_CONFIG = {}
 
 
-REVERSE_TEMPLATE = """
-use realm::utils::{Maybe, url2path};
+REVERSE_TEMPLATE = """use realm::utils::{Maybe, url2path};
 
 %s
 """
@@ -112,7 +111,7 @@ def generate_forward(directories, routes, test_dir=None):
 
         if len(args) == 0:
             forward += """
-        "%s" => crate::routes::%s::layout(&input.req,),""" % (
+        "%s" => crate::routes::%s::layout(&input.req),""" % (
                 url,
                 mod,
             )
@@ -162,7 +161,8 @@ def generate_forward(directories, routes, test_dir=None):
         forward_content = FORWARD_TEMPLATE % (default_arg_st, "", forward)
     else:
         arg_st = "ireq: %s" % (ireq_type)
-        extra_st = "let req = ireq.realm_request;\n"
+        extra_st = """
+    let req = ireq.realm_request;"""
         forward_content = FORWARD_TEMPLATE % (arg_st, extra_st, forward)
     if not test_dir:
         open(forward_file_path, "w").write(forward_content)
@@ -266,7 +266,7 @@ def test() -> None:
         except:
             print("reverse test_dir failed", test_dir)
             pa.pretty_assert(
-                test_dir, gen_reverse_content.strip(), reverse_content.strip()
+                "reverse", test_dir, gen_reverse_content.strip(), reverse_content.strip()
             )
             print("reverse test_dir failed", test_dir)
             
@@ -283,7 +283,7 @@ def test() -> None:
         except:
             print("forward test_dir failed", test_dir)
             pa.pretty_assert(
-                test_dir, gen_forward_content.strip(), forward_content.strip()
+                "forward", test_dir, gen_forward_content.strip(), forward_content.strip()
             )
         print(test_dir, " passed forward")
 
