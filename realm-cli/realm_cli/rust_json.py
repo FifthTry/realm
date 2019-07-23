@@ -25,7 +25,6 @@ FORWARD_TEMPLATE = """pub fn magic(ireq: %s) -> realm::Result {
 """
 
 
-
 def get_route_entities(test_dir: Optional[str] = None) -> List[str]:
     """
     Gets a list of all directories which are also routes in routes/
@@ -99,11 +98,11 @@ def generate_forward(directories, routes, test_dir=None):
     # filter routes and directories based on whitelist
 
     forward = ""
-    
+
     try:
         ireq_type = REALM_CONFIG["context"]
     except KeyError as e:
-        raise(e)
+        raise (e)
 
     for (url, mod, args) in routes:
         if url == "/" and mod != "index":
@@ -149,11 +148,10 @@ def generate_forward(directories, routes, test_dir=None):
             context_func = REALM_CONFIG["catchall_context"]
         elif "cms_dir" in REALM_CONFIG:
             print("inside cms_dir")
-            context_func = 'crate::cms::get_context("%s")' % (
-            REALM_CONFIG["cms_dir"])
+            context_func = 'crate::cms::get_context("%s")' % (REALM_CONFIG["cms_dir"])
         else:
             context_func = "crate::cms::get_default_context()"
-    
+
         forward += """
         url_ => crate::cms::layout(&input.req, %s, url_),""" % (
             context_func
@@ -214,10 +212,6 @@ pub fn %s(%s) -> String {
     return reverse_content
 
 
-
-
-    
-
 def parse(mod_path: str) -> List[Tuple[str, str]]:
     """
     Given a module name (file path, relative to ., eg src/acko/utils.rs), this
@@ -244,14 +238,11 @@ def main() -> None:
     print(route_entities)
     gen_forward_content = generate_forward(directories=route_entities, routes=r)
     print("gen", gen_forward_content)
-    
-    
 
 
 def test() -> None:
     test_dirs = os.listdir("tests")
     test_dirs.sort()
-    #test_dirs = ["11_middleware"]
     for test_dir in test_dirs:
         if test_dir == "temp.rs":
             continue
@@ -265,7 +256,6 @@ def test() -> None:
 
         assert gen_reverse_content.strip() == reverse_content.strip()
         print(test_dir, " passed reverse")
-
 
         route_entities = get_route_entities(test_dir=test_dir)
         gen_forward_content = generate_forward(
@@ -281,7 +271,6 @@ def test() -> None:
                 test_dir, gen_forward_content.strip(), forward_content.strip()
             )
         print(test_dir, " passed forward")
-        
 
 
 if __name__ == "__main__":

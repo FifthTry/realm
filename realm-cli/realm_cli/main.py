@@ -11,9 +11,11 @@ from typing import List
 
 VERSION = "0.1.0"
 
+
 def main():
     if len(sys.argv) == 1:
-        print(f"""\
+        print(
+            f"""\
 Hi, thank you for trying out realm-cli {VERSION} . I hope you like it!
 
 ----------------------------------------------------------------------------
@@ -36,7 +38,8 @@ The most common commonds are:
 Be sure to ask on https://gitter.im/amitu/realm if you run into trouble! Folks
 are friendly and happy to help out. They hang out there because it is fun, so
 be kind to get best results!
-        """)
+        """
+        )
         return
 
     if sys.argv[1] == "version":
@@ -63,10 +66,7 @@ def handle_startproject():
         project_name = sys.argv[2]
         cookiecutter(
             "gh:nilinswap/realm-startapp",
-            extra_context={
-                "project_name": project_name,
-                "project_slug": project_name,
-            },
+            extra_context={"project_name": project_name, "project_slug": project_name},
             no_input=True,
         )
 
@@ -96,5 +96,6 @@ def handle_debug():
     for src_dir in elm_src_dirs:
         ce.compile_all_elm(src_dir, elm_dest_dir, elm_path, elm_format_path, "")
     os.system("RUST_BACKTRACE=1 cargo run")
+
 
 # ToDo: make main clean; in fact, read the whole thing for grace.
