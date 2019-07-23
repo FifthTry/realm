@@ -31,7 +31,7 @@ def main():
         print("curr_dir", curr_dir)
         bin_path: str = os.path.join(curr_dir, "node_modules", ".bin")
         elm_path: str = os.path.join(bin_path, "elm")
-        os.system(elm_path + " install")
+        os.system(elm_path + " make")
 
     elif sys.argv[1] == "debug":
         curr_dir: str = os.getcwd()
