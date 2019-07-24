@@ -9,9 +9,6 @@ impl realm::Widget for TextWidget {
 
 impl TextWidget {
     pub fn new(_req: &realm::Request) -> TextWidget {
-        TextWidget {
-
-        }
+        TextWidget {}
     }
 }
-

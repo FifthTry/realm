@@ -8,18 +8,15 @@ extern crate url;
 
 #[macro_use]
 extern crate serde_json;
-extern crate itertools;
 extern crate chrono;
+extern crate itertools;
 
-
-pub mod middleware;
+mod cms;
 mod forward;
+pub mod middleware;
 mod pages;
 mod reverse;
 mod routes;
 mod widgets;
-mod cms;
-
-
 
 pub type Result<T> = std::result::Result<T, failure::Error>;

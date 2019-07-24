@@ -1,13 +1,9 @@
 use itertools::Itertools;
-use chrono::NaiveDate;
-use serde_json::Value as JsonValue;
 use serde::de::DeserializeOwned;
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
-    fs,
-    io::{Read, Write},
-    ops::{Add, Deref},
+    ops::Deref,
     str::FromStr,
     string::String,
 };
@@ -20,7 +16,6 @@ pub fn get_slash_complete_path(path: &str) -> String {
         format!("{}/", path)
     }
 }
-
 
 pub fn url2path(url: &Url) -> String {
     let url = url.clone();
@@ -114,7 +109,7 @@ where
         for each_element in s.split("||") {
             let element: T = match each_element.parse() {
                 Ok(v) => v,
-                Err(e) => Err(failure::err_msg(format!("can't parse")))?,
+                Err(_e) => Err(failure::err_msg(format!("can't parse")))?,
             };
             vec_t.push(element);
         }
@@ -136,8 +131,6 @@ impl<T> Default for List<T> {
     }
 }
 
-
-
 fn first_rest(s: &str) -> (Option<String>, String) {
     let mut parts = s.split("/");
     match parts.nth(0) {
@@ -146,15 +139,12 @@ fn first_rest(s: &str) -> (Option<String>, String) {
     }
 }
 
-
 pub fn sub_string(s: &str, start: usize, len: Option<usize>) -> String {
     match len {
         Some(len) => s.chars().skip(start).take(len).collect(),
         None => s.chars().skip(start).collect(),
     }
 }
-
-
 
 pub fn get<T>(
     name: &str,
@@ -201,4 +191,3 @@ where
     }
     Err(failure::err_msg(format!("\"{}\" not found", name)))?
 }
-

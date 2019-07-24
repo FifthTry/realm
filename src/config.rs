@@ -51,30 +51,28 @@ lazy_static! {
     };
 }
 
-
-fn get_prefix(path: &Path, parent_path: &Path) -> Result<String, failure::Error>{
+fn get_prefix(path: &Path, parent_path: &Path) -> Result<String, failure::Error> {
     let dir_path = path.clone();
     println!("diryy_path {:?}", dir_path);
     let strip_dir = dir_path.strip_prefix(parent_path.to_str().unwrap())?;
     let mut relative_path_st = strip_dir.to_str().unwrap().to_string();
-    if relative_path_st != "".to_string(){
+    if relative_path_st != "".to_string() {
         relative_path_st = relative_path_st.replace("/", ".");
         relative_path_st.push('.');
         Ok(relative_path_st)
-    }
-    else {
+    } else {
         Ok("".to_string())
     }
 }
 
 impl Config {
     pub fn static_path(&self, rest: &str) -> std::path::PathBuf {
-      Path::new(&self.static_dir).join(rest)
+        Path::new(&self.static_dir).join(rest)
     }
 
     pub fn get_code(&self, id: &str) -> Result<String, failure::Error> {
         println!("herez {:?}", id);
-        for (k, v) in &self.js_code{
+        for (k, _v) in &self.js_code {
             println!("{}", k);
         }
         self.js_code
@@ -83,45 +81,40 @@ impl Config {
             .ok_or_else(|| failure::err_msg("key not found"))
     }
 
-    fn set_js_code_recur(&mut self, path: &Path, parent_path: &Path) -> Result<(), failure::Error>{
+    fn set_js_code_recur(&mut self, path: &Path, parent_path: &Path) -> Result<(), failure::Error> {
         println!("dir {:?}", path.file_name());
 
-        let mut name_prefix = get_prefix(path, parent_path)?;
+        let name_prefix = get_prefix(path, parent_path)?;
         println!("name_prefix {:?}", name_prefix);
         for entry in std::fs::read_dir(path)? {
-                let entry = entry?;
+            let entry = entry?;
 
-                println!("entry.file_name: {:?}", entry.file_name());
-                if entry.path().is_dir() {
-                    let entry_path = entry.path();
-                    self.set_js_code_recur(&entry_path, &parent_path)?;
-                }
-                let name = entry.file_name().into_string().unwrap();
-                if !name.ends_with(".js") {
-                    continue;
-                }
+            println!("entry.file_name: {:?}", entry.file_name());
+            if entry.path().is_dir() {
+                let entry_path = entry.path();
+                self.set_js_code_recur(&entry_path, &parent_path)?;
+            }
+            let name = entry.file_name().into_string().unwrap();
+            if !name.ends_with(".js") {
+                continue;
+            }
 
+            let mut name = entry
+                .path()
+                .file_stem()
+                .unwrap()
+                .to_owned()
+                .into_string()
+                .unwrap();
 
+            //name_prefix.push_str(&name);
 
-
-
-                let mut name = entry
-                    .path()
-                    .file_stem()
-                    .unwrap()
-                    .to_owned()
-                    .into_string()
-                    .unwrap();
-
-                //name_prefix.push_str(&name);
-
-
-                name = format!("{}{}", name_prefix, name);
-                println!("name {:?}", entry.path().file_stem());
-                self.js_code.insert(
-                    name.into(), // FIXME
-                    self.content2(entry.path())?,
-                );
+            name = format!("{}{}", name_prefix, name);
+            println!("name {:?}", entry.path().file_stem());
+            self.js_code.insert(
+                name.into(), // FIXME
+                self.content2(entry.path())?,
+            );
         }
         Ok(())
     }
@@ -132,12 +125,10 @@ impl Config {
             serde_json::from_str(&self.content(&format!("realm/{}/deps.json", &self.latest_elm))?)?;
         let path = self.static_path(&format!("realm/{}/", &self.latest_elm));
 
-//        if let Some(path) = entry_dir{
-//            self.latest_elm = path.file_name().into_string().unwrap();
-//        }
+        //        if let Some(path) = entry_dir{
+        //            self.latest_elm = path.file_name().into_string().unwrap();
+        //        }
         self.set_js_code_recur(&path, &path)?;
-
-
 
         Ok(())
     }
