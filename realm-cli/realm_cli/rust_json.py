@@ -16,7 +16,6 @@ REVERSE_TEMPLATE = """use realm::utils::{Maybe, url2path};
 FORWARD_TEMPLATE = """pub fn magic(%s) -> realm::Result {%s
     let mut input = realm::request_config::RequestConfig::new(req)?;
     match input.path.as_str() {%s
-        _ => unimplemented!()
     }
 }
 
@@ -143,18 +142,13 @@ def generate_forward(directories, routes, test_dir=None):
     forward_file_path: str = "src/forward.rs"
     print("config", REALM_CONFIG)
     if "catchall" in REALM_CONFIG and REALM_CONFIG["catchall"]:
-        if "catchall_context" in REALM_CONFIG:
-            context_func = REALM_CONFIG["catchall_context"]
-        elif "cms_dir" in REALM_CONFIG:
-            print("inside cms_dir")
-            context_func = 'crate::cms::get_context("%s")' % (REALM_CONFIG["cms_dir"])
-        else:
-            context_func = "crate::cms::get_default_context()"
-
         forward += """
-        url_ => crate::cms::layout(&input.req, %s, url_),""" % (
-            context_func
-        )
+        %s,"""%(REALM_CONFIG["catchall"].strip(","))
+    else:
+        forward += """
+        _ => unimplemented!(),"""
+        
+        
 
     if not ireq_type:
         default_arg_st = "req: realm::Request"

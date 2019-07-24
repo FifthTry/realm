@@ -5,6 +5,6 @@ pub fn magic(req: realm::Request) -> realm::Result {
             let m = input.get("m", true)?;
             crate::routes::index::layout(&input.req, m)
         },
-        _ => unimplemented!()
+        _ => unimplemented!(),
     }
 }

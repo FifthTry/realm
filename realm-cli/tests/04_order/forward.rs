@@ -6,6 +6,6 @@ pub fn magic(req: realm::Request) -> realm::Result {
         "/" => crate::routes::index::layout(&input.req),
         "/foo/" => crate::routes::foo::layout(&input.req),
         "/bar/" => crate::routes::bar::layout(&input.req),
-        _ => unimplemented!()
+        _ => unimplemented!(),
     }
 }

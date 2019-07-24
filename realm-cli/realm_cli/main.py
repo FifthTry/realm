@@ -75,22 +75,37 @@ def handle_startproject():
 
     curr_dir: str = os.getcwd()
     print("curr_dir", curr_dir)
+    
+   
+    if "elm_bin_path" in config:
+        curr_dir = config["elm_bin_path"]
     bin_path: str = os.path.join(curr_dir, "node_modules", ".bin")
+
     elm_path: str = os.path.join(bin_path, "elm")
+    
     os.system(elm_path + " make")
 
 
 def handle_debug():
-    curr_dir: str = os.getcwd()
-    print("curr_dir, ", curr_dir)
-    bin_path: str = os.path.join(curr_dir, "node_modules", ".bin")
-    elm_path: str = os.path.join(bin_path, "elm")
-    elm_format_path: str = os.path.join(bin_path, "elm-format")
-    elm_dest_dir: str = "src/static/realm/elatest/"
-    elm_src_dirs: List[str] = ["src/frontend"]
     with open("realm.json", "r") as f:
         config = json.load(f)
-        elm_src_dirs: List[str] = config["elm_source_dirs"]
+    curr_dir: str = os.getcwd()
+    print("curr_dir, ", curr_dir)
+    if "elm_bin_path" in config:
+        curr_dir = config["elm_bin_path"]
+    bin_path: str = os.path.join(curr_dir, "node_modules", ".bin")
+
+    elm_path: str = os.path.join(bin_path, "elm")
+   
+    elm_format_path: str = os.path.join(bin_path, "elm-format")
+    
+    elm_dest_dir: str = "src/static/realm/elatest/"
+    if "static_dir" in config:
+        elm_dest_dir = config["static_dir"] + "/realm/elatest/"
+    elm_src_dirs: List[str] = ["src/frontend"]
+    
+    
+    elm_src_dirs: List[str] = config["elm_source_dirs"]
 
     ce.check_conflicts(elm_src_dirs)
     for src_dir in elm_src_dirs:
