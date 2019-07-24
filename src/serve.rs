@@ -14,6 +14,9 @@ pub fn http_to_hyper(req: crate::Response) -> hyper::Response<hyper::Body> {
 
 #[macro_export]
 macro_rules! realm {
+    ($e:expr, $rest:block) => {
+
+    },
     ($e:expr) => {
         pub fn main() {
             use futures::{self, stream::Stream, IntoFuture};
