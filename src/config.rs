@@ -28,22 +28,54 @@ pub(crate) struct Config {
     #[serde(default)]
     pub loader_file: String,
 }
+impl Config {
+    pub fn new() -> Self {
+        Config {
+            context: "".to_string(),
 
+            site_icon: "/static/favicon.ico".to_string(),
+
+            css: vec![],
+
+            head_extra: "".to_string(),
+
+            body_extra: "".to_string(),
+
+            site_title_prefix: "".to_string(),
+
+            site_title_postfix: "".to_string(),
+
+            static_dir: "static".to_string(),
+
+            latest_elm: "".to_string(),
+
+            deps: HashMap::new(),
+
+            js_code: HashMap::new(),
+
+            loader_file: "".to_string(),
+        }
+    }
+}
 lazy_static! {
     pub(crate) static ref CONFIG: Config = {
         let proj_dir = std::env::current_dir().expect("could not find current dir");
         let conf_file = proj_dir.join("realm.json");
-        let conf_file = std::fs::File::open(conf_file).expect("could not load realm.json");
-        let mut config: Config = serde_json::from_reader(conf_file).expect("invalid json");
-        if config.static_dir == "" {
-            config.static_dir = "static".into();
+        let mut config: Config = Config::new();
+        match std::fs::File::open(conf_file) {
+            Ok(conf_file) => config = serde_json::from_reader(conf_file).expect("invalid json"),
+            Err(e) => println!("could not find realm.json. Trying Default Json."),
         };
-        if config.site_icon == "" {
-            config.site_icon = "/static/favicon.ico".into();
-        }
-        if config.loader_file == ""{
-            //config.loader_file = "static/realm/elatest/loader.js".into();  //SOI
-            config.loader_file = proj_dir.join("node_modules").join("realm_javascript").join("lib").join("loader.js").into_os_string().into_string().unwrap();
+
+        if config.loader_file == "" {
+            config.loader_file = proj_dir
+                .join("node_modules")
+                .join("realm_javascript")
+                .join("lib")
+                .join("loader.js")
+                .into_os_string()
+                .into_string()
+                .unwrap();
         }
 
         config.init_elm().expect("failed to initialize elm stuff");
@@ -72,7 +104,7 @@ impl Config {
 
     pub fn get_code(&self, id: &str) -> Result<String, failure::Error> {
         println!("herez {:?}", id);
-        for (k, _v) in &self.js_code {
+        for (k, v) in &self.js_code {
             println!("{}", k);
         }
         self.js_code
@@ -84,7 +116,7 @@ impl Config {
     fn set_js_code_recur(&mut self, path: &Path, parent_path: &Path) -> Result<(), failure::Error> {
         println!("dir {:?}", path.file_name());
 
-        let name_prefix = get_prefix(path, parent_path)?;
+        let mut name_prefix = get_prefix(path, parent_path)?;
         println!("name_prefix {:?}", name_prefix);
         for entry in std::fs::read_dir(path)? {
             let entry = entry?;

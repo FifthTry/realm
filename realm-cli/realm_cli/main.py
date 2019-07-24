@@ -61,6 +61,7 @@ def handle_version():
 
 
 def handle_init():
+    
     project_name: str = "hello"
     if len(sys.argv) > 2 and sys.argv[2] != "":
         project_name = sys.argv[2]
@@ -71,6 +72,8 @@ def handle_init():
         )
 
     os.chdir(project_name)
+    with open("realm.json", "r") as f:
+        config = json.load(f)
     os.system("yarn add package.json")  # make exception friendly
 
     curr_dir: str = os.getcwd()
