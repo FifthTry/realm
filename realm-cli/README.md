@@ -7,9 +7,9 @@ framework).
 
 ### To create a new realm project 
 
-`realm-cli startproject <project_name>`
+`realm-cli init <project_name>`
 
-eg: `realm-cli startproject hello`
+eg: `realm-cli init hello`
 
 
 ### To build project

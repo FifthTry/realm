@@ -26,7 +26,7 @@ in terminal.
 
 The most common commonds are:
 
-    realm-cli startproject <proj_name>
+    realm-cli init <proj_name>
         create a new project realm project.
 
     realm-cli build
@@ -44,8 +44,8 @@ be kind to get best results!
 
     if sys.argv[1] == "version":
         handle_version()
-    elif sys.argv[1] == "startproject":
-        handle_startproject()
+    elif sys.argv[1] == "init":
+        handle_init()
     elif sys.argv[1] == "debug":
         handle_debug()
     elif sys.argv[1] == "build":
@@ -60,7 +60,7 @@ def handle_version():
     print(VERSION)
 
 
-def handle_startproject():
+def handle_init():
     project_name: str = "hello"
     if len(sys.argv) > 2 and sys.argv[2] != "":
         project_name = sys.argv[2]
