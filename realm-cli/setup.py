@@ -8,9 +8,9 @@ with open("README.md", "r") as fh:
 
 
 setup(
-    name="realm_cli",
+    name="graftpress_cli",
     version="0.0.10",
-    entry_points={"console_scripts": ["realm-cli=realm_cli.main:main"]},
+    entry_points={"console_scripts": ["realm-cli=graftpress_cli.main:main"]},
     author="nilinswap",
     author_email="nilinswap@gmail.com",
     description="A command line utitily to provide services offered by realm( a rust-elm web framework).",

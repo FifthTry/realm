@@ -12,6 +12,7 @@ pub fn http_to_hyper(req: crate::Response) -> hyper::Response<hyper::Body> {
     hyper::Response::from_parts(parts, hyper::Body::from(body))
 }
 
+
 #[macro_export]
 macro_rules! realm {
     ($e:expr) => {

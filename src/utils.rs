@@ -7,6 +7,7 @@ use std::{
     str::FromStr,
     string::String,
 };
+use http;
 use url::Url;
 
 pub fn get_slash_complete_path(path: &str) -> String {
@@ -16,6 +17,14 @@ pub fn get_slash_complete_path(path: &str) -> String {
         format!("{}/", path)
     }
 }
+
+
+pub fn not_found() -> crate::Response {
+    http::Response::builder()
+        .status(http::StatusCode::NOT_FOUND)
+        .body("404 page not found".into()).unwrap()
+}
+
 
 pub fn url2path(url: &Url) -> String {
     let url = url.clone();
