@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="graftpress_cli",
-    version="0.0.10",
+    version="0.0.11",
     entry_points={"console_scripts": ["realm-cli=graftpress_cli.main:main"]},
     author="nilinswap",
     author_email="nilinswap@gmail.com",
