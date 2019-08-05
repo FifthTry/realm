@@ -14,7 +14,7 @@ REVERSE_TEMPLATE = """use realm::utils::{Maybe, url2path};
 """
 
 FORWARD_TEMPLATE = """pub fn magic(%s) -> realm::Result {%s
-    let mut input = realm::request_config::RequestConfig::new(req)?;
+    let input = realm::request_config::RequestConfig::new(req)?;
     match input.path.as_str() {%s
     }
 }

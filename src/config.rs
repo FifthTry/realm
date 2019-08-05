@@ -1,7 +1,15 @@
 use std::collections::HashMap;
 use std::path::Path;
+
+
+
+#[derive(RustEmbed)]
+#[folder = "."]
+struct Asset;
+
 #[derive(Deserialize, Debug, Default)]
 pub(crate) struct Config {
+
     #[serde(default)]
     pub context: String,
     #[serde(default)]
@@ -18,7 +26,6 @@ pub(crate) struct Config {
     pub site_title_postfix: String,
     #[serde(default)]
     pub static_dir: String,
-
     #[serde(default)]
     pub latest_elm: String,
     #[serde(default)]
@@ -27,6 +34,7 @@ pub(crate) struct Config {
     pub js_code: HashMap<String, String>,
     #[serde(default)]
     pub loader_file: String,
+
 }
 impl Config {
     pub fn new() -> Self {
@@ -62,10 +70,24 @@ lazy_static! {
         let proj_dir = std::env::current_dir().expect("could not find current dir");
         let conf_file = proj_dir.join("realm.json");
         let mut config: Config = Config::new();
-        match std::fs::File::open(conf_file) {
-            Ok(conf_file) => config = serde_json::from_reader(conf_file).expect("invalid json"),
-            Err(e) => println!("could not find realm.json. Trying Default Json."),
+//        match std::fs::File::open(conf_file) {
+//            Ok(conf_file) => config = serde_json::from_reader(conf_file).expect("invalid json"),
+//            Err(e) => println!("could not find realm.json. Trying Default Json."),
+//        };
+
+        println!("using rust-embed");
+        let realmjson_content = Asset::get("realm.json");
+        match realmjson_content{
+            Some(c) => {
+                match std::str::from_utf8(c.as_ref()).ok(){
+                    Some(c_str) => {println!("realmjson_content {:?}", c_str);config = serde_json::from_str(c_str).expect("invalid json")},
+                    None => println!("could not decode u8 to str after reading realm.json")
+                }
+            }
+            None =>println!("could not find realm.json. Trying Default Json.")
         };
+
+
 
         if config.loader_file == "" {
             config.loader_file = proj_dir
