@@ -1,4 +1,5 @@
 import os
+
 import re
 from typing import List, Tuple, Optional, Match
 from string import Template
@@ -85,7 +86,8 @@ def get_routes(test_dir: Optional[str] = None):
                 path = f"/{routePath}/{routeName}/"
                 module = routePath.replace("/", "::") + "::" + routeName
             print("module", module)
-            routes.append((path, module, parse(root + "/" + fileName)[1:]))
+            parse_res = parse(root + "/" + fileName)
+            routes.append((path, module, parse_res[0][1:], parse_res[1] ))
 
     routes.sort(reverse=True)
     return routes
@@ -95,14 +97,14 @@ def generate_forward(directories, routes, test_dir=None):
     # filter routes and directories based on whitelist
 
     forward = ""
-
+    print(routes)
     if "context" in REALM_CONFIG:
         ireq_type = REALM_CONFIG["context"]
     else:
         print("'context' key is absent in realm.json")
         ireq_type = None
 
-    for (url, mod, args) in routes:
+    for (url, mod, args, is_layout_present) in routes:
         if url == "/" and mod != "index":
             url += mod + "/"
 
@@ -165,10 +167,12 @@ def generate_forward(directories, routes, test_dir=None):
 
 
 def generate_reverse(
-    routes: List[Tuple[str, str, List[Tuple[str, str]]]], test_dir: Optional[str] = None
+    routes: (List[Tuple[str, str, List[Tuple[str, str]]]], bool), test_dir: Optional[str] = None
 ) -> str:
     reverse: str = ""
-    for (url, mod, args) in routes:
+    for (url, mod, args, is_layout_present) in routes:
+        if not is_layout_present:
+            return ""
         if url == "/":
             function_name = mod
             if mod != "index":
@@ -177,7 +181,7 @@ def generate_reverse(
             function_name = url[1:].replace("/", "_").replace("_index", "")
             if function_name.endswith("_"):
                 function_name = function_name[:-1]
-
+        print("args ", args)
         if len(args) == 0:
             reverse += """
 pub fn %s() -> String {
@@ -213,7 +217,7 @@ pub fn %s(%s) -> String {
     return reverse_content
 
 
-def parse(mod_path: str) -> List[Tuple[str, str]]:
+def parse(mod_path: str) -> (List[Tuple[str, str]], bool):
     """
     Given a module name (file path, relative to ., eg src/acko/utils.rs), this
     function returns:
@@ -222,13 +226,21 @@ def parse(mod_path: str) -> List[Tuple[str, str]]:
 
     """
     with open(mod_path, "r") as f:
+        file_content = f.read()
+        if not re.search(r'.*?(pub fn layout)', file_content ):
+            return ([], False)
+        
         args_str_: Optional[Match[str]] = re.compile(
             r"(?<=pub fn layout\()[^{]*(?=\) ->)"
-        ).search(f.read().replace("\n", " "))
+        ).search(file_content.replace("\n", " "))
         args_str: str = "" if not args_str_ else args_str_[0].replace(" ", "")
-        return [
+        
+        
+        return ([
             (r.split(":")[0], r.split(":")[1]) for r in args_str.split(",") if r != ""
-        ]
+        ], True)
+    
+    return ([], False)
 
 
 def main() -> None:
@@ -254,7 +266,7 @@ def test() -> None:
             print(i)
         gen_reverse_content = generate_reverse(r, test_dir=test_dir)
         reverse_content = open(test_dir + "/reverse.rs").read()
-
+        print("gen reverse content is", gen_reverse_content)
         try:
             assert gen_reverse_content.strip() == reverse_content.strip()
         except:
