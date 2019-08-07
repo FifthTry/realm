@@ -1,1 +1,1 @@
-name = "graftpress_cli"
+name = "realm_cli"

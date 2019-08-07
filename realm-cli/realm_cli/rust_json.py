@@ -14,7 +14,7 @@ REVERSE_TEMPLATE = """use realm::utils::{Maybe, url2path};
 """
 
 FORWARD_TEMPLATE = """pub fn magic(%s) -> realm::Result {%s
-    let mut input = realm::request_config::RequestConfig::new(req)?;
+    let mut input = realm::request_config::RequestConfig::new(&req)?;
     match input.path.as_str() {%s
     }
 }
@@ -110,7 +110,7 @@ def generate_forward(directories, routes, test_dir=None):
 
         if len(args) == 0:
             forward += """
-        "%s" => crate::routes::%s::layout(&input.req),""" % (
+        "%s" => crate::routes::%s::layout(&req),""" % (
                 url,
                 mod,
             )
@@ -133,7 +133,7 @@ def generate_forward(directories, routes, test_dir=None):
                 )
 
             forward += """
-            crate::routes::%s::layout(&input.req, %s)
+            crate::routes::%s::layout(&req, %s)
         },""" % (
                 mod,
                 ", ".join(arg[0] for arg in args),
