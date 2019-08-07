@@ -2,7 +2,6 @@ use serde::de::DeserializeOwned;
 use std::{collections::HashMap, fmt::Debug, str::FromStr};
 #[derive(Debug)]
 pub struct RequestConfig {
-    pub req: crate::Request,
     pub query: std::collections::HashMap<String, String>,
     pub data: serde_json::Value,
     pub rest: String,
@@ -26,7 +25,7 @@ fn first_rest(s: &str) -> (Option<String>, String) {
 }
 
 impl RequestConfig {
-    pub fn new(req: crate::Request) -> std::result::Result<RequestConfig, failure::Error> {
+    pub fn new(req: &crate::Request) -> std::result::Result<RequestConfig, failure::Error> {
         let url = req.uri();
         let path = crate::utils::get_slash_complete_path(url.path());
         let site_url = "http://127.0.0.1:3000".to_string();
@@ -42,7 +41,6 @@ impl RequestConfig {
             query,
             data,
             path,
-            req,
         };
         Ok(req_config)
     }
