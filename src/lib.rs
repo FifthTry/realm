@@ -5,9 +5,12 @@ extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate rust_embed;
 extern crate chrono;
 extern crate itertools;
 extern crate url;
+
 
 mod config;
 mod html;

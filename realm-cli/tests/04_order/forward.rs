@@ -1,5 +1,5 @@
 pub fn magic(req: realm::Request) -> realm::Result {
-    let mut input = realm::request_config::RequestConfig::new(req)?;
+    let input = realm::request_config::RequestConfig::new(req)?;
     match input.path.as_str() {
         "/ab/c/" => crate::routes::ab_c::layout(&input.req),
         "/ab/" => crate::routes::ab::layout(&input.req),
