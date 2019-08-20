@@ -7,24 +7,20 @@ use std::{
     str::FromStr,
     string::String,
 };
-use http;
 use url::Url;
 
+pub fn set_cookie(name: &str, value: &str, age: i32) -> Result<http::HeaderValue, failure::Error> {
+    http::HeaderValue::from_str(format!("{}={}; Max-Age={}; Path=/", name, value, age).as_str())
+        .map_err(|e| failure::err_msg(format!("error: {:?}", e)))
+}
+
 pub fn get_slash_complete_path(path: &str) -> String {
-    if path.ends_with("/") {
+    if path.ends_with('/') {
         path.to_string()
     } else {
         format!("{}/", path)
     }
 }
-
-
-pub fn not_found() -> crate::Response {
-    http::Response::builder()
-        .status(http::StatusCode::NOT_FOUND)
-        .body("404 page not found".into()).unwrap()
-}
-
 
 pub fn url2path(url: &Url) -> String {
     let url = url.clone();
@@ -45,7 +41,7 @@ pub fn uri2path(uri: &hyper::Uri) -> String {
         uri.path(),
         uri.query()
             .map(|q| format!("?{}", q))
-            .unwrap_or("".to_owned())
+            .unwrap_or_else(|| "".to_owned())
     )
 }
 
@@ -118,7 +114,7 @@ where
         for each_element in s.split("||") {
             let element: T = match each_element.parse() {
                 Ok(v) => v,
-                Err(_e) => Err(failure::err_msg(format!("can't parse")))?,
+                Err(_e) => Err(failure::err_msg("can't parse".to_string()))?,
             };
             vec_t.push(element);
         }
@@ -141,7 +137,7 @@ impl<T> Default for List<T> {
 }
 
 fn first_rest(s: &str) -> (Option<String>, String) {
-    let mut parts = s.split("/");
+    let mut parts = s.split('/');
     match parts.nth(0) {
         Some(v) => (Some(v.to_string()), sub_string(s, v.len() + 1, None)),
         None => (None, s.to_owned()),
@@ -155,9 +151,9 @@ pub fn sub_string(s: &str, start: usize, len: Option<usize>) -> String {
     }
 }
 
-pub fn get<T>(
+pub fn get<T, S: ::std::hash::BuildHasher>(
     name: &str,
-    query: &HashMap<String, String>,
+    query: &HashMap<String, String, S>,
     data: &serde_json::Value,
     rest: &mut String,
     is_optional: bool,
@@ -168,7 +164,7 @@ where
     T: Default,
 {
     // handle path
-    if rest.len() != 0 {
+    if !rest.is_empty() {
         let (first, last) = first_rest(&rest);
         rest.truncate(0);
         rest.push_str(&last);

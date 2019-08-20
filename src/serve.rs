@@ -7,11 +7,10 @@ lazy_static! {
     };
 }
 
-pub fn http_to_hyper(req: crate::Response) -> hyper::Response<hyper::Body> {
-    let (parts, body) = req.into_parts();
+pub fn http_to_hyper(resp: http::Response<Vec<u8>>) -> hyper::Response<hyper::Body> {
+    let (parts, body) = resp.into_parts();
     hyper::Response::from_parts(parts, hyper::Body::from(body))
 }
-
 
 #[macro_export]
 macro_rules! realm {
@@ -28,7 +27,14 @@ macro_rules! realm {
             pub fn handle_sync(
                 req: realm::Request,
             ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
-                match $e(req).map(|r| http_to_hyper(r)) {
+                let mode = realm::Mode::detect(&req);
+                let url = req.uri().path().to_string();
+                let ctx = realm::Context::new(req);
+
+                match $e(&ctx)
+                    .and_then(|r| r.render(&ctx, mode, url))
+                    .map(|r| http_to_hyper(r))
+                {
                     Ok(a) => Ok(a),
                     Err(e) => {
                         println!("error : {:?}", e);
@@ -38,7 +44,11 @@ macro_rules! realm {
             }
 
             pub fn serve() {
-                let addr = ([127, 0, 0, 1], 3000).into();
+                let port = std::env::var("PORT")
+                    .unwrap_or("3000".to_string())
+                    .parse()
+                    .unwrap();
+                let addr = ([0, 0, 0, 0], port).into();
 
                 let server = hyper::Server::bind(&addr)
                     .serve(|| {

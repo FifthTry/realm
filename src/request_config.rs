@@ -2,7 +2,6 @@ use serde::de::DeserializeOwned;
 use std::{collections::HashMap, fmt::Debug, str::FromStr};
 #[derive(Debug)]
 pub struct RequestConfig {
-    pub req: crate::Request,
     pub query: std::collections::HashMap<String, String>,
     pub data: serde_json::Value,
     pub rest: String,
@@ -18,7 +17,7 @@ pub fn sub_string(s: &str, start: usize, len: Option<usize>) -> String {
 }
 
 fn first_rest(s: &str) -> (Option<String>, String) {
-    let mut parts = s.split("/");
+    let mut parts = s.split('/');
     match parts.nth(0) {
         Some(v) => (Some(v.to_string()), sub_string(s, v.len() + 1, None)),
         None => (None, s.to_owned()),
@@ -26,7 +25,7 @@ fn first_rest(s: &str) -> (Option<String>, String) {
 }
 
 impl RequestConfig {
-    pub fn new(req: crate::Request) -> std::result::Result<RequestConfig, failure::Error> {
+    pub fn new(req: &crate::Request) -> std::result::Result<RequestConfig, failure::Error> {
         let url = req.uri();
         let path = crate::utils::get_slash_complete_path(url.path());
         let site_url = "http://127.0.0.1:3000".to_string();
@@ -42,7 +41,6 @@ impl RequestConfig {
             query,
             data,
             path,
-            req,
         };
         Ok(req_config)
     }
@@ -59,7 +57,7 @@ impl RequestConfig {
         let data: &serde_json::Value = &self.data;
         let rest: &mut String = &mut self.rest;
 
-        if rest.len() != 0 {
+        if !rest.is_empty() {
             let (first, last) = first_rest(&rest);
             rest.truncate(0);
             rest.push_str(&last);

@@ -1,23 +1,26 @@
 [package]
 name = "realm"
-version = "0.1.7"
+version = "0.1.4"
 authors = ["Amit Upadhyay <amitu@acko.com>"]
 description = "Rust / Elm base full stack web framework."
 license = "BSD-2-Clause"
 edition = "2018"
 
+[features]
+default = []
+dynamic-elm-dependencies = []
+
 [dependencies]
-hyper = "~0.12.33"
-futures-cpupool = "~0.1.8"
-lazy_static = "~1.2.0"
-futures = "~0.1.26"
-http = "~0.1.17"
+hyper = "0.12.33"
+futures-cpupool = "0.1.8"
+lazy_static = "1.2.0"
+futures = "0.1.26"
+http = "0.1.17"
 serde_json = "~1.0.0"
 serde = "~1.0.0"
 serde_derive = "~1.0.0"
 failure = "~0.1.1"
 url = "~1"
-htmlescape = "0.3.1"
 itertools = "~0.7.8"
 
 
@@ -27,5 +30,3 @@ features = ["serde"]
 
 [dev-dependencies]
 pretty_assertions = "~0.5.1"
-
-

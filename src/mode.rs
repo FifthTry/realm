@@ -1,11 +1,11 @@
-pub(crate) enum Mode {
+pub enum Mode {
     API,
     Layout,
     HTML,
 }
 
 impl Mode {
-    pub(crate) fn detect(req: &crate::Request) -> Mode {
+    pub fn detect(req: &crate::Request) -> Mode {
         let url = url::Url::parse(&format!(
             "http://f.com/?{}",
             req.uri().query().unwrap_or("")
@@ -33,5 +33,11 @@ impl Mode {
         };
 
         Mode::API
+    }
+    pub fn content_type(&self) -> http::HeaderValue {
+        http::HeaderValue::from_static(match self {
+            Mode::HTML => "text/html",
+            _ => "application/json; charset=utf-8",
+        })
     }
 }
