@@ -25,17 +25,16 @@ type alias Config =
 
 
 type alias Model =
-    { tid : Int
-    , sid : Int
-    , context : Context
-    , result : List String
+    { context : Context
+    , result : List TestResult
     , config : Config
+    , testDone : Bool
     }
 
 
 type alias TestResult =
     { id : String
-    , result : List R.TestResult
+    , result : List (List R.TestResult)
     }
 
 
@@ -46,11 +45,13 @@ type Msg
 
 init : Config -> () -> url -> key -> ( Model, Cmd Msg )
 init config _ _ _ =
-    let
-        ( context, cmd ) =
-            navigate (JE.object []) "Index" "anonymous" "/"
-    in
-    ( { tid = 0, sid = 0, context = context, result = [], config = config }, cmd )
+    { context = JE.object [], result = [], config = config, testDone = False }
+        |> getNextStep
+
+
+getNextStep : Model -> ( Model, Cmd Msg )
+getNextStep m =
+    ( m, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
