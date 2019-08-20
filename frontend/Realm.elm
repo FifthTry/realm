@@ -364,7 +364,7 @@ testInit t flags _ _ =
 
         Err e ->
             ( { model = Nothing, title = Debug.toString e, shuttingDown = False }
-            , result Cmd.none [ Just <| BadConfig <| JD.errorToString e ]
+            , result Cmd.none [ BadConfig <| JD.errorToString e ]
             )
 
 
@@ -440,7 +440,8 @@ type alias TestApp config model msg =
 
 
 type TestResult
-    = TestFailed String
+    = TestFailed String String
+    | TestPassed String
     | BadConfig String
     | Screenshot String
     | BadElm String
@@ -454,8 +455,13 @@ testResult =
             (\kind ->
                 case kind of
                     "TestFailed" ->
-                        JD.field "message" JD.string
-                            |> JD.andThen (\m -> JD.succeed (TestFailed m))
+                        JD.map2 TestFailed
+                            (JD.field "id" JD.string)
+                            (JD.field "message" JD.string)
+
+                    "TestPassed" ->
+                        JD.field "id" JD.string
+                            |> JD.andThen (\m -> JD.succeed (TestPassed m))
 
                     "BadConfig" ->
                         JD.field "message" JD.string
@@ -494,8 +500,9 @@ test0 a init =
 controller : TestResult -> JE.Value
 controller c =
     (case c of
-        TestFailed message ->
+        TestFailed id message ->
             [ ( "kind", JE.string "TestFailed" )
+            , ( "id", JE.string id )
             , ( "message", JE.string message )
             ]
 
@@ -510,29 +517,14 @@ controller c =
 
         BadElm msg ->
             [ ( "kind", JE.string "BadElm" ), ( "message", JE.string msg ) ]
+
+        TestPassed id ->
+            [ ( "kind", JE.string "TestPassed" ), ( "id", JE.string id ) ]
+
     )
         |> JE.object
 
 
-result : Cmd msg -> List (Maybe TestResult) -> Cmd msg
+result : Cmd msg -> List TestResult -> Cmd msg
 result c list =
-    list
-        |> List.filter (\v -> v /= Nothing)
-        |> values
-        |> JE.list controller
-        |> (\l -> Cmd.batch [ c, toIframe l ])
-
-
-values : List (Maybe a) -> List a
-values =
-    List.foldr foldrValues []
-
-
-foldrValues : Maybe a -> List a -> List a
-foldrValues item list =
-    case item of
-        Nothing ->
-            list
-
-        Just v ->
-            v :: list
+    Cmd.batch [ c, JE.list controller list |> toIframe ]
