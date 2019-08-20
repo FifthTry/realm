@@ -29,8 +29,11 @@ type alias Model =
 
 
 type alias Config =
-    {stories : List ( String, List Story )
-    , title: String}
+    { stories : List ( String, List Story )
+    , title : String
+    }
+
+
 type Msg
     = Navigate String String
     | NoOp
@@ -38,7 +41,7 @@ type Msg
 
 init : Config -> () -> url -> key -> ( Model, Cmd Msg )
 init config _ _ _ =
-    update (Navigate "Index" "anonymous") { current = Nothing, config = config }
+    ( { current = Nothing, config = config }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -84,14 +87,26 @@ view m =
             , listOfStories m
             ]
         , E.el [ E.height E.fill, E.width E.fill ] <|
-            E.html
-                (H.node "iframe"
-                    [ HA.style "width" "100%"
-                    , HA.style "border" "none"
-                    , HA.src "/iframe/"
-                    ]
-                    []
-                )
+            U.yesno (m.current == Nothing) (intro m) <|
+                E.html
+                    (H.node "iframe"
+                        [ HA.style "width" "100%"
+                        , HA.style "border" "none"
+                        , HA.src "/iframe/"
+                        ]
+                        []
+                    )
+        ]
+
+
+intro : Model -> E.Element Msg
+intro m =
+    E.column [ E.centerX, E.centerY ]
+        [ E.paragraph [ EF.center, E.padding 10, EF.light, EF.size 14 ] <|
+            [ E.text "Welcome to," ]
+        , E.paragraph [ EF.center ] <| [ E.text <| m.config.title ++ " Storybook" ]
+        , E.paragraph [ EF.center, E.paddingXY 0 40, EF.light, EF.size 14, EF.italic ] <|
+            [ E.text "Select an item in left menu bar" ]
         ]
 
 

@@ -4,6 +4,7 @@ import Browser as B
 import Element as E
 import Html as H
 import Html.Attributes as HA
+import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
 import Realm.Ports exposing (fromIframe, toIframe)
@@ -17,9 +18,9 @@ type alias Step =
     Context -> ( Context, Cmd Msg )
 
 
-type alias TestResult =
-    { id : String
-    , result : List R.TestResult
+type alias Config =
+    { tests : List Test
+    , title : String
     }
 
 
@@ -32,6 +33,12 @@ type alias Model =
     }
 
 
+type alias TestResult =
+    { id : String
+    , result : List R.TestResult
+    }
+
+
 type Msg
     = FromChild JE.Value
     | NoOp
@@ -41,7 +48,7 @@ init : Config -> () -> url -> key -> ( Model, Cmd Msg )
 init config _ _ _ =
     let
         ( context, cmd ) =
-            navigate (JE.int 1) "Index" "anonymous" "/"
+            navigate (JE.object []) "Index" "anonymous" "/"
     in
     ( { tid = 0, sid = 0, context = context, result = [], config = config }, cmd )
 
@@ -49,7 +56,15 @@ init config _ _ _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case Debug.log "Test.msg" msg of
-        _ ->
+        NoOp ->
+            ( m, Cmd.none )
+
+        FromChild v ->
+            let
+                _ =
+                    Debug.log "FromChild" <|
+                        Debug.toString (JD.decodeValue (JD.list R.testResult) v)
+            in
             ( m, Cmd.none )
 
 
@@ -79,12 +94,6 @@ view m =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     fromIframe FromChild
-
-
-type alias Config =
-    { tests : List Test
-    , title : String
-    }
 
 
 app : Config -> Program () Model Msg

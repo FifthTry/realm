@@ -86,6 +86,10 @@
             if (!!testContext) {
                 if (testContext.elm !== id) {
                     console.log("expected", testContext.elm, "got", id);
+                    window.parent.app.ports.fromIframe.send({
+                        kind: "BadElm",
+                        message: "Expected: " + testContext.elm + " got: " + id
+                    });
                     return;
                 }
                 id = data.id + "Test";
@@ -104,10 +108,10 @@
             if (app.ports && app.ports.submit) {
                 app.ports.submit.subscribe(submit);
             }
-            if (app.ports && app.ports.testResult) {
-                app.ports.testResult.subscribe(function(r){
-                    console.log("testResult", r);
-                    window.parent.app.ports.testResult.send(r);
+            if (app.ports && app.ports.toIframe) {
+                app.ports.toIframe.subscribe(function(r){
+                    console.log("toIframe", r);
+                    window.parent.app.ports.fromIframe.send(r);
                 });
             }
             console.log("initialized app", id, flags, app);

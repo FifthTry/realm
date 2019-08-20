@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Out(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, pushHash, result, sub0, test, test0, third, update0, updateHash)
+module Realm exposing (App, In, Out(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, pushHash, result, sub0, test, test0, testResult, third, update0, updateHash)
 
 import Browser as B
 import Browser.Navigation as BN
@@ -8,7 +8,7 @@ import Html as H
 import Json.Decode as JD
 import Json.Encode as JE
 import Platform
-import Realm.Ports exposing (shutdown, toController)
+import Realm.Ports exposing (shutdown, toIframe)
 import Url exposing (Url)
 
 
@@ -142,15 +142,16 @@ appUpdate a msg am =
 
 appSubscriptions : App config model msg -> Model model -> Sub (Msg msg)
 appSubscriptions a am =
-    Sub.batch
-        [ shutdown Shutdown
-        , case ( am.model, am.shuttingDown ) of
-            ( Ok model, False ) ->
-                a.subscriptions { title = am.title, hash = am.dict } model |> Sub.map Msg
+    case ( am.model, am.shuttingDown ) of
+        ( Ok model, False ) ->
+            Sub.batch
+                [ shutdown Shutdown
+                , a.subscriptions { title = am.title, hash = am.dict } model
+                    |> Sub.map Msg
+                ]
 
-            _ ->
-                Sub.none
-        ]
+        _ ->
+            Sub.none
 
 
 appDocument : App config model msg -> Model model -> B.Document (Msg msg)
@@ -167,7 +168,7 @@ appDocument a am =
             { title = d.title, body = List.map (H.map Msg) d.body }
 
         ( _, True ) ->
-            { title = "shuttingDown", body = [ H.text "" ] }
+            { title = "shuttingDown", body = [] }
 
 
 handleOut : List Out -> Model model -> ( Model model, Cmd (Msg msg) )
@@ -363,7 +364,7 @@ testInit t flags _ _ =
 
         Err e ->
             ( { model = Nothing, title = Debug.toString e, shuttingDown = False }
-            , Cmd.none
+            , result Cmd.none [ Just <| BadConfig <| JD.errorToString e ]
             )
 
 
@@ -439,10 +440,41 @@ type alias TestApp config model msg =
 
 
 type TestResult
-    = TestPassed String
-    | TestFailed String String
+    = TestFailed String
+    | BadConfig String
     | Screenshot String
+    | BadElm String
     | TestDone
+
+
+testResult : JD.Decoder TestResult
+testResult =
+    JD.field "kind" JD.string
+        |> JD.andThen
+            (\kind ->
+                case kind of
+                    "TestFailed" ->
+                        JD.field "message" JD.string
+                            |> JD.andThen (\m -> JD.succeed (TestFailed m))
+
+                    "BadConfig" ->
+                        JD.field "message" JD.string
+                            |> JD.andThen (\m -> JD.succeed (BadConfig m))
+
+                    "Screenshot" ->
+                        JD.field "id" JD.string
+                            |> JD.andThen (\m -> JD.succeed (Screenshot m))
+
+                    "BadElm" ->
+                        JD.field "message" JD.string
+                            |> JD.andThen (\m -> JD.succeed (BadElm m))
+
+                    "TestDone" ->
+                        JD.succeed TestDone
+
+                    _ ->
+                        JD.fail <| "unknown kind: " ++ kind
+            )
 
 
 test0 :
@@ -462,13 +494,9 @@ test0 a init =
 controller : TestResult -> JE.Value
 controller c =
     (case c of
-        TestPassed id ->
-            [ ( "kind", JE.string "TestPassed" ), ( "id", JE.string id ) ]
-
-        TestFailed id message ->
+        TestFailed message ->
             [ ( "kind", JE.string "TestFailed" )
             , ( "message", JE.string message )
-            , ( "id", JE.string id )
             ]
 
         Screenshot id ->
@@ -476,10 +504,35 @@ controller c =
 
         TestDone ->
             [ ( "kind", JE.string "TestDone" ) ]
+
+        BadConfig msg ->
+            [ ( "kind", JE.string "BadConfig" ), ( "message", JE.string msg ) ]
+
+        BadElm msg ->
+            [ ( "kind", JE.string "BadElm" ), ( "message", JE.string msg ) ]
     )
         |> JE.object
 
 
-result : Cmd msg -> List TestResult -> Cmd msg
+result : Cmd msg -> List (Maybe TestResult) -> Cmd msg
 result c list =
-    Cmd.batch [ c, JE.list controller list |> toController ]
+    list
+        |> List.filter (\v -> v /= Nothing)
+        |> values
+        |> JE.list controller
+        |> (\l -> Cmd.batch [ c, toIframe l ])
+
+
+values : List (Maybe a) -> List a
+values =
+    List.foldr foldrValues []
+
+
+foldrValues : Maybe a -> List a -> List a
+foldrValues item list =
+    case item of
+        Nothing ->
+            list
+
+        Just v ->
+            v :: list
