@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Form, err, form, formE, link, maybeE, maybeS, val, yesno)
+module Realm.Utils exposing (Form, err, form, formE, link, maybeE, maybeS, val, yesno, zip)
 
 import Dict exposing (Dict)
 import Element as E
@@ -83,3 +83,16 @@ err : String -> Form -> Maybe String
 err f frm =
     Dict.get f frm
         |> Maybe.andThen (\( _, e ) -> e)
+
+
+zip : (a -> Maybe b -> c) -> List a -> List b -> List c
+zip fn la lb =
+    case ( la, lb ) of
+        ( a :: ra, b :: rb ) ->
+            fn a (Just b) :: zip fn ra rb
+
+        ( a :: ra, [] ) ->
+            fn a Nothing :: zip fn ra []
+
+        ( [], _ ) ->
+            []

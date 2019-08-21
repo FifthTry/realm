@@ -1,21 +1,24 @@
-port module Realm.Test exposing (Test, app, navigate, submit)
+port module Realm.Test exposing (Step(..), Test, app)
 
 import Browser as B
 import Element as E
+import Element.Border as EB
 import Html as H
 import Html.Attributes as HA
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
 import Realm.Ports exposing (fromIframe, toIframe)
+import Realm.Utils as U
 
 
 type alias Test =
     ( String, List Step )
 
 
-type alias Step =
-    Context -> ( Context, Cmd Msg )
+type Step
+    = Navigate String String String
+    | Submit String String JE.Value
 
 
 type alias Config =
@@ -51,7 +54,7 @@ init config _ _ _ =
 
 getNextStep : Model -> ( Model, Cmd Msg )
 getNextStep m =
-    ( m, Cmd.none )
+    ( m, navigate "Index" "anonymous" "/" (JE.object []) |> Tuple.second )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -76,20 +79,41 @@ document m =
 
 view : Model -> E.Element Msg
 view m =
-    E.column [ E.width E.fill, E.height E.fill ]
-        [ E.text <| m.config.title ++ " Test"
-        , E.text (Debug.toString m)
+    E.row [ E.width E.fill, E.height E.fill ]
+        [ E.column
+            [ E.height E.fill
+            , E.width (E.px 200)
+            , EB.widthEach { bottom = 0, left = 0, right = 1, top = 0 }
+            ]
+            [ E.paragraph
+                [ E.padding 5
+                , EB.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+                ]
+              <|
+                [ E.text <| m.config.title ++ " Tests" ]
+            , listOfTests m
+            ]
         , E.el [ E.height E.fill, E.width E.fill ] <|
             E.html
                 (H.node "iframe"
                     [ HA.style "width" "100%"
-
-                    -- , HA.style "border" "none"
+                    , HA.style "border" "none"
                     , HA.src "/iframe/"
                     ]
                     []
                 )
         ]
+
+
+testView : Test -> Maybe TestResult -> E.Element Msg
+testView (id, steps) mr =
+    E.text id
+
+
+listOfTests : Model -> E.Element Msg
+listOfTests m =
+    U.zip testView m.config.tests m.result
+        |> E.column []
 
 
 subscriptions : Model -> Sub Msg
@@ -113,8 +137,8 @@ type alias Context =
     JE.Value
 
 
-navigate : Context -> String -> String -> String -> ( Context, Cmd Msg )
-navigate ctx elm id url =
+navigate : String -> String -> String -> Context -> ( Context, Cmd Msg )
+navigate elm id url ctx =
     ( ctx
     , JE.object
         [ ( "action", JE.string "navigate" )
@@ -127,8 +151,8 @@ navigate ctx elm id url =
     )
 
 
-submit : Context -> String -> String -> JE.Value -> ( Context, Cmd Msg )
-submit ctx elm id payload =
+submit : String -> String -> JE.Value -> Context -> ( Context, Cmd Msg )
+submit elm id payload ctx =
     ( ctx
     , JE.object
         [ ( "action", JE.string "navigate" )

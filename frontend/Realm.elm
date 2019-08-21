@@ -109,8 +109,8 @@ appUpdate :
     -> Model model
     -> ( Model model, Cmd (Msg msg) )
 appUpdate a msg am =
-    case Debug.log "Realm.update" msg of
-        Msg imsg ->
+    case Debug.log "Realm.update" ( msg, am.shuttingDown ) of
+        ( Msg imsg, False ) ->
             case am.model of
                 Err _ ->
                     ( am, Cmd.none )
@@ -127,17 +127,20 @@ appUpdate a msg am =
                     in
                     ( m2, Cmd.batch [ cmd, cmd2 ] )
 
-        UrlRequest (B.Internal url) ->
+        ( UrlRequest (B.Internal url), False ) ->
             ( am, BN.pushUrl am.key (Url.toString url) )
 
-        UrlRequest (B.External url) ->
+        ( UrlRequest (B.External url), False ) ->
             ( am, BN.load url )
 
-        UrlChange _ ->
+        ( UrlChange _, False ) ->
             ( am, Cmd.none )
 
-        Shutdown _ ->
+        ( Shutdown _, False ) ->
             ( { am | shuttingDown = True }, Cmd.none )
+
+        _ ->
+            ( am, Cmd.none )
 
 
 appSubscriptions : App config model msg -> Model model -> Sub (Msg msg)
@@ -520,7 +523,6 @@ controller c =
 
         TestPassed id ->
             [ ( "kind", JE.string "TestPassed" ), ( "id", JE.string id ) ]
-
     )
         |> JE.object
 
