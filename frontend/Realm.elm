@@ -215,22 +215,22 @@ updateHash m =
                 { url | fragment = Just hash }
 
 
-init0 : In -> config -> ( config, Cmd msg )
+init0 : In -> config -> ( config, Cmd (Msg msg) )
 init0 _ c =
     ( c, Cmd.none )
 
 
-sub0 : In -> model -> Sub msg
+sub0 : In -> model -> Sub (Msg msg)
 sub0 _ _ =
     Sub.none
 
 
-update0 : In -> msg -> model -> ( model, Cmd msg )
+update0 : In -> msg -> model -> ( model, Cmd (Msg msg) )
 update0 _ _ model =
     ( model, Cmd.none )
 
 
-document : In -> E.Element msg -> B.Document msg
+document : In -> E.Element (Msg msg) -> B.Document (Msg msg)
 document in_ el =
     { title = in_.title, body = [ E.layout [] el ] }
 
