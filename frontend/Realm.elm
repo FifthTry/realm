@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Out(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, pushHash, result, sub0, test, test0, testResult, third, update0, updateHash)
+module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, pushHash, result, sub0, test, test0, testResult, update0)
 
 import Browser as B
 import Browser.Navigation as BN
@@ -9,6 +9,7 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Platform
 import Realm.Ports exposing (shutdown, toIframe)
+import Task
 import Url exposing (Url)
 
 
@@ -28,6 +29,7 @@ type Msg msg
     | Msg msg
     | UrlChange Url
     | Shutdown ()
+    | UpdateHashKV String String
 
 
 type alias In =
@@ -36,16 +38,12 @@ type alias In =
     }
 
 
-type Out
-    = UpdateHashKV String String
-
-
 type alias App config model msg =
     { config : JD.Decoder config
-    , init : In -> config -> ( model, Cmd msg, List Out )
-    , update : In -> msg -> model -> ( model, Cmd msg, List Out )
-    , subscriptions : In -> model -> Sub msg
-    , document : In -> model -> B.Document msg
+    , init : In -> config -> ( model, Cmd (Msg msg) )
+    , update : In -> msg -> model -> ( model, Cmd (Msg msg) )
+    , subscriptions : In -> model -> Sub (Msg msg)
+    , document : In -> model -> B.Document (Msg msg)
     }
 
 
@@ -78,29 +76,25 @@ appInit a flags url key =
         hash =
             fromHash url
 
-        ( im, cmd, out ) =
+        ( im, cmd ) =
             case JD.decodeValue a.config flags.config of
                 Ok config ->
                     a.init { title = flags.title, hash = hash } config
-                        |> map1st Ok
-                        |> map2nd (Cmd.map Msg)
+                        |> Tuple.mapFirst Ok
 
                 Err e ->
-                    ( Err { value = flags.config, jd = e }, Cmd.none, [] )
-
-        ( m, cmd2 ) =
-            handleOut out <|
-                Debug.log "init"
-                    { url = url
-                    , key = key
-                    , model = im
-                    , shuttingDown = False
-                    , title = flags.title
-                    , dict = hash
-                    , clearedHash = False
-                    }
+                    ( Err { value = flags.config, jd = e }, Cmd.none )
     in
-    ( m, Cmd.batch [ cmd, cmd2 ] )
+    ( { url = url
+      , key = key
+      , model = im
+      , shuttingDown = False
+      , title = flags.title
+      , dict = hash
+      , clearedHash = False
+      }
+    , cmd
+    )
 
 
 appUpdate :
@@ -116,16 +110,8 @@ appUpdate a msg am =
                     ( am, Cmd.none )
 
                 Ok model ->
-                    let
-                        ( m, cmd, out ) =
-                            a.update { title = am.title, hash = am.dict } imsg model
-                                |> map1st (\m_ -> { am | model = Ok m_ })
-                                |> map2nd (Cmd.map Msg)
-
-                        ( m2, cmd2 ) =
-                            handleOut out m
-                    in
-                    ( m2, Cmd.batch [ cmd, cmd2 ] )
+                    a.update { title = am.title, hash = am.dict } imsg model
+                        |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
 
         ( UrlRequest (B.Internal url), False ) ->
             ( am, BN.pushUrl am.key (Url.toString url) )
@@ -135,6 +121,31 @@ appUpdate a msg am =
 
         ( UrlChange _, False ) ->
             ( am, Cmd.none )
+
+        ( UpdateHashKV k "", False ) ->
+            let
+                m =
+                    { am
+                        | dict =
+                            Dict.remove
+                                (Url.percentEncode k)
+                                am.dict
+                    }
+            in
+            ( m, updateHash m )
+
+        ( UpdateHashKV k v, False ) ->
+            let
+                m =
+                    { am
+                        | dict =
+                            Dict.insert
+                                (Url.percentEncode k)
+                                (Url.percentEncode v)
+                                am.dict
+                    }
+            in
+            ( m, updateHash m )
 
         ( Shutdown _, False ) ->
             ( { am | shuttingDown = True }, Cmd.none )
@@ -150,7 +161,6 @@ appSubscriptions a am =
             Sub.batch
                 [ shutdown Shutdown
                 , a.subscriptions { title = am.title, hash = am.dict } model
-                    |> Sub.map Msg
                 ]
 
         _ ->
@@ -164,105 +174,50 @@ appDocument a am =
             { title = "failed to parse", body = [ H.text (Debug.toString e) ] }
 
         ( Ok model, False ) ->
-            let
-                d =
-                    a.document { title = am.title, hash = am.dict } model
-            in
-            { title = d.title, body = List.map (H.map Msg) d.body }
+            a.document { title = am.title, hash = am.dict } model
 
         ( _, True ) ->
             { title = "shuttingDown", body = [] }
 
 
-handleOut : List Out -> Model model -> ( Model model, Cmd (Msg msg) )
-handleOut lst m =
-    List.foldl
-        (\o ( im, ic ) ->
-            case o of
-                UpdateHashKV k "" ->
-                    ( { im
-                        | dict =
-                            Dict.remove
-                                (Url.percentEncode k)
-                                im.dict
-                      }
-                    , Cmd.batch [ ic, Cmd.none ]
-                    )
+updateHash : Model model -> Cmd (Msg msg)
+updateHash m =
+    BN.replaceUrl m.key <|
+        Url.toString <|
+            if Dict.isEmpty m.dict then
+                let
+                    url =
+                        m.url
+                in
+                { url | fragment = Nothing }
 
-                UpdateHashKV k v ->
-                    ( { im
-                        | dict =
-                            Dict.insert
-                                (Url.percentEncode k)
-                                (Url.percentEncode v)
-                                im.dict
-                      }
-                    , Cmd.batch [ ic, Cmd.none ]
-                    )
-        )
-        ( m, Cmd.none )
-        lst
-        |> updateHash
+            else
+                let
+                    url =
+                        m.url
 
+                    hash =
+                        m.dict
+                            |> Dict.toList
+                            |> List.foldl
+                                (\( k, v ) s ->
+                                    s
+                                        ++ (if String.isEmpty s then
+                                                ""
 
-updateHash : ( Model model, Cmd (Msg msg) ) -> ( Model model, Cmd (Msg msg) )
-updateHash ( m, c ) =
-    ( m
-    , Cmd.batch
-        [ c
-        , BN.replaceUrl m.key <|
-            Url.toString <|
-                if Dict.isEmpty m.dict then
-                    let
-                        url =
-                            m.url
-                    in
-                    { url | fragment = Nothing }
-
-                else
-                    let
-                        url =
-                            m.url
-
-                        hash =
-                            m.dict
-                                |> Dict.toList
-                                |> List.foldl
-                                    (\( k, v ) s ->
-                                        s
-                                            ++ (if String.isEmpty s then
-                                                    ""
-
-                                                else
-                                                    "&"
-                                               )
-                                            ++ (k ++ "=" ++ v)
-                                    )
-                                    ""
-                    in
-                    { url | fragment = Just hash }
-        ]
-    )
+                                            else
+                                                "&"
+                                           )
+                                        ++ (k ++ "=" ++ v)
+                                )
+                                ""
+                in
+                { url | fragment = Just hash }
 
 
-map1st : (a -> a1) -> ( a, b, c ) -> ( a1, b, c )
-map1st f ( a, b, c ) =
-    ( f a, b, c )
-
-
-map2nd : (b -> b1) -> ( a, b, c ) -> ( a, b1, c )
-map2nd f ( a, b, c ) =
-    ( a, f b, c )
-
-
-third : c -> ( a, b ) -> ( a, b, c )
-third c ( a, b ) =
-    ( a, b, c )
-
-
-init0 : In -> config -> ( config, Cmd msg, List Out )
+init0 : In -> config -> ( config, Cmd msg )
 init0 _ c =
-    ( c, Cmd.none, [] )
+    ( c, Cmd.none )
 
 
 sub0 : In -> model -> Sub msg
@@ -270,9 +225,9 @@ sub0 _ _ =
     Sub.none
 
 
-update0 : In -> msg -> model -> ( model, Cmd msg, List Out )
+update0 : In -> msg -> model -> ( model, Cmd msg )
 update0 _ _ model =
-    ( model, Cmd.none, [] )
+    ( model, Cmd.none )
 
 
 document : In -> E.Element msg -> B.Document msg
@@ -313,9 +268,11 @@ getHash k in_ =
         |> Maybe.withDefault ""
 
 
-pushHash : String -> String -> List Out
+pushHash : String -> String -> Cmd (Msg msg)
 pushHash k v =
-    [ UpdateHashKV k v ]
+    UpdateHashKV k v
+        |> Task.succeed
+        |> Task.perform identity
 
 
 type alias TestFlags config =
@@ -342,19 +299,12 @@ type alias TModel model =
     }
 
 
-type TMsg msg
-    = TMsg msg
-    | TUrlRequest B.UrlRequest
-    | TUrlChange Url
-    | TShutdown ()
-
-
 testInit :
     TestApp config model msg
     -> JE.Value
     -> Url
     -> BN.Key
-    -> ( TModel model, Cmd (TMsg msg) )
+    -> ( TModel model, Cmd (Msg msg) )
 testInit t flags _ _ =
     case JD.decodeValue (testFlags t.config) flags of
         Ok tflags ->
@@ -363,7 +313,6 @@ testInit t flags _ _ =
                     (\m ->
                         { title = tflags.title, model = Just m, shuttingDown = False }
                     )
-                |> Tuple.mapSecond (Cmd.map TMsg)
 
         Err e ->
             ( { model = Nothing, title = Debug.toString e, shuttingDown = False }
@@ -373,17 +322,16 @@ testInit t flags _ _ =
 
 testUpdate :
     TestApp config model msg
-    -> TMsg msg
+    -> Msg msg
     -> TModel model
-    -> ( TModel model, Cmd (TMsg msg) )
+    -> ( TModel model, Cmd (Msg msg) )
 testUpdate t msg m =
     case ( m.model, msg ) of
-        ( Just model, TMsg imsg ) ->
+        ( Just model, Msg imsg ) ->
             t.update { title = m.title, hash = Dict.empty } imsg model
                 |> Tuple.mapFirst (\m2 -> { m | model = Just m2 })
-                |> Tuple.mapSecond (Cmd.map TMsg)
 
-        ( _, TShutdown () ) ->
+        ( _, Shutdown () ) ->
             ( { m | shuttingDown = True }, Cmd.none )
 
         _ ->
@@ -393,15 +341,11 @@ testUpdate t msg m =
 testDocument :
     TestApp config model msg
     -> TModel model
-    -> B.Document (TMsg msg)
+    -> B.Document (Msg msg)
 testDocument t m =
     case ( m.shuttingDown, m.model ) of
         ( False, Just model ) ->
-            let
-                d =
-                    t.document { title = m.title, hash = Dict.empty } model
-            in
-            { title = d.title, body = List.map (H.map TMsg) d.body }
+            t.document { title = m.title, hash = Dict.empty } model
 
         _ ->
             { title = m.title, body = [ H.text m.title ] }
@@ -410,35 +354,34 @@ testDocument t m =
 testSubscriptions :
     TestApp config model msg
     -> TModel model
-    -> Sub (TMsg msg)
+    -> Sub (Msg msg)
 testSubscriptions t m =
     case ( m.shuttingDown, m.model ) of
         ( False, Just model ) ->
             t.subscriptions { title = m.title, hash = Dict.empty } model
-                |> Sub.map TMsg
 
         _ ->
             Sub.none
 
 
-test : TestApp config model msg -> Program JE.Value (TModel model) (TMsg msg)
+test : TestApp config model msg -> Program JE.Value (TModel model) (Msg msg)
 test t =
     B.application
         { init = testInit t
         , view = testDocument t
         , update = testUpdate t
         , subscriptions = testSubscriptions t
-        , onUrlRequest = TUrlRequest
-        , onUrlChange = TUrlChange
+        , onUrlRequest = UrlRequest
+        , onUrlChange = UrlChange
         }
 
 
 type alias TestApp config model msg =
     { config : JD.Decoder config
-    , init : In -> TestFlags config -> ( model, Cmd msg )
-    , update : In -> msg -> model -> ( model, Cmd msg )
-    , subscriptions : In -> model -> Sub msg
-    , document : In -> model -> B.Document msg
+    , init : In -> TestFlags config -> ( model, Cmd (Msg msg) )
+    , update : In -> msg -> model -> ( model, Cmd (Msg msg) )
+    , subscriptions : In -> model -> Sub (Msg msg)
+    , document : In -> model -> B.Document (Msg msg)
     }
 
 
@@ -488,13 +431,13 @@ testResult =
 
 test0 :
     App config model msg
-    -> (In -> TestFlags config -> ( model, Cmd msg ))
-    -> Program JE.Value (TModel model) (TMsg msg)
+    -> (In -> TestFlags config -> ( model, Cmd (Msg msg) ))
+    -> Program JE.Value (TModel model) (Msg msg)
 test0 a init =
     test
         { config = a.config
         , init = init
-        , update = \i msg m -> a.update i msg m |> (\( m2, c, _ ) -> ( m2, c ))
+        , update = \i msg m -> a.update i msg m
         , subscriptions = a.subscriptions
         , document = a.document
         }
@@ -527,6 +470,6 @@ controller c =
         |> JE.object
 
 
-result : Cmd msg -> List TestResult -> Cmd msg
+result : Cmd (Msg msg) -> List TestResult -> Cmd (Msg msg)
 result c list =
     Cmd.batch [ c, JE.list controller list |> toIframe ]

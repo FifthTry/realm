@@ -37,7 +37,7 @@ type alias Model =
 
 type alias TestResult =
     { id : String
-    , result : List (List R.TestResult)
+    , result : List R.TestResult
     }
 
 
@@ -48,13 +48,87 @@ type Msg
 
 init : Config -> () -> url -> key -> ( Model, Cmd Msg )
 init config _ _ _ =
-    { context = JE.object [], result = [], config = config, testDone = False }
+    { context = JE.object []
+    , result =
+        [ { id = "index", result = [ R.TestPassed "" ] }
+        , { id = "login", result = [ R.TestPassed "" ] }
+        , { id = "login", result = [ R.TestPassed "", R.TestPassed "" ] }
+        ]
+    , config = config
+    , testDone = False
+    }
         |> getNextStep
+        |> (\( p, q ) -> ( p, doStep p.context q ))
 
 
-getNextStep : Model -> ( Model, Cmd Msg )
+getNextStep : Model -> ( Model, Maybe Step )
 getNextStep m =
-    ( m, navigate "Index" "anonymous" "/" (JE.object []) |> Tuple.second )
+    let
+        test_done =
+            case List.isEmpty (Debug.log "tests lists" m.config.tests) of
+                True ->
+                    True
+
+                False ->
+                    List.length m.result == List.length list
+
+        list =
+            m.config.tests
+                |> List.map
+                    (\( s, l ) ->
+                        List.map (\t -> ( s, t )) l
+                    )
+                |> List.concat
+
+        previous =
+            index (List.length m.result) (Debug.log "testlist" list)
+                |> Maybe.withDefault ( "", Navigate "" "" "" )
+
+        current =
+            index (List.length m.result + 1) list
+                |> Maybe.withDefault ( "", Navigate "" "" "" )
+
+        next =
+            index (List.length m.result + 1) list
+                |> Maybe.withDefault ( "", Navigate "" "" "" )
+
+        nextstep =
+            case next of
+                ( "", Navigate "" "" "" ) ->
+                    Nothing
+
+                _ ->
+                    Just (next |> (\( _, s ) -> s))
+
+        currentresult =
+            index (List.length m.result) m.result
+                |> Maybe.withDefault (TestResult "" [])
+
+        result =
+            if test_done then
+                m.result
+
+            else if (Debug.log "Previous" previous |> (\( s, _ ) -> s)) == "" then
+                List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) [ R.TestPassed "" ] ]
+
+            else if (previous |> (\( s, _ ) -> s)) == (Debug.log "Current" current |> (\( s, _ ) -> s)) then
+                List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) (List.append (Debug.log "currentresult" currentresult).result [ R.TestPassed "" ]) ]
+
+            else
+                List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) [ R.TestPassed "" ] ]
+    in
+    ( { m | testDone = test_done, result = Debug.log "results..." result }, nextstep )
+
+
+index : Int -> List a -> Maybe a
+index i list =
+    if List.length list >= i then
+        List.take i list
+            |> List.reverse
+            |> List.head
+
+    else
+        Nothing
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -106,7 +180,7 @@ view m =
 
 
 testView : Test -> Maybe TestResult -> E.Element Msg
-testView (id, steps) mr =
+testView ( id, steps ) mr =
     E.text id
 
 
@@ -135,6 +209,21 @@ app config =
 
 type alias Context =
     JE.Value
+
+
+doStep : Context -> Maybe Step -> Cmd Msg
+doStep ctx ms =
+    case ms of
+        Just s ->
+            case s of
+                Navigate a b c ->
+                    navigate a b c ctx |> (\( _, cm ) -> cm)
+
+                Submit a b c ->
+                    submit a b c ctx |> (\( _, cm ) -> cm)
+
+        Nothing ->
+            Cmd.none
 
 
 navigate : String -> String -> String -> Context -> ( Context, Cmd Msg )
