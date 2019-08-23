@@ -1,8 +1,9 @@
 port module Realm.Test exposing (Step(..), Test, app)
 
 import Browser as B
-import Element as E
+import Element as E exposing (..)
 import Element.Border as EB
+import Element.Font as Font
 import Html as H
 import Html.Attributes as HA
 import Json.Decode as JD
@@ -50,28 +51,17 @@ init : Config -> () -> url -> key -> ( Model, Cmd Msg )
 init config _ _ _ =
     { context = JE.object []
     , result =
-        [ { id = "index", result = [ R.TestPassed "" ] }
-        , { id = "login", result = [ R.TestPassed "" ] }
-        , { id = "login", result = [ R.TestPassed "", R.TestPassed "" ] }
-        ]
+        []
     , config = config
     , testDone = False
     }
-        |> getNextStep
+        |> getNextStep 0
         |> (\( p, q ) -> ( p, doStep p.context q ))
 
 
-getNextStep : Model -> ( Model, Maybe Step )
-getNextStep m =
+getNextStep : Int -> Model -> ( Model, Maybe Step )
+getNextStep len m =
     let
-        test_done =
-            case List.isEmpty (Debug.log "tests lists" m.config.tests) of
-                True ->
-                    True
-
-                False ->
-                    List.length m.result == List.length list
-
         list =
             m.config.tests
                 |> List.map
@@ -80,44 +70,19 @@ getNextStep m =
                     )
                 |> List.concat
 
-        previous =
-            index (List.length m.result) (Debug.log "testlist" list)
-                |> Maybe.withDefault ( "", Navigate "" "" "" )
-
         current =
-            index (List.length m.result + 1) list
-                |> Maybe.withDefault ( "", Navigate "" "" "" )
-
-        next =
-            index (List.length m.result + 1) list
+            index (len + 1) list
                 |> Maybe.withDefault ( "", Navigate "" "" "" )
 
         nextstep =
-            case next of
+            case current of
                 ( "", Navigate "" "" "" ) ->
                     Nothing
 
                 _ ->
-                    Just (next |> (\( _, s ) -> s))
-
-        currentresult =
-            index (List.length m.result) m.result
-                |> Maybe.withDefault (TestResult "" [])
-
-        result =
-            if test_done then
-                m.result
-
-            else if (Debug.log "Previous" previous |> (\( s, _ ) -> s)) == "" then
-                List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) [ R.TestPassed "" ] ]
-
-            else if (previous |> (\( s, _ ) -> s)) == (Debug.log "Current" current |> (\( s, _ ) -> s)) then
-                List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) (List.append (Debug.log "currentresult" currentresult).result [ R.TestPassed "" ]) ]
-
-            else
-                List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) [ R.TestPassed "" ] ]
+                    Just (current |> (\( _, s ) -> s))
     in
-    ( { m | testDone = test_done, result = Debug.log "results..." result }, nextstep )
+    ( m, nextstep )
 
 
 index : Int -> List a -> Maybe a
@@ -139,11 +104,66 @@ update msg m =
 
         FromChild v ->
             let
+                test_done =
+                    case List.isEmpty (Debug.log "tests lists" m.config.tests) of
+                        True ->
+                            True
+
+                        False ->
+                            List.length resultset == List.length list
+
+                list =
+                    m.config.tests
+                        |> List.map
+                            (\( s, l ) ->
+                                List.map (\t -> ( s, t )) l
+                            )
+                        |> List.concat
+
+                previous =
+                    index (List.length m.result) (Debug.log "testlist" list)
+                        |> Maybe.withDefault ( "", Navigate "" "" "" )
+
+                current =
+                    index (List.length m.result + 1) list
+                        |> Maybe.withDefault ( "", Navigate "" "" "" )
+
+                result =
+                    JD.decodeValue (JD.list R.testResult) v
+
+                currentresult =
+                    index (List.length m.result) m.result
+                        |> Maybe.withDefault (TestResult "" [])
+
+                resultset =
+                    if (Debug.log "Previous" previous |> (\( s, _ ) -> s)) == "" then
+                        List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) (Result.withDefault [] result) ]
+
+                    else if (previous |> (\( s, _ ) -> s)) == (Debug.log "Current" current |> (\( s, _ ) -> s)) then
+                        List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) (List.append (Debug.log "currentresult" currentresult).result (Result.withDefault [] result)) ]
+
+                    else
+                        List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) (Result.withDefault [] result) ]
+
+                _ =
+                    Debug.log "m.result" m.result
+
+                _ =
+                    Debug.log "resultset" resultset
+
                 _ =
                     Debug.log "FromChild" <|
-                        Debug.toString (JD.decodeValue (JD.list R.testResult) v)
+                        Debug.toString result
+
+                nextstep =
+                    case test_done of
+                        True ->
+                            Nothing
+
+                        False ->
+                            getNextStep (List.length resultset) m |> (\( mod, mb_step ) -> mb_step)
             in
-            ( m, Cmd.none )
+            ( { m | result = resultset, testDone = test_done }, doStep m.context (Debug.log "nextstep" nextstep) )
 
 
 document : Model -> B.Document Msg
@@ -179,9 +199,25 @@ view m =
         ]
 
 
+showStep : Step -> E.Element Msg
+showStep s =
+    case s of
+        Navigate a b c ->
+            E.el [ alignRight ] <| E.text b
+
+        Submit a b c ->
+            E.el [ alignRight ] <| E.text b
+
+
 testView : Test -> Maybe TestResult -> E.Element Msg
 testView ( id, steps ) mr =
-    E.text id
+    E.column []
+        ([ E.el [ Font.size 30 ] <| E.text id
+         ]
+            ++ (steps
+                    |> List.map showStep
+               )
+        )
 
 
 listOfTests : Model -> E.Element Msg
