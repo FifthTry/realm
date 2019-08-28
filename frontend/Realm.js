@@ -83,6 +83,9 @@
 
             var id = data.id;
             var flags = data;
+            flags.width = window.innerWidth;
+            flags.height = window.innerHeight;
+
             if (!!testContext) {
                 if (testContext.elm !== id) {
                     console.log("expected", testContext.elm, "got", id);
@@ -97,7 +100,9 @@
                     "id": testContext.id,
                     "title": data.title,
                     "config": data.config,
-                    "context": testContext.context
+                    "context": testContext.context,
+                    "width": window.innerWidth,
+                    "height": window.innerHeight
                 };
             }
 
@@ -134,11 +139,15 @@
 
             function renderNow() {
                 // wait for previous app to cleanup
+                console.log("renderNow");
                 if (app && document.body.childElementCount !== 0) {
                     window.requestAnimationFrame(renderNow);
                     return;
                 }
 
+                console.log("renderNow2");
+                cmd.width = window.innerWidth;
+                cmd.height = window.innerHeight;
                 app = getApp(cmd.id).init({flags: cmd});
             }
             renderNow();
@@ -147,7 +156,9 @@
 
     function main() {
         if (document.location.pathname === "/iframe/") {
+            console.log("iframe mode loaded");
             window.handleCmd = handleCmd;
+            window.parent.iframeLoaded();
         } else {
             loadPage(document.getElementById("data").text, false);
         }

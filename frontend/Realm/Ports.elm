@@ -1,4 +1,4 @@
-port module Realm.Ports exposing (fromIframe, navigate, shutdown, submit, toIframe)
+port module Realm.Ports exposing (..)
 
 import Json.Encode as JE
 
@@ -16,3 +16,6 @@ port toIframe : JE.Value -> Cmd msg
 
 
 port fromIframe : (JE.Value -> msg) -> Sub msg
+
+
+port resize : () -> Cmd msg

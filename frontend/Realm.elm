@@ -1,6 +1,7 @@
 module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, pushHash, result, sub0, test, test0, testResult, update0)
 
 import Browser as B
+import Browser.Events as BE
 import Browser.Navigation as BN
 import Dict exposing (Dict)
 import Element as E
@@ -21,6 +22,9 @@ type alias Model model =
     , title : String
     , dict : Dict String String
     , clearedHash : Bool
+    , device : E.Device
+    , height : Int
+    , width : Int
     }
 
 
@@ -30,11 +34,15 @@ type Msg msg
     | UrlChange Url
     | Shutdown ()
     | UpdateHashKV String String
+    | OnResize Int Int
 
 
 type alias In =
     { title : String
     , hash : Dict String String
+    , device : E.Device
+    , height : Int
+    , width : Int
     }
 
 
@@ -50,6 +58,8 @@ type alias App config model msg =
 type alias Flags =
     { config : JE.Value
     , title : String
+    , width : Int
+    , height : Int
     }
 
 
@@ -76,14 +86,32 @@ appInit a flags url key =
         hash =
             fromHash url
 
-        ( im, cmd ) =
+        ( im, cmd, ( device, height, width ) ) =
             case JD.decodeValue a.config flags.config of
                 Ok config ->
-                    a.init { title = flags.title, hash = hash } config
+                    let
+                        d =
+                            E.classifyDevice flags
+                    in
+                    a.init
+                        { title = flags.title
+                        , hash = hash
+                        , device = d
+                        , height = flags.height
+                        , width = flags.width
+                        }
+                        config
                         |> Tuple.mapFirst Ok
+                        |> (\( f, s ) -> ( f, s, ( d, flags.height, flags.width ) ))
 
                 Err e ->
-                    ( Err { value = flags.config, jd = e }, Cmd.none )
+                    ( Err { value = flags.config, jd = e }
+                    , Cmd.none
+                    , ( { class = E.Desktop, orientation = E.Landscape }
+                      , 1024
+                      , 1024
+                      )
+                    )
     in
     ( { url = url
       , key = key
@@ -92,6 +120,9 @@ appInit a flags url key =
       , title = flags.title
       , dict = hash
       , clearedHash = False
+      , device = device
+      , height = height
+      , width = width
       }
     , cmd
     )
@@ -110,7 +141,15 @@ appUpdate a msg am =
                     ( am, Cmd.none )
 
                 Ok model ->
-                    a.update { title = am.title, hash = am.dict } imsg model
+                    a.update
+                        { title = am.title
+                        , hash = am.dict
+                        , device = am.device
+                        , height = am.height
+                        , width = am.width
+                        }
+                        imsg
+                        model
                         |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
 
         ( UrlRequest (B.Internal url), False ) ->
@@ -160,7 +199,15 @@ appSubscriptions a am =
         ( Ok model, False ) ->
             Sub.batch
                 [ shutdown Shutdown
-                , a.subscriptions { title = am.title, hash = am.dict } model
+                , a.subscriptions
+                    { title = am.title
+                    , hash = am.dict
+                    , device = am.device
+                    , height = am.height
+                    , width = am.width
+                    }
+                    model
+                , BE.onResize OnResize
                 ]
 
         _ ->
@@ -174,7 +221,14 @@ appDocument a am =
             { title = "failed to parse", body = [ H.text (Debug.toString e) ] }
 
         ( Ok model, False ) ->
-            a.document { title = am.title, hash = am.dict } model
+            a.document
+                { title = am.title
+                , hash = am.dict
+                , device = am.device
+                , height = am.height
+                , width = am.width
+                }
+                model
 
         ( _, True ) ->
             { title = "shuttingDown", body = [] }
@@ -280,22 +334,29 @@ type alias TestFlags config =
     , config : config
     , title : String
     , context : JE.Value
+    , width : Int
+    , height : Int
     }
 
 
 testFlags : JD.Decoder config -> JD.Decoder (TestFlags config)
 testFlags config =
-    JD.map4 TestFlags
+    JD.map6 TestFlags
         (JD.field "id" JD.string)
         (JD.field "config" config)
         (JD.field "title" JD.string)
         (JD.field "context" JD.value)
+        (JD.field "width" JD.int)
+        (JD.field "height" JD.int)
 
 
 type alias TModel model =
     { title : String
     , model : Maybe model
     , shuttingDown : Bool
+    , device : E.Device
+    , height : Int
+    , width : Int
     }
 
 
@@ -308,14 +369,30 @@ testInit :
 testInit t flags _ _ =
     case JD.decodeValue (testFlags t.config) flags of
         Ok tflags ->
-            t.init { title = tflags.title, hash = Dict.empty } tflags
+            let
+                device =
+                    E.classifyDevice tflags
+            in
+            t.init { title = tflags.title, hash = Dict.empty, device = device, height = tflags.height, width = tflags.width } tflags
                 |> Tuple.mapFirst
                     (\m ->
-                        { title = tflags.title, model = Just m, shuttingDown = False }
+                        { title = tflags.title
+                        , model = Just m
+                        , shuttingDown = False
+                        , device = device
+                        , height = tflags.height
+                        , width = tflags.width
+                        }
                     )
 
         Err e ->
-            ( { model = Nothing, title = Debug.toString e, shuttingDown = False }
+            ( { model = Nothing
+              , title = Debug.toString e
+              , shuttingDown = False
+              , device = { class = E.Desktop, orientation = E.Landscape }
+              , height = 1024
+              , width = 1024
+              }
             , result Cmd.none [ BadConfig <| JD.errorToString e ]
             )
 
@@ -328,7 +405,15 @@ testUpdate :
 testUpdate t msg m =
     case ( m.model, msg ) of
         ( Just model, Msg imsg ) ->
-            t.update { title = m.title, hash = Dict.empty } imsg model
+            t.update
+                { title = m.title
+                , hash = Dict.empty
+                , device = m.device
+                , height = m.height
+                , width = m.width
+                }
+                imsg
+                model
                 |> Tuple.mapFirst (\m2 -> { m | model = Just m2 })
 
         ( _, Shutdown () ) ->
@@ -345,7 +430,14 @@ testDocument :
 testDocument t m =
     case ( m.shuttingDown, m.model ) of
         ( False, Just model ) ->
-            t.document { title = m.title, hash = Dict.empty } model
+            t.document
+                { title = m.title
+                , hash = Dict.empty
+                , device = m.device
+                , height = m.height
+                , width = m.width
+                }
+                model
 
         _ ->
             { title = m.title, body = [ H.text m.title ] }
@@ -358,7 +450,17 @@ testSubscriptions :
 testSubscriptions t m =
     case ( m.shuttingDown, m.model ) of
         ( False, Just model ) ->
-            t.subscriptions { title = m.title, hash = Dict.empty } model
+            Sub.batch
+                [ t.subscriptions
+                    { title = m.title
+                    , hash = Dict.empty
+                    , device = m.device
+                    , height = m.height
+                    , width = m.width
+                    }
+                    model
+                , BE.onResize OnResize
+                ]
 
         _ ->
             Sub.none
@@ -406,20 +508,16 @@ testResult =
                             (JD.field "message" JD.string)
 
                     "TestPassed" ->
-                        JD.field "id" JD.string
-                            |> JD.andThen (\m -> JD.succeed (TestPassed m))
+                        JD.map TestPassed (JD.field "id" JD.string)
 
                     "BadConfig" ->
-                        JD.field "message" JD.string
-                            |> JD.andThen (\m -> JD.succeed (BadConfig m))
+                        JD.map BadConfig (JD.field "message" JD.string)
 
                     "Screenshot" ->
-                        JD.field "id" JD.string
-                            |> JD.andThen (\m -> JD.succeed (Screenshot m))
+                        JD.map Screenshot (JD.field "id" JD.string)
 
                     "BadElm" ->
-                        JD.field "message" JD.string
-                            |> JD.andThen (\m -> JD.succeed (BadElm m))
+                        JD.map BadElm (JD.field "message" JD.string)
 
                     "TestDone" ->
                         JD.succeed TestDone

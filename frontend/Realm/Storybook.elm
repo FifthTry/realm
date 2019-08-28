@@ -1,16 +1,23 @@
 port module Realm.Storybook exposing (Story, app)
 
 import Browser as B
+import Browser.Events as BE
 import Element as E
 import Element.Background as Bg
 import Element.Border as EB
 import Element.Events as EE
 import Element.Font as EF
+import Element.Keyed as EK
 import Html as H
 import Html.Attributes as HA
 import Json.Encode as JE
-import Realm.Ports exposing (toIframe)
+import Realm.Ports exposing (resize, toIframe)
 import Realm.Utils as U
+
+
+edges : { top : Int, right : Int, bottom : Int, left : Int }
+edges =
+    { top = 0, right = 0, bottom = 0, left = 0 }
 
 
 type alias Story =
@@ -25,6 +32,7 @@ type alias Story =
 type alias Model =
     { current : Maybe ( String, String ) -- index id, story id
     , config : Config
+    , device : E.Device
     }
 
 
@@ -37,24 +45,48 @@ type alias Config =
 type Msg
     = Navigate String String
     | NoOp
+    | SetDevice E.Device
+
+
+mobile : E.Device
+mobile =
+    { class = E.Phone, orientation = E.Portrait }
+
+
+desktop : E.Device
+desktop =
+    { class = E.Desktop, orientation = E.Landscape }
 
 
 init : Config -> () -> url -> key -> ( Model, Cmd Msg )
 init config _ _ _ =
-    ( { current = Nothing, config = config }, Cmd.none )
+    ( { current = Nothing, config = config, device = desktop }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
-    case Debug.log "Design.msg" msg of
-        Navigate sid pid ->
+    case Debug.log "Design.msg" ( msg, m.current ) of
+        ( Navigate sid pid, _ ) ->
             ( { m | current = Just ( sid, pid ) }
             , getStory m.config.stories sid pid
                 |> Maybe.map render
                 |> Maybe.withDefault Cmd.none
             )
 
-        NoOp ->
+        ( NoOp, _ ) ->
+            ( m, Cmd.none )
+
+        ( SetDevice d, Just ( sid, pid ) ) ->
+            ( { m | device = d }
+            , Cmd.batch
+                [ resize ()
+                , getStory m.config.stories sid pid
+                    |> Maybe.map render
+                    |> Maybe.withDefault Cmd.none
+                ]
+            )
+
+        ( SetDevice _, Nothing ) ->
             ( m, Cmd.none )
 
 
@@ -86,17 +118,30 @@ view m =
                 [ E.text <| m.config.title ++ " Storybook" ]
             , listOfStories m
             ]
-        , E.el [ E.height E.fill, E.width E.fill ] <|
-            U.yesno (m.current == Nothing) (intro m) <|
-                E.html
+        , EK.el [ E.height E.fill, iframeWidth m, E.centerX, E.centerY ] <|
+            U.yesno (m.current == Nothing) ( "intro", intro m ) <|
+                ( "iframe"
+                , E.html
                     (H.node "iframe"
                         [ HA.style "width" "100%"
+
+                        -- , HA.style "height" "100%"
                         , HA.style "border" "none"
                         , HA.src "/iframe/"
                         ]
                         []
                     )
+                )
         ]
+
+
+iframeWidth : Model -> E.Attribute Msg
+iframeWidth m =
+    if m.device == desktop then
+        E.width E.fill
+
+    else
+        E.width <| E.px 414
 
 
 intro : Model -> E.Element Msg
@@ -112,15 +157,35 @@ intro m =
 
 storyView : String -> Model -> Story -> E.Element Msg
 storyView sid m s =
-    let
-        current =
-            Just ( sid, s.id ) == m.current
-    in
-    E.paragraph
-        ([ EE.onClick (Navigate sid s.id), E.pointer, E.paddingXY 5 3, EF.light ]
-            ++ U.yesno current [ EF.regular, Bg.color <| E.rgb 0.93 0.93 0.93 ] []
-        )
-        [ E.text <| "- " ++ s.title ]
+    if Just ( sid, s.id ) == m.current then
+        E.textColumn [ E.width E.fill ]
+            [ E.paragraph
+                [ EE.onClick (Navigate sid s.id)
+                , E.paddingXY 5 3
+                , EF.light
+                , EF.regular
+                , Bg.color <| E.rgb 0.93 0.93 0.93
+                ]
+                [ E.text <| "- " ++ s.title ]
+            , E.paragraph [ E.pointer ]
+                [ E.el
+                    [ E.paddingEach { edges | right = 10, left = 10 }
+                    , EE.onClick (SetDevice mobile)
+                    ]
+                  <|
+                    E.text <|
+                        "mobile"
+                            ++ U.yesno (m.device == mobile) "*" ""
+                , E.el [ EE.onClick (SetDevice desktop) ] <|
+                    E.text <|
+                        "desktop"
+                            ++ U.yesno (m.device == desktop) "*" ""
+                ]
+            ]
+
+    else
+        E.paragraph [ EE.onClick (Navigate sid s.id), E.pointer, E.paddingXY 5 3, EF.light ]
+            [ E.text <| "- " ++ s.title ]
 
 
 storySection : Model -> ( String, List Story ) -> E.Element Msg
@@ -138,7 +203,7 @@ listOfStories m =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    BE.onResize (always (always NoOp))
 
 
 app : Config -> Program () Model Msg
