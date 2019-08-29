@@ -2,6 +2,7 @@ port module Realm.Storybook exposing (Story, app)
 
 import Browser as B
 import Browser.Events as BE
+import Browser.Navigation as BN
 import Element as E
 import Element.Background as Bg
 import Element.Border as EB
@@ -13,6 +14,9 @@ import Html.Attributes as HA
 import Json.Encode as JE
 import Realm.Ports exposing (resize, toIframe)
 import Realm.Utils as U
+import Url exposing (Url)
+import Url.Parser as UP exposing ((</>), (<?>))
+import Url.Parser.Query as Q
 
 
 edges : { top : Int, right : Int, bottom : Int, left : Int }
@@ -33,6 +37,7 @@ type alias Model =
     { current : Maybe ( String, String ) -- index id, story id
     , config : Config
     , device : E.Device
+    , key : BN.Key
     }
 
 
@@ -46,6 +51,7 @@ type Msg
     = Navigate String String
     | NoOp
     | SetDevice E.Device
+    | Reset
 
 
 mobile : E.Device
@@ -58,31 +64,61 @@ desktop =
     { class = E.Desktop, orientation = E.Landscape }
 
 
-init : Config -> () -> url -> key -> ( Model, Cmd Msg )
-init config _ _ _ =
-    ( { current = Nothing, config = config, device = desktop }, Cmd.none )
+init : Config -> () -> Url -> BN.Key -> ( Model, Cmd Msg )
+init config _ url key =
+    let
+        m =
+            { current = toCurrent url, config = config, device = toDevice url, key = key }
+    in
+    ( m
+    , case m.current of
+        Just ( sid, pid ) ->
+            getStory m.config.stories sid pid
+                |> Maybe.map render
+                |> Maybe.withDefault Cmd.none
+
+        Nothing ->
+            Cmd.none
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case Debug.log "Design.msg" ( msg, m.current ) of
         ( Navigate sid pid, _ ) ->
-            ( { m | current = Just ( sid, pid ) }
+            let
+                m2 =
+                    { m | current = Just ( sid, pid ) }
+            in
+            ( m2
             , getStory m.config.stories sid pid
                 |> Maybe.map render
                 |> Maybe.withDefault Cmd.none
+                |> updateUrl m2
             )
 
         ( NoOp, _ ) ->
             ( m, Cmd.none )
 
+        ( Reset, _ ) ->
+            let
+                m2 =
+                    { m | current = Nothing }
+            in
+            ( m2, updateUrl m2 Cmd.none )
+
         ( SetDevice d, Just ( sid, pid ) ) ->
-            ( { m | device = d }
+            let
+                m2 =
+                    { m | device = d }
+            in
+            ( m2
             , Cmd.batch
                 [ resize ()
                 , getStory m.config.stories sid pid
                     |> Maybe.map render
                     |> Maybe.withDefault Cmd.none
+                    |> updateUrl m2
                 ]
             )
 
@@ -113,6 +149,8 @@ view m =
             [ E.paragraph
                 [ E.padding 5
                 , EB.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+                , E.pointer
+                , EE.onClick Reset
                 ]
               <|
                 [ E.text <| m.config.title ++ " Storybook" ]
@@ -231,3 +269,46 @@ render s =
         , ( "title", JE.string s.pageTitle )
         ]
         |> toIframe
+
+
+toCurrent : Url -> Maybe ( String, String )
+toCurrent url =
+    let
+        r =
+            (UP.s "storybook" <?> Q.string "sid" <?> Q.string "pid")
+                |> UP.map Tuple.pair
+                |> (\p -> UP.parse p url)
+    in
+    case r of
+        Just ( Just pid, Just sid ) ->
+            Just ( pid, sid )
+
+        _ ->
+            Nothing
+
+
+toDevice : Url -> E.Device
+toDevice url =
+    UP.s "storybook"
+        <?> Q.string "device"
+        |> (\p -> UP.parse p url)
+        |> Maybe.withDefault Nothing
+        |> Maybe.map (\d -> U.yesno (d == "desktop") desktop mobile)
+        |> Maybe.withDefault desktop
+
+
+updateUrl : Model -> Cmd Msg -> Cmd Msg
+updateUrl m c =
+    let
+        u =
+            "/storybook/?device="
+                ++ U.yesno (m.device == desktop) "desktop" "mobile"
+                ++ (case m.current of
+                        Just ( sid, pid ) ->
+                            "&sid=" ++ sid ++ "&pid=" ++ pid
+
+                        Nothing ->
+                            ""
+                   )
+    in
+    Cmd.batch [ c, BN.pushUrl m.key u ]

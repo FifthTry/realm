@@ -36,7 +36,7 @@ if (app.ports && app.ports.toIframe) {
         function sendCmdNow() {
             var iframe = window.frames[0];
             if (!iframe || !iframe.handleCmd) {
-                window.setTimeout(sendCmdNow, 10);
+                window.requestAnimationFrame(sendCmdNow);
                 return;
             }
             iframe.handleCmd(cmd);
