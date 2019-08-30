@@ -12,6 +12,7 @@ import Element.Keyed as EK
 import Html as H
 import Html.Attributes as HA
 import Http
+import Json.Decode as JD
 import Json.Encode as JE
 import Process
 import Realm.Ports exposing (resize, toIframe)
@@ -42,6 +43,7 @@ type alias Model =
     , device : E.Device
     , key : BN.Key
     , hash : Maybe String
+    , hideSidebar : Bool
     }
 
 
@@ -58,6 +60,8 @@ type Msg
     | Reset
     | GotHash (Result Http.Error String)
     | AfterPollError
+    | ToggleSidebar
+    | OnKey String
 
 
 mobile : E.Device
@@ -79,6 +83,7 @@ init config _ url key =
             , device = toDevice url
             , key = key
             , hash = Nothing
+            , hideSidebar = toSidebar url
             }
     in
     ( m
@@ -106,7 +111,7 @@ poll hash =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
-    case Debug.log "Design.msg" ( msg, m.current ) of
+    case Debug.log "Storybook.msg" ( msg, m.current ) of
         ( Navigate sid pid, _ ) ->
             let
                 m2 =
@@ -162,13 +167,43 @@ update msg m =
                 _ =
                     Debug.log <| "got http error:" ++ Debug.toString e
             in
-            ( m
-            , Process.sleep 1000
-                |> Task.perform (always AfterPollError)
-            )
+            ( m, Process.sleep 1000 |> Task.perform (always AfterPollError) )
 
         ( AfterPollError, _ ) ->
             ( m, poll <| Maybe.withDefault "" m.hash )
+
+        ( ToggleSidebar, Just ( sid, pid ) ) ->
+            let
+                m2 =
+                    { m | hideSidebar = not m.hideSidebar }
+            in
+            ( m2
+            , Cmd.batch
+                [ resize ()
+                , getStory m.config.stories sid pid
+                    |> Maybe.map render
+                    |> Maybe.withDefault Cmd.none
+                    |> updateUrl m2
+                ]
+            )
+
+        ( ToggleSidebar, Nothing ) ->
+            ( m, Cmd.none )
+
+        ( OnKey "r", _ ) ->
+            update Reset m
+
+        ( OnKey "d", _ ) ->
+            update (SetDevice desktop) m
+
+        ( OnKey "m", _ ) ->
+            update (SetDevice mobile) m
+
+        ( OnKey "f", _ ) ->
+            update ToggleSidebar m
+
+        ( OnKey _, _ ) ->
+            ( m, Cmd.none )
 
 
 getStory : List ( String, List Story ) -> String -> String -> Maybe Story
@@ -186,7 +221,29 @@ document m =
 view : Model -> E.Element Msg
 view m =
     E.row [ E.width E.fill, E.height E.fill ]
-        [ E.column
+        [ sidebar m
+        , EK.el [ E.height E.fill, iframeWidth m, E.centerX, E.centerY ] <|
+            U.yesno (m.current == Nothing) ( "intro", intro m ) <|
+                ( "iframe"
+                , E.html
+                    (H.node "iframe"
+                        [ HA.style "width" "100%"
+                        , HA.style "border" "none"
+                        , HA.src "/iframe/"
+                        ]
+                        []
+                    )
+                )
+        ]
+
+
+sidebar : Model -> E.Element Msg
+sidebar m =
+    if m.hideSidebar then
+        E.none
+
+    else
+        E.column
             [ E.height E.fill
             , E.width (E.px 200)
             , EB.widthEach { bottom = 0, left = 0, right = 1, top = 0 }
@@ -201,21 +258,6 @@ view m =
                 [ E.text <| m.config.title ++ " Storybook" ]
             , listOfStories m
             ]
-        , EK.el [ E.height E.fill, iframeWidth m, E.centerX, E.centerY ] <|
-            U.yesno (m.current == Nothing) ( "intro", intro m ) <|
-                ( "iframe"
-                , E.html
-                    (H.node "iframe"
-                        [ HA.style "width" "100%"
-
-                        -- , HA.style "height" "100%"
-                        , HA.style "border" "none"
-                        , HA.src "/iframe/"
-                        ]
-                        []
-                    )
-                )
-        ]
 
 
 iframeWidth : Model -> E.Attribute Msg
@@ -286,7 +328,10 @@ listOfStories m =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    BE.onResize (always (always NoOp))
+    Sub.batch
+        [ BE.onResize (always (always NoOp))
+        , BE.onKeyDown (JD.map OnKey (JD.field "key" JD.string))
+        ]
 
 
 app : Config -> Program () Model Msg
@@ -332,6 +377,16 @@ toCurrent url =
             Nothing
 
 
+toSidebar : Url -> Bool
+toSidebar url =
+    UP.s "storybook"
+        <?> Q.string "sidebar"
+        |> (\p -> UP.parse p url)
+        |> Maybe.withDefault Nothing
+        |> Maybe.map (\d -> d == "show")
+        |> Maybe.withDefault True
+
+
 toDevice : Url -> E.Device
 toDevice url =
     UP.s "storybook"
@@ -355,5 +410,6 @@ updateUrl m c =
                         Nothing ->
                             ""
                    )
+                ++ U.yesno m.hideSidebar "&sidebar=show" "&sidebar=hide"
     in
     Cmd.batch [ c, BN.pushUrl m.key u ]
