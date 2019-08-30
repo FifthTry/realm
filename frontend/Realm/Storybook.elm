@@ -16,10 +16,10 @@ import Json.Encode as JE
 import Process
 import Realm.Ports exposing (resize, toIframe)
 import Realm.Utils as U
+import Task
 import Url exposing (Url)
 import Url.Parser as UP exposing ((</>), (<?>))
 import Url.Parser.Query as Q
-import Task
 
 
 edges : { top : Int, right : Int, bottom : Int, left : Int }
@@ -57,6 +57,7 @@ type Msg
     | SetDevice E.Device
     | Reset
     | GotHash (Result Http.Error String)
+    | AfterPollError
 
 
 mobile : E.Device
@@ -82,7 +83,7 @@ init config _ url key =
     in
     ( m
     , Cmd.batch
-        [ poll "" |> Http.request
+        [ poll ""
         , case m.current of
             Just ( sid, pid ) ->
                 getStory m.config.stories sid pid
@@ -95,26 +96,12 @@ init config _ url key =
     )
 
 
-poll :
-    String
-    ->
-        { method : String
-        , headers : List Http.Header
-        , url : String
-        , body : Http.Body
-        , expect : Http.Expect Msg
-        , timeout : Maybe Float
-        , tracker : Maybe String
-        }
+poll : String -> Cmd Msg
 poll hash =
-    { method = "GET"
-    , headers = []
-    , url = "/storybook/poll/?hash=" ++ Url.percentEncode hash
-    , body = Http.emptyBody
-    , expect = Http.expectString GotHash
-    , timeout = Nothing
-    , tracker = Nothing
-    }
+    Http.get
+        { url = "/storybook/poll/?hash=" ++ Url.percentEncode hash
+        , expect = Http.expectString GotHash
+        }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -162,10 +149,10 @@ update msg m =
 
         ( GotHash (Ok hash), _ ) ->
             if m.hash == Nothing then
-                ( { m | hash = Just hash }, poll hash |> Http.request )
+                ( { m | hash = Just hash }, poll hash )
 
             else if hash == "" then
-                ( m, poll (Maybe.withDefault "" m.hash) |> Http.request )
+                ( m, poll <| Maybe.withDefault "" m.hash )
 
             else
                 ( m, BN.reloadAndSkipCache )
@@ -175,7 +162,13 @@ update msg m =
                 _ =
                     Debug.log <| "got http error:" ++ Debug.toString e
             in
-            ( m, Process.sleep 1000 |> Task.perform (poll <| Maybe.withDefault "" m.hash) )
+            ( m
+            , Process.sleep 1000
+                |> Task.perform (always AfterPollError)
+            )
+
+        ( AfterPollError, _ ) ->
+            ( m, poll <| Maybe.withDefault "" m.hash )
 
 
 getStory : List ( String, List Story ) -> String -> String -> Maybe Story
