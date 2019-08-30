@@ -11,12 +11,15 @@ import Element.Font as EF
 import Element.Keyed as EK
 import Html as H
 import Html.Attributes as HA
+import Http
 import Json.Encode as JE
+import Process
 import Realm.Ports exposing (resize, toIframe)
 import Realm.Utils as U
 import Url exposing (Url)
 import Url.Parser as UP exposing ((</>), (<?>))
 import Url.Parser.Query as Q
+import Task
 
 
 edges : { top : Int, right : Int, bottom : Int, left : Int }
@@ -38,6 +41,7 @@ type alias Model =
     , config : Config
     , device : E.Device
     , key : BN.Key
+    , hash : Maybe String
     }
 
 
@@ -52,6 +56,7 @@ type Msg
     | NoOp
     | SetDevice E.Device
     | Reset
+    | GotHash (Result Http.Error String)
 
 
 mobile : E.Device
@@ -68,18 +73,48 @@ init : Config -> () -> Url -> BN.Key -> ( Model, Cmd Msg )
 init config _ url key =
     let
         m =
-            { current = toCurrent url, config = config, device = toDevice url, key = key }
+            { current = toCurrent url
+            , config = config
+            , device = toDevice url
+            , key = key
+            , hash = Nothing
+            }
     in
     ( m
-    , case m.current of
-        Just ( sid, pid ) ->
-            getStory m.config.stories sid pid
-                |> Maybe.map render
-                |> Maybe.withDefault Cmd.none
+    , Cmd.batch
+        [ poll "" |> Http.request
+        , case m.current of
+            Just ( sid, pid ) ->
+                getStory m.config.stories sid pid
+                    |> Maybe.map render
+                    |> Maybe.withDefault Cmd.none
 
-        Nothing ->
-            Cmd.none
+            Nothing ->
+                Cmd.none
+        ]
     )
+
+
+poll :
+    String
+    ->
+        { method : String
+        , headers : List Http.Header
+        , url : String
+        , body : Http.Body
+        , expect : Http.Expect Msg
+        , timeout : Maybe Float
+        , tracker : Maybe String
+        }
+poll hash =
+    { method = "GET"
+    , headers = []
+    , url = "/storybook/poll/?hash=" ++ Url.percentEncode hash
+    , body = Http.emptyBody
+    , expect = Http.expectString GotHash
+    , timeout = Nothing
+    , tracker = Nothing
+    }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -124,6 +159,23 @@ update msg m =
 
         ( SetDevice _, Nothing ) ->
             ( m, Cmd.none )
+
+        ( GotHash (Ok hash), _ ) ->
+            if m.hash == Nothing then
+                ( { m | hash = Just hash }, poll hash |> Http.request )
+
+            else if hash == "" then
+                ( m, poll (Maybe.withDefault "" m.hash) |> Http.request )
+
+            else
+                ( m, BN.reloadAndSkipCache )
+
+        ( GotHash (Err e), _ ) ->
+            let
+                _ =
+                    Debug.log <| "got http error:" ++ Debug.toString e
+            in
+            ( m, Process.sleep 1000 |> Task.perform (poll <| Maybe.withDefault "" m.hash) )
 
 
 getStory : List ( String, List Story ) -> String -> String -> Maybe Story
