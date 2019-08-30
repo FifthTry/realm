@@ -137,19 +137,7 @@ update msg m =
             ( m2, updateUrl m2 Cmd.none )
 
         ( SetDevice d, Just ( sid, pid ) ) ->
-            let
-                m2 =
-                    { m | device = d }
-            in
-            ( m2
-            , Cmd.batch
-                [ resize ()
-                , getStory m.config.stories sid pid
-                    |> Maybe.map render
-                    |> Maybe.withDefault Cmd.none
-                    |> updateUrl m2
-                ]
-            )
+            update (Navigate sid pid) { m | device = d }
 
         ( SetDevice _, Nothing ) ->
             ( m, Cmd.none )
@@ -175,19 +163,7 @@ update msg m =
             ( m, poll <| Maybe.withDefault "" m.hash )
 
         ( ToggleSidebar, Just ( sid, pid ) ) ->
-            let
-                m2 =
-                    { m | hideSidebar = not m.hideSidebar }
-            in
-            ( m2
-            , Cmd.batch
-                [ resize ()
-                , getStory m.config.stories sid pid
-                    |> Maybe.map render
-                    |> Maybe.withDefault Cmd.none
-                    |> updateUrl m2
-                ]
-            )
+            update (Navigate sid pid) { m | hideSidebar = not m.hideSidebar }
 
         ( ToggleSidebar, Nothing ) ->
             ( m, Cmd.none )
@@ -196,10 +172,16 @@ update msg m =
             update Reset m
 
         ( OnKey "d", _ ) ->
-            update (SetDevice desktop) m
+            update
+                (SetDevice
+                    (if m.device == desktop then
+                        mobile
 
-        ( OnKey "m", _ ) ->
-            update (SetDevice mobile) m
+                     else
+                        desktop
+                    )
+                )
+                m
 
         ( OnKey "f", _ ) ->
             update ToggleSidebar m
@@ -443,8 +425,8 @@ toSidebar url =
         <?> Q.string "sidebar"
         |> (\p -> UP.parse p url)
         |> Maybe.withDefault Nothing
-        |> Maybe.map (\d -> d == "show")
-        |> Maybe.withDefault True
+        |> Maybe.map (\d -> d == "hide")
+        |> Maybe.withDefault False
 
 
 toDevice : Url -> E.Device
@@ -470,6 +452,6 @@ updateUrl m c =
                         Nothing ->
                             ""
                    )
-                ++ U.yesno m.hideSidebar "&sidebar=show" "&sidebar=hide"
+                ++ U.yesno m.hideSidebar "&sidebar=hide" "&sidebar=show"
     in
     Cmd.batch [ c, BN.pushUrl m.key u ]
