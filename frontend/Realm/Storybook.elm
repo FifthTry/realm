@@ -16,7 +16,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Process
-import Realm.Ports exposing (resize, toIframe)
+import Realm.Ports exposing (toIframe)
 import Realm.Utils as U
 import Task
 import Tuple
@@ -40,12 +40,13 @@ type alias Story =
 
 
 type alias Model =
-    { current : Maybe ( String, String ) -- index id, story id
-    , config : Config
+    { current : Maybe Int
     , device : E.Device
     , key : BN.Key
     , hash : Maybe String
     , hideSidebar : Bool
+    , stories : Array ( String, Story )
+    , title : String
     }
 
 
@@ -56,7 +57,7 @@ type alias Config =
 
 
 type Msg
-    = Navigate String String
+    = Navigate Int
     | NoOp
     | SetDevice E.Device
     | Reset
@@ -79,26 +80,27 @@ desktop =
 init : Config -> () -> Url -> BN.Key -> ( Model, Cmd Msg )
 init config _ url key =
     let
+        stories =
+            flatten config.stories
+
         m =
             { current = toCurrent url
-            , config = config
+            , title = config.title
             , device = toDevice url
             , key = key
             , hash = Nothing
             , hideSidebar = toSidebar url
+            , stories = stories
             }
     in
     ( m
     , Cmd.batch
         [ poll ""
-        , case m.current of
-            Just ( sid, pid ) ->
-                getStory m.config.stories sid pid
-                    |> Maybe.map render
-                    |> Maybe.withDefault Cmd.none
-
-            Nothing ->
-                Cmd.none
+        , m.current
+            |> Maybe.andThen (\idx -> Array.get idx stories)
+            |> Maybe.map Tuple.second
+            |> Maybe.map render
+            |> Maybe.withDefault Cmd.none
         ]
     )
 
@@ -114,13 +116,15 @@ poll hash =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case Debug.log "Storybook.msg" ( msg, m.current ) of
-        ( Navigate sid pid, _ ) ->
+        ( Navigate idx, _ ) ->
             let
                 m2 =
-                    { m | current = Just ( sid, pid ) }
+                    { m | current = Just idx }
             in
             ( m2
-            , getStory m.config.stories sid pid
+            , m.stories
+                |> Array.get idx
+                |> Maybe.map Tuple.second
                 |> Maybe.map render
                 |> Maybe.withDefault Cmd.none
                 |> updateUrl m2
@@ -136,8 +140,8 @@ update msg m =
             in
             ( m2, updateUrl m2 Cmd.none )
 
-        ( SetDevice d, Just ( sid, pid ) ) ->
-            update (Navigate sid pid) { m | device = d }
+        ( SetDevice d, Just idx ) ->
+            update (Navigate idx) { m | device = d }
 
         ( SetDevice _, Nothing ) ->
             ( m, Cmd.none )
@@ -153,17 +157,13 @@ update msg m =
                 ( m, BN.reloadAndSkipCache )
 
         ( GotHash (Err e), _ ) ->
-            let
-                _ =
-                    Debug.log <| "got http error:" ++ Debug.toString e
-            in
             ( m, Process.sleep 1000 |> Task.perform (always AfterPollError) )
 
         ( AfterPollError, _ ) ->
             ( m, poll <| Maybe.withDefault "" m.hash )
 
-        ( ToggleSidebar, Just ( sid, pid ) ) ->
-            update (Navigate sid pid) { m | hideSidebar = not m.hideSidebar }
+        ( ToggleSidebar, Just idx ) ->
+            update (Navigate idx) { m | hideSidebar = not m.hideSidebar }
 
         ( ToggleSidebar, Nothing ) ->
             ( m, Cmd.none )
@@ -172,92 +172,64 @@ update msg m =
             update Reset m
 
         ( OnKey "d", _ ) ->
-            update
-                (SetDevice
-                    (if m.device == desktop then
-                        mobile
+            if m.device == desktop then
+                update (SetDevice mobile) m
 
-                     else
-                        desktop
-                    )
-                )
-                m
+            else
+                update (SetDevice desktop) m
 
         ( OnKey "f", _ ) ->
             update ToggleSidebar m
 
         ( OnKey "j", Nothing ) ->
-            gotoFirst m
+            goto 0 m
 
-        ( OnKey "j", Just ( sid, pid ) ) ->
-            goto 1 m sid pid
+        ( OnKey "j", Just idx ) ->
+            if idx == Array.length m.stories - 1 then
+                update Reset m
 
-        ( OnKey "k", Just ( sid, pid ) ) ->
-            goto -1 m sid pid
+            else
+                goto (idx + 1) m
+
+        ( OnKey "k", Just 0 ) ->
+            update Reset m
+
+        ( OnKey "k", Just idx ) ->
+            goto (idx - 1) m
+
+        ( OnKey "k", Nothing ) ->
+            goto (Array.length m.stories - 1) m
 
         ( OnKey _, _ ) ->
             ( m, Cmd.none )
 
 
-getStory : List ( String, List Story ) -> String -> String -> Maybe Story
-getStory stories sid pid =
-    List.filter (\( i, _ ) -> i == sid) stories
-        |> List.head
-        |> Maybe.andThen (\( _, ls ) -> List.filter (\s -> s.id == pid) ls |> List.head)
+goto : Int -> Model -> ( Model, Cmd Msg )
+goto idx m =
+    let
+        m2 =
+            { m | current = Just idx }
+    in
+    m.stories
+        |> Array.get idx
+        |> Maybe.map Tuple.second
+        |> Maybe.map render
+        |> Maybe.map (updateUrl m2)
+        |> Maybe.map (Tuple.pair m2)
+        |> Maybe.withDefault ( m, Cmd.none )
 
 
-gotoFirst : Model -> ( Model, Cmd Msg )
-gotoFirst m =
-    case List.head m.config.stories of
-        Just ( sid, stories ) ->
-            case List.head stories of
-                Just story ->
-                    let
-                        m2 =
-                            { m | current = Just ( sid, story.id ) }
-                    in
-                    ( m2, render story |> updateUrl m2 )
-
-                Nothing ->
-                    ( m, Cmd.none )
-
-        Nothing ->
-            ( m, Cmd.none )
-
-
-flatten : List ( String, List Story ) -> Array ( String, String )
+flatten : List ( String, List Story ) -> Array ( String, Story )
 flatten lst =
     lst
-        |> List.map (\( s, stories ) -> List.map (\story -> ( s, story.id )) stories)
+        |> List.map (\( s, stories ) -> List.map (\story -> ( s, story )) stories)
         |> List.concat
         |> Array.fromList
 
 
-goto : Int -> Model -> String -> String -> ( Model, Cmd Msg )
-goto incr m sid pid =
-    let
-        stories =
-            flatten m.config.stories
-
-        found =
-            Array.toIndexedList stories
-                |> List.filter (\( _, ( s, p ) ) -> s == sid && p == pid)
-                |> List.head
-                |> Maybe.map Tuple.first
-                |> Maybe.map (\i -> Array.get (i + incr) stories)
-                |> Maybe.withDefault Nothing
-    in
-    case found of
-        Just ( s, p ) ->
-            update (Navigate s p) m
-
-        Nothing ->
-            update Reset m
-
-
 document : Model -> B.Document Msg
 document m =
-    { title = m.config.title ++ " Storybook", body = [ E.layout [] (view m) ] }
+    { title = m.title ++ " Storybook", body = [ E.layout [] (view m) ] }
 
 
 view : Model -> E.Element Msg
@@ -297,7 +269,7 @@ sidebar m =
                 , EE.onClick Reset
                 ]
               <|
-                [ E.text <| m.config.title ++ " Storybook" ]
+                [ E.text <| m.title ++ " Storybook" ]
             , listOfStories m
             ]
 
@@ -316,18 +288,18 @@ intro m =
     E.column [ E.centerX, E.centerY ]
         [ E.paragraph [ EF.center, E.padding 10, EF.light, EF.size 14 ] <|
             [ E.text "Welcome to," ]
-        , E.paragraph [ EF.center ] <| [ E.text <| m.config.title ++ " Storybook" ]
+        , E.paragraph [ EF.center ] <| [ E.text <| m.title ++ " Storybook" ]
         , E.paragraph [ EF.center, E.paddingXY 0 40, EF.light, EF.size 14, EF.italic ] <|
             [ E.text "Select an item in left menu bar" ]
         ]
 
 
-storyView : String -> Model -> Story -> E.Element Msg
-storyView sid m s =
-    if Just ( sid, s.id ) == m.current then
+storyView : Model -> Int -> Story -> E.Element Msg
+storyView m idx s =
+    if Just idx == m.current then
         E.textColumn [ E.width E.fill ]
             [ E.paragraph
-                [ EE.onClick (Navigate sid s.id)
+                [ EE.onClick (Navigate idx)
                 , E.paddingXY 5 3
                 , EF.light
                 , EF.regular
@@ -351,21 +323,42 @@ storyView sid m s =
             ]
 
     else
-        E.paragraph [ EE.onClick (Navigate sid s.id), E.pointer, E.paddingXY 5 3, EF.light ]
+        E.paragraph [ EE.onClick (Navigate idx), E.pointer, E.paddingXY 5 3, EF.light ]
             [ E.text <| "- " ++ s.title ]
 
 
-storySection : Model -> ( String, List Story ) -> E.Element Msg
-storySection m ( sid, slist ) =
-    E.column [ EB.widthEach { bottom = 1, left = 0, right = 0, top = 0 }, E.width E.fill ] <|
-        E.paragraph [ E.paddingEach { bottom = 3, left = 5, right = 5, top = 4 } ]
-            [ E.text sid ]
-            :: List.map (storyView sid m) slist
+storyHead : String -> E.Element Msg
+storyHead title =
+    E.paragraph [ E.paddingEach { bottom = 3, left = 5, right = 5, top = 4 } ]
+        [ E.text title ]
+
+
+storySection :
+    Model
+    -> ( Int, ( String, Story ) )
+    -> ( String, List (E.Element Msg) )
+    -> ( String, List (E.Element Msg) )
+storySection m ( idx, ( sid, story ) ) ( cur, body ) =
+    let
+        sv =
+            storyView m idx story
+    in
+    if cur == sid then
+        ( sid, sv :: body )
+
+    else
+        ( sid, sv :: storyHead sid :: body )
 
 
 listOfStories : Model -> E.Element Msg
 listOfStories m =
-    E.column [ E.width E.fill ] <| List.map (storySection m) m.config.stories
+    m.stories
+        |> Array.toIndexedList
+        |> List.reverse
+        |> List.foldr (storySection m) ( "", [] )
+        |> Tuple.second
+        |> List.reverse
+        |> E.column [ E.width E.fill ]
 
 
 subscriptions : Model -> Sub Msg
@@ -403,26 +396,16 @@ render s =
         |> toIframe
 
 
-toCurrent : Url -> Maybe ( String, String )
+toCurrent : Url -> Maybe Int
 toCurrent url =
-    let
-        r =
-            (UP.s "storybook" <?> Q.string "sid" <?> Q.string "pid")
-                |> UP.map Tuple.pair
-                |> (\p -> UP.parse p url)
-    in
-    case r of
-        Just ( Just pid, Just sid ) ->
-            Just ( pid, sid )
-
-        _ ->
-            Nothing
+    (UP.s "storybook" <?> Q.int "current")
+        |> (\p -> UP.parse p url)
+        |> Maybe.withDefault Nothing
 
 
 toSidebar : Url -> Bool
 toSidebar url =
-    UP.s "storybook"
-        <?> Q.string "sidebar"
+    (UP.s "storybook" <?> Q.string "sidebar")
         |> (\p -> UP.parse p url)
         |> Maybe.withDefault Nothing
         |> Maybe.map (\d -> d == "hide")
@@ -431,8 +414,7 @@ toSidebar url =
 
 toDevice : Url -> E.Device
 toDevice url =
-    UP.s "storybook"
-        <?> Q.string "device"
+    (UP.s "storybook" <?> Q.string "device")
         |> (\p -> UP.parse p url)
         |> Maybe.withDefault Nothing
         |> Maybe.map (\d -> U.yesno (d == "desktop") desktop mobile)
@@ -446,8 +428,8 @@ updateUrl m c =
             "/storybook/?device="
                 ++ U.yesno (m.device == desktop) "desktop" "mobile"
                 ++ (case m.current of
-                        Just ( sid, pid ) ->
-                            "&sid=" ++ sid ++ "&pid=" ++ pid
+                        Just idx ->
+                            "&current=" ++ String.fromInt idx
 
                         Nothing ->
                             ""
