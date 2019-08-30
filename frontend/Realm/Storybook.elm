@@ -18,6 +18,7 @@ import Process
 import Realm.Ports exposing (resize, toIframe)
 import Realm.Utils as U
 import Task
+import Tuple
 import Url exposing (Url)
 import Url.Parser as UP exposing ((</>), (<?>))
 import Url.Parser.Query as Q
@@ -202,6 +203,12 @@ update msg m =
         ( OnKey "f", _ ) ->
             update ToggleSidebar m
 
+        ( OnKey "j", Nothing ) ->
+            gotoFirst m
+
+        ( OnKey "j", Just ( sid, pid ) ) ->
+            gotoNext m sid pid
+
         ( OnKey _, _ ) ->
             ( m, Cmd.none )
 
@@ -211,6 +218,88 @@ getStory stories sid pid =
     List.filter (\( i, _ ) -> i == sid) stories
         |> List.head
         |> Maybe.andThen (\( _, ls ) -> List.filter (\s -> s.id == pid) ls |> List.head)
+
+
+gotoFirst : Model -> ( Model, Cmd Msg )
+gotoFirst m =
+    case List.head m.config.stories of
+        Just ( sid, stories ) ->
+            case List.head stories of
+                Just story ->
+                    let
+                        m2 =
+                            { m | current = Just ( sid, story.id ) }
+                    in
+                    ( m2, render story |> updateUrl m2 )
+
+                Nothing ->
+                    ( m, Cmd.none )
+
+        Nothing ->
+            ( m, Cmd.none )
+
+
+gotoNext : Model -> String -> String -> ( Model, Cmd Msg )
+gotoNext m sid pid =
+    case m.config.stories |> List.filter (\( s, _ ) -> s == sid) |> List.head of
+        Just ( _, stories ) ->
+            case
+                stories
+                    |> List.foldl
+                        (\s ( fs, found ) ->
+                            if found && fs == Nothing then
+                                ( Just s, True )
+
+                            else if s.id == pid then
+                                ( Nothing, True )
+
+                            else
+                                ( fs, found )
+                        )
+                        ( Nothing, False )
+                    |> Tuple.first
+            of
+                Just story ->
+                    let
+                        m2 =
+                            { m | current = Just ( sid, story.id ) }
+                    in
+                    ( m2, render story |> updateUrl m2 )
+
+                _ ->
+                    case
+                        m.config.stories
+                            |> List.foldl
+                                (\( sid1, stories1 ) ( fs, found ) ->
+                                    if found && fs == Nothing then
+                                        ( Just ( sid1, stories1 ), True )
+
+                                    else if sid1 == sid then
+                                        ( Nothing, True )
+
+                                    else
+                                        ( fs, found )
+                                )
+                                ( Nothing, False )
+                            |> Tuple.first
+                    of
+                        Just ( sid1, stories1 ) ->
+                            case List.head stories1 of
+                                Just first ->
+                                    let
+                                        m2 =
+                                            { m | current = Just ( sid1, first.id ) }
+                                    in
+                                    ( m2, render first |> updateUrl m2 )
+
+                                Nothing ->
+                                    ( { m | current = Nothing }, Cmd.none )
+
+                        Nothing ->
+                            ( { m | current = Nothing }, Cmd.none )
+
+        Nothing ->
+            ( { m | current = Nothing }, Cmd.none )
 
 
 document : Model -> B.Document Msg
