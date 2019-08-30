@@ -1,5 +1,6 @@
 port module Realm.Storybook exposing (Story, app)
 
+import Array exposing (Array)
 import Browser as B
 import Browser.Events as BE
 import Browser.Navigation as BN
@@ -207,7 +208,10 @@ update msg m =
             gotoFirst m
 
         ( OnKey "j", Just ( sid, pid ) ) ->
-            gotoNext m sid pid
+            goto 1 m sid pid
+
+        ( OnKey "k", Just ( sid, pid ) ) ->
+            goto -1 m sid pid
 
         ( OnKey _, _ ) ->
             ( m, Cmd.none )
@@ -239,67 +243,34 @@ gotoFirst m =
             ( m, Cmd.none )
 
 
-gotoNext : Model -> String -> String -> ( Model, Cmd Msg )
-gotoNext m sid pid =
-    case m.config.stories |> List.filter (\( s, _ ) -> s == sid) |> List.head of
-        Just ( _, stories ) ->
-            case
-                stories
-                    |> List.foldl
-                        (\s ( fs, found ) ->
-                            if found && fs == Nothing then
-                                ( Just s, True )
+flatten : List ( String, List Story ) -> Array ( String, String )
+flatten lst =
+    lst
+        |> List.map (\( s, stories ) -> List.map (\story -> ( s, story.id )) stories)
+        |> List.concat
+        |> Array.fromList
 
-                            else if s.id == pid then
-                                ( Nothing, True )
 
-                            else
-                                ( fs, found )
-                        )
-                        ( Nothing, False )
-                    |> Tuple.first
-            of
-                Just story ->
-                    let
-                        m2 =
-                            { m | current = Just ( sid, story.id ) }
-                    in
-                    ( m2, render story |> updateUrl m2 )
+goto : Int -> Model -> String -> String -> ( Model, Cmd Msg )
+goto incr m sid pid =
+    let
+        stories =
+            flatten m.config.stories
 
-                _ ->
-                    case
-                        m.config.stories
-                            |> List.foldl
-                                (\( sid1, stories1 ) ( fs, found ) ->
-                                    if found && fs == Nothing then
-                                        ( Just ( sid1, stories1 ), True )
-
-                                    else if sid1 == sid then
-                                        ( Nothing, True )
-
-                                    else
-                                        ( fs, found )
-                                )
-                                ( Nothing, False )
-                            |> Tuple.first
-                    of
-                        Just ( sid1, stories1 ) ->
-                            case List.head stories1 of
-                                Just first ->
-                                    let
-                                        m2 =
-                                            { m | current = Just ( sid1, first.id ) }
-                                    in
-                                    ( m2, render first |> updateUrl m2 )
-
-                                Nothing ->
-                                    ( { m | current = Nothing }, Cmd.none )
-
-                        Nothing ->
-                            ( { m | current = Nothing }, Cmd.none )
+        found =
+            Array.toIndexedList stories
+                |> List.filter (\( _, ( s, p ) ) -> s == sid && p == pid)
+                |> List.head
+                |> Maybe.map Tuple.first
+                |> Maybe.map (\i -> Array.get (i + incr) stories)
+                |> Maybe.withDefault Nothing
+    in
+    case found of
+        Just ( s, p ) ->
+            update (Navigate s p) m
 
         Nothing ->
-            ( { m | current = Nothing }, Cmd.none )
+            update Reset m
 
 
 document : Model -> B.Document Msg
