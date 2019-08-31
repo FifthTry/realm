@@ -344,20 +344,18 @@ storySection m ( idx, ( sid, story ) ) ( cur, body ) =
             storyView m idx story
     in
     if cur == sid then
-        ( sid, sv :: body )
+        ( sid, body ++ [ sv ] )
 
     else
-        ( sid, sv :: storyHead sid :: body )
+        ( sid, body ++ [ storyHead sid, sv ] )
 
 
 listOfStories : Model -> E.Element Msg
 listOfStories m =
     m.stories
         |> Array.toIndexedList
-        |> List.reverse
-        |> List.foldr (storySection m) ( "", [] )
+        |> List.foldl (storySection m) ( "", [] )
         |> Tuple.second
-        |> List.reverse
         |> E.column [ E.width E.fill ]
 
 

@@ -44,12 +44,15 @@
     var testContext = null;
 
     function loadPage(text, isSubmit) {
+        console.log("loadPage", isSubmit);
         if (app && app.ports && app.ports.shutdown) {
+            console.log("shutting down");
             app.ports.shutdown.send(null);
         }
 
         function loadNow() {
             // wait for previous app to cleanup
+            console.log("loadNow");
             if (app && document.body.childElementCount !== 0) {
                 window.requestAnimationFrame(loadNow);
                 return;
@@ -89,10 +92,13 @@
             if (!!testContext) {
                 if (testContext.elm !== id) {
                     console.log("expected", testContext.elm, "got", id);
-                    window.parent.app.ports.fromIframe.send({
-                        kind: "BadElm",
-                        message: "Expected: " + testContext.elm + " got: " + id
-                    });
+                    window.parent.app.ports.fromIframe.send([
+                        {
+                            kind: "BadElm",
+                            message: "Expected: " + testContext.elm + " got: " + id
+                        },
+                        {kind: "TestDone"}
+                    ]);
                     return;
                 }
                 id = data.id + "Test";
@@ -132,6 +138,9 @@
         if (cmd.action === "navigate") {
             testContext = cmd;
             navigate(cmd.url);
+        } else if (cmd.action === "submit") {
+            testContext = cmd;
+            submit(cmd.payload);
         } else if (cmd.action === "render") {
             if (app && app.ports.shutdown) {
                 app.ports.shutdown.send(null);

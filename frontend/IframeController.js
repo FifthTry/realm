@@ -26,29 +26,26 @@ fixIframeDimensions();
 
 window.addEventListener("resize", fixIframeDimensions);
 
-var lastCmd;
+var lastCmd = null;
 
 if (app.ports && app.ports.toIframe) {
     app.ports.toIframe.subscribe(function(cmd) {
         console.log("cmd", cmd);
-        lastCmd = cmd;
 
-        function sendCmdNow() {
-            var iframe = window.frames[0];
-            if (!iframe || !iframe.handleCmd) {
-                window.requestAnimationFrame(sendCmdNow);
-                return;
-            }
+        var iframe = window.frames[0];
+        if (!iframe || !iframe.handleCmd) {
+            lastCmd = cmd;
+        } else {
             iframe.handleCmd(cmd);
-
         }
-
-        sendCmdNow();
     });
 }
 
 if (app.ports && app.ports.resize) {
-    app.ports.resize.subscribe(fixIframeDimensions)
+    app.ports.resize.subscribe(function () {
+        console.log("resize");
+        fixIframeDimensions();
+    })
 }
 
 function iframeLoaded() {
@@ -59,4 +56,5 @@ function iframeLoaded() {
 
     fixIframeDimensions();
     iframe.handleCmd(lastCmd);
+    lastCmd = null;
 }

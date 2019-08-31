@@ -460,6 +460,7 @@ testSubscriptions t m =
                     }
                     model
                 , BE.onResize OnResize
+                , shutdown Shutdown
                 ]
 
         _ ->

@@ -1,5 +1,6 @@
 port module Realm.Test exposing (Step(..), Test, app)
 
+import Array exposing (Array)
 import Browser as B
 import Element as E exposing (..)
 import Element.Border as EB
@@ -30,15 +31,9 @@ type alias Config =
 
 type alias Model =
     { context : Context
-    , result : List TestResult
-    , config : Config
-    , testDone : Bool
-    }
-
-
-type alias TestResult =
-    { id : String
-    , result : List R.TestResult
+    , current : Maybe Int
+    , tests : Array ( String, Step, List R.TestResult )
+    , title : String
     }
 
 
@@ -49,126 +44,71 @@ type Msg
 
 init : Config -> () -> url -> key -> ( Model, Cmd Msg )
 init config _ _ _ =
-    { context = JE.object []
-    , result =
-        []
-    , config = config
-    , testDone = False
-    }
-        |> getNextStep 0
-        |> (\( p, q ) -> ( p, doStep p.context q ))
+    doStep 0
+        { context = JE.object []
+        , current = Nothing
+        , title = config.title
+        , tests = flatten config.tests
+        }
 
 
-getNextStep : Int -> Model -> ( Model, Maybe Step )
-getNextStep len m =
-    let
-        list =
-            m.config.tests
-                |> List.map
-                    (\( s, l ) ->
-                        List.map (\t -> ( s, t )) l
-                    )
-                |> List.concat
+doStep : Int -> Model -> ( Model, Cmd Msg )
+doStep idx m =
+    case Array.get idx m.tests of
+        Just ( _, step, _ ) ->
+            let
+                ( ctx, cmd ) =
+                    case step of
+                        Navigate elm id url ->
+                            navigate elm id url m.context
 
-        current =
-            index (len + 1) list
-                |> Maybe.withDefault ( "", Navigate "" "" "" )
+                        Submit elm id payload ->
+                            submit elm id payload m.context
+            in
+            ( { m | context = ctx, current = Just idx }, cmd )
 
-        nextstep =
-            case current of
-                ( "", Navigate "" "" "" ) ->
-                    Nothing
-
-                _ ->
-                    Just (current |> (\( _, s ) -> s))
-    in
-    ( m, nextstep )
-
-
-index : Int -> List a -> Maybe a
-index i list =
-    if List.length list >= i then
-        List.take i list
-            |> List.reverse
-            |> List.head
-
-    else
-        Nothing
+        Nothing ->
+            ( { m | current = Nothing }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
-    case Debug.log "Test.msg" msg of
-        NoOp ->
+    case Debug.log "Test.msg" ( msg, m.current ) of
+        ( NoOp, _ ) ->
             ( m, Cmd.none )
 
-        FromChild v ->
-            let
-                test_done =
-                    case List.isEmpty (Debug.log "tests lists" m.config.tests) of
-                        True ->
-                            True
-
-                        False ->
-                            List.length resultset == List.length list
-
-                list =
-                    m.config.tests
-                        |> List.map
-                            (\( s, l ) ->
-                                List.map (\t -> ( s, t )) l
-                            )
-                        |> List.concat
-
-                previous =
-                    index (List.length m.result) (Debug.log "testlist" list)
-                        |> Maybe.withDefault ( "", Navigate "" "" "" )
-
-                current =
-                    index (List.length m.result + 1) list
-                        |> Maybe.withDefault ( "", Navigate "" "" "" )
-
-                result =
-                    JD.decodeValue (JD.list R.testResult) v
-
-                currentresult =
-                    index (List.length m.result) m.result
-                        |> Maybe.withDefault (TestResult "" [])
-
-                resultset =
-                    if (Debug.log "Previous" previous |> (\( s, _ ) -> s)) == "" then
-                        List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) (Result.withDefault [] result) ]
-
-                    else if (previous |> (\( s, _ ) -> s)) == (Debug.log "Current" current |> (\( s, _ ) -> s)) then
-                        List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) (List.append (Debug.log "currentresult" currentresult).result (Result.withDefault [] result)) ]
+        ( FromChild v, Just idx ) ->
+            case Debug.log "FromChild" <| JD.decodeValue (JD.list R.testResult) v of
+                Ok results ->
+                    let
+                        m2 =
+                            m.tests
+                                |> Array.get idx
+                                |> Maybe.map
+                                    (\( id, step, lst ) ->
+                                        ( id, step, lst ++ results )
+                                    )
+                                |> Maybe.map (\r -> Array.set idx r m.tests)
+                                |> Maybe.map (\tests -> { m | tests = tests })
+                                |> Maybe.withDefault m
+                    in
+                    if List.any ((==) R.TestDone) (Debug.log "results" results) then
+                        doStep (idx + 1) m2
 
                     else
-                        List.append m.result [ TestResult (current |> (\( s, _ ) -> s)) (Result.withDefault [] result) ]
+                        ( m2, Cmd.none )
 
-                _ =
-                    Debug.log "m.result" m.result
+                Err _ ->
+                    ( m, Cmd.none )
 
-                _ =
-                    Debug.log "resultset" resultset
-
-                _ =
-                    Debug.log "FromChild" <|
-                        Debug.toString result
-
-                nextstep =
-                    case test_done of
-                        True ->
-                            Nothing
-
-                        False ->
-                            getNextStep (List.length resultset) m |> (\( mod, mb_step ) -> mb_step)
-            in
-            ( { m | result = resultset, testDone = test_done }, doStep m.context (Debug.log "nextstep" nextstep) )
+        ( FromChild _, Nothing ) ->
+            -- impossible
+            ( m, Cmd.none )
 
 
 document : Model -> B.Document Msg
 document m =
-    { title = m.config.title ++ " Test", body = [ E.layout [] (view m) ] }
+    { title = m.title ++ " Test", body = [ E.layout [] (view m) ] }
 
 
 view : Model -> E.Element Msg
@@ -184,8 +124,13 @@ view m =
                 , EB.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
                 ]
               <|
-                [ E.text <| m.config.title ++ " Tests" ]
-            , listOfTests m
+                [ E.text <|
+                    m.title
+                        ++ " Tests: "
+                        ++ Maybe.withDefault "Done" (Maybe.map String.fromInt m.current)
+                ]
+
+            --, listOfTests m
             ]
         , E.el [ E.height E.fill, E.width E.fill ] <|
             E.html
@@ -197,33 +142,6 @@ view m =
                     []
                 )
         ]
-
-
-showStep : Step -> E.Element Msg
-showStep s =
-    case s of
-        Navigate a b c ->
-            E.el [ alignRight ] <| E.text b
-
-        Submit a b c ->
-            E.el [ alignRight ] <| E.text b
-
-
-testView : Test -> Maybe TestResult -> E.Element Msg
-testView ( id, steps ) mr =
-    E.column []
-        ([ E.el [ Font.size 30 ] <| E.text id
-         ]
-            ++ (steps
-                    |> List.map showStep
-               )
-        )
-
-
-listOfTests : Model -> E.Element Msg
-listOfTests m =
-    U.zip testView m.config.tests m.result
-        |> E.column []
 
 
 subscriptions : Model -> Sub Msg
@@ -247,19 +165,12 @@ type alias Context =
     JE.Value
 
 
-doStep : Context -> Maybe Step -> Cmd Msg
-doStep ctx ms =
-    case ms of
-        Just s ->
-            case s of
-                Navigate a b c ->
-                    navigate a b c ctx |> (\( _, cm ) -> cm)
-
-                Submit a b c ->
-                    submit a b c ctx |> (\( _, cm ) -> cm)
-
-        Nothing ->
-            Cmd.none
+flatten : List ( String, List Step ) -> Array ( String, Step, List R.TestResult )
+flatten lst =
+    lst
+        |> List.map (\( s, steps ) -> List.map (\step -> ( s, step, [] )) steps)
+        |> List.concat
+        |> Array.fromList
 
 
 navigate : String -> String -> String -> Context -> ( Context, Cmd Msg )
@@ -280,7 +191,7 @@ submit : String -> String -> JE.Value -> Context -> ( Context, Cmd Msg )
 submit elm id payload ctx =
     ( ctx
     , JE.object
-        [ ( "action", JE.string "navigate" )
+        [ ( "action", JE.string "submit" )
         , ( "payload", payload )
         , ( "context", ctx )
         , ( "id", JE.string id )
