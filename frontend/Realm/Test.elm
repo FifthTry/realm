@@ -41,7 +41,10 @@ type alias Model =
 type Msg
     = FromChild JE.Value
     | NoOp
-    -- | GoTo Int
+
+
+
+-- | GoTo Int
 
 
 init : Config -> () -> url -> key -> ( Model, Cmd Msg )
@@ -118,14 +121,10 @@ view m =
     E.row [ E.width E.fill, E.height E.fill ]
         [ E.column
             [ E.height E.fill
-            , E.width (E.px 200)
-            , EB.widthEach { bottom = 0, left = 0, right = 1, top = 0 }
+            , E.width (E.px 300)
+            , EB.widthEach { edges | right = 1 }
             ]
-            [ E.paragraph
-                [ E.padding 5
-                , EB.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
-                ]
-              <|
+            [ E.paragraph [ E.padding 5 ] <|
                 [ E.text <|
                     m.title
                         ++ " Tests: "
@@ -155,27 +154,45 @@ stepTitle s =
             id
 
 
+resultView : R.TestResult -> E.Element Msg
+resultView r =
+    if r == R.TestDone then
+        E.none
+
+    else
+        E.paragraph
+            [ E.paddingEach { bottom = 3, left = 15, right = 5, top = 4 }
+            , EF.light
+            , EF.size 14
+            ]
+            [ E.text <| "> " ++ Debug.toString r ]
+
+
 stepView : Model -> Int -> Step -> List R.TestResult -> E.Element Msg
 stepView m idx s results =
-    if Just idx == m.current then
-        E.textColumn [ E.width E.fill ]
-            [ E.paragraph
+    E.textColumn [ E.width E.fill ] <|
+        (if Just idx == m.current then
+            E.paragraph
                 [ E.paddingXY 5 3
                 , EF.light
                 , EF.regular
                 , Bg.color <| E.rgb 0.93 0.93 0.93
                 ]
                 [ E.text <| "- " ++ stepTitle s ]
-            ]
 
-    else
-        E.paragraph [ E.pointer, E.paddingXY 5 3, EF.light ]
-            [ E.text <| "- " ++ stepTitle s ]
+         else
+            E.paragraph [ E.pointer, E.paddingXY 5 3, EF.light ]
+                [ E.text <| "- " ++ stepTitle s ]
+        )
+            :: List.map resultView results
 
 
 testHead : String -> E.Element Msg
 testHead title =
-    E.paragraph [ E.paddingEach { bottom = 3, left = 5, right = 5, top = 4 } ]
+    E.paragraph
+        [ E.paddingEach { bottom = 3, left = 5, right = 5, top = 4 }
+        , EB.widthEach { edges | top = 1 }
+        ]
         [ E.text title ]
 
 

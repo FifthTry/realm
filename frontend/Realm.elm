@@ -400,7 +400,7 @@ testInit t flags _ _ =
               , height = 1024
               , width = 1024
               }
-            , result Cmd.none [ BadConfig <| JD.errorToString e ]
+            , result Cmd.none [ BadConfig <| JD.errorToString e, TestDone ]
             )
 
 
