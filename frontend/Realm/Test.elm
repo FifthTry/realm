@@ -3,15 +3,16 @@ port module Realm.Test exposing (Step(..), Test, app)
 import Array exposing (Array)
 import Browser as B
 import Element as E exposing (..)
+import Element.Background as Bg
 import Element.Border as EB
-import Element.Font as Font
+import Element.Font as EF
 import Html as H
 import Html.Attributes as HA
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
 import Realm.Ports exposing (fromIframe, toIframe)
-import Realm.Utils as U
+import Realm.Utils exposing (edges)
 
 
 type alias Test =
@@ -40,6 +41,7 @@ type alias Model =
 type Msg
     = FromChild JE.Value
     | NoOp
+    -- | GoTo Int
 
 
 init : Config -> () -> url -> key -> ( Model, Cmd Msg )
@@ -129,8 +131,7 @@ view m =
                         ++ " Tests: "
                         ++ Maybe.withDefault "Done" (Maybe.map String.fromInt m.current)
                 ]
-
-            --, listOfTests m
+            , listOfTests m
             ]
         , E.el [ E.height E.fill, E.width E.fill ] <|
             E.html
@@ -142,6 +143,66 @@ view m =
                     []
                 )
         ]
+
+
+stepTitle : Step -> String
+stepTitle s =
+    case s of
+        Navigate _ id _ ->
+            id
+
+        Submit _ id _ ->
+            id
+
+
+stepView : Model -> Int -> Step -> List R.TestResult -> E.Element Msg
+stepView m idx s results =
+    if Just idx == m.current then
+        E.textColumn [ E.width E.fill ]
+            [ E.paragraph
+                [ E.paddingXY 5 3
+                , EF.light
+                , EF.regular
+                , Bg.color <| E.rgb 0.93 0.93 0.93
+                ]
+                [ E.text <| "- " ++ stepTitle s ]
+            ]
+
+    else
+        E.paragraph [ E.pointer, E.paddingXY 5 3, EF.light ]
+            [ E.text <| "- " ++ stepTitle s ]
+
+
+testHead : String -> E.Element Msg
+testHead title =
+    E.paragraph [ E.paddingEach { bottom = 3, left = 5, right = 5, top = 4 } ]
+        [ E.text title ]
+
+
+singleTest :
+    Model
+    -> ( Int, ( String, Step, List R.TestResult ) )
+    -> ( String, List (E.Element Msg) )
+    -> ( String, List (E.Element Msg) )
+singleTest m ( idx, ( tid, step, results ) ) ( cur, body ) =
+    let
+        sv =
+            stepView m idx step results
+    in
+    if cur == tid then
+        ( tid, body ++ [ sv ] )
+
+    else
+        ( tid, body ++ [ testHead tid, sv ] )
+
+
+listOfTests : Model -> E.Element Msg
+listOfTests m =
+    m.tests
+        |> Array.toIndexedList
+        |> List.foldl (singleTest m) ( "", [] )
+        |> Tuple.second
+        |> E.column [ E.width E.fill ]
 
 
 subscriptions : Model -> Sub Msg

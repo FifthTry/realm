@@ -17,17 +17,13 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Process
 import Realm.Ports exposing (toIframe)
-import Realm.Utils as U
+import Realm.Utils as U exposing (edges)
 import Task
 import Tuple
 import Url exposing (Url)
 import Url.Parser as UP exposing ((</>), (<?>))
 import Url.Parser.Query as Q
 
-
-edges : { top : Int, right : Int, bottom : Int, left : Int }
-edges =
-    { top = 0, right = 0, bottom = 0, left = 0 }
 
 
 type alias Story =

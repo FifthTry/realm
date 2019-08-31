@@ -373,7 +373,14 @@ testInit t flags _ _ =
                 device =
                     E.classifyDevice tflags
             in
-            t.init { title = tflags.title, hash = Dict.empty, device = device, height = tflags.height, width = tflags.width } tflags
+            t.init
+                { title = tflags.title
+                , hash = Dict.empty
+                , device = device
+                , height = tflags.height
+                , width = tflags.width
+                }
+                tflags
                 |> Tuple.mapFirst
                     (\m ->
                         { title = tflags.title

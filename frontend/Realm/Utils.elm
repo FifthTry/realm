@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Form, err, form, formE, link, maybeE, maybeS, val, yesno, zip)
+module Realm.Utils exposing (Form, err, edges, form, formE, link, maybeE, maybeS, val, yesno, zip)
 
 import Dict exposing (Dict)
 import Element as E
@@ -7,6 +7,10 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
 
+
+edges : { top : Int, right : Int, bottom : Int, left : Int }
+edges =
+    { top = 0, right = 0, bottom = 0, left = 0 }
 
 link :
     String
