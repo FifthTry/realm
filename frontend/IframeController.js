@@ -41,13 +41,6 @@ if (app.ports && app.ports.toIframe) {
     });
 }
 
-if (app.ports && app.ports.resize) {
-    app.ports.resize.subscribe(function () {
-        console.log("resize");
-        fixIframeDimensions();
-    })
-}
-
 function iframeLoaded() {
     var iframe = window.frames[0];
     if (!iframe || !lastCmd) {
@@ -56,5 +49,4 @@ function iframeLoaded() {
 
     fixIframeDimensions();
     iframe.handleCmd(lastCmd);
-    lastCmd = null;
 }

@@ -16,6 +16,3 @@ port toIframe : JE.Value -> Cmd msg
 
 
 port fromIframe : (JE.Value -> msg) -> Sub msg
-
-
-port resize : () -> Cmd msg
