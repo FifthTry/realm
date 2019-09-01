@@ -8,6 +8,7 @@ import Element.Border as EB
 import Element.Font as EF
 import Html as H
 import Html.Attributes as HA
+import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
@@ -41,6 +42,7 @@ type alias Model =
 type Msg
     = FromChild JE.Value
     | NoOp
+    | ResetDone
 
 
 
@@ -50,6 +52,7 @@ type Msg
 init : Config -> () -> url -> key -> ( Model, Cmd Msg )
 init config _ _ _ =
     doStep 0
+        False
         { context = JE.object []
         , current = Nothing
         , title = config.title
@@ -57,11 +60,17 @@ init config _ _ _ =
         }
 
 
-doStep : Int -> Model -> ( Model, Cmd Msg )
-doStep idx m =
+doStep : Int -> Bool -> Model -> ( Model, Cmd Msg )
+doStep idx postReset m =
     case Array.get idx m.tests of
-        Just ( _, step, _ ) ->
+        Just ( tid, step, _ ) ->
             let
+                lastId =
+                    m.tests
+                        |> Array.get (idx - 1)
+                        |> Maybe.map (\( i, _, _ ) -> i)
+                        |> Maybe.withDefault "--"
+
                 ( ctx, cmd ) =
                     case step of
                         Navigate elm id url ->
@@ -69,8 +78,23 @@ doStep idx m =
 
                         Submit elm id payload ->
                             submit elm id payload m.context
+
+                ( cmd2, ctx2, current ) =
+                    -- reset db and context when test changes
+                    if Debug.log "tid" tid /= Debug.log "lastId" lastId && not postReset then
+                        ( Http.post
+                            { url = "/test/reset-db/"
+                            , expect = Http.expectString (always ResetDone)
+                            , body = Http.emptyBody
+                            }
+                        , JE.object []
+                        , Debug.log "resetting db" m.current
+                        )
+
+                    else
+                        ( cmd, ctx, Just idx )
             in
-            ( { m | context = ctx, current = Just idx }, cmd )
+            ( { m | context = ctx2, current = current }, cmd2 )
 
         Nothing ->
             ( { m | current = Nothing }, Cmd.none )
@@ -98,7 +122,7 @@ update msg m =
                                 |> Maybe.withDefault m
                     in
                     if List.any ((==) R.TestDone) (Debug.log "results" results) then
-                        doStep (idx + 1) m2
+                        doStep (idx + 1) False m2
 
                     else
                         ( m2, Cmd.none )
@@ -109,6 +133,12 @@ update msg m =
         ( FromChild _, Nothing ) ->
             -- impossible
             ( m, Cmd.none )
+
+        ( ResetDone, Nothing ) ->
+            doStep 0 True m
+
+        ( ResetDone, Just idx ) ->
+            doStep (idx + 1) True m
 
 
 document : Model -> B.Document Msg
@@ -124,7 +154,7 @@ view m =
             , E.width (E.px 300)
             , EB.widthEach { edges | right = 1 }
             ]
-            [ E.paragraph [ E.padding 5 ] <|
+            [ E.paragraph [ E.padding 5 ]
                 [ E.text <|
                     m.title
                         ++ " Tests: "
