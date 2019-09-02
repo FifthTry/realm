@@ -81,14 +81,14 @@ doStep idx postReset m =
 
                 ( cmd2, ctx2, current ) =
                     -- reset db and context when test changes
-                    if Debug.log "tid" tid /= Debug.log "lastId" lastId && not postReset then
+                    if tid /= lastId && not postReset then
                         ( Http.post
                             { url = "/test/reset-db/"
                             , expect = Http.expectString (always ResetDone)
                             , body = Http.emptyBody
                             }
                         , JE.object []
-                        , Debug.log "resetting db" m.current
+                        , m.current
                         )
 
                     else
