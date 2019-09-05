@@ -58,7 +58,8 @@ macro_rules! realm_serve {
                             )
                         }))
                     })
-                }).map_err(|e| eprintln!("server error: {}", e));
+                })
+                .map_err(|e| eprintln!("server error: {}", e));
 
             println!("Listening on http://{}", addr);
             hyper::rt::run(server);

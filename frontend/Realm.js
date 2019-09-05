@@ -24,11 +24,12 @@
 
     function navigate(url) {
         console.log("navigate", url);
-        ajax(
-            url + "?realm_mode=layout",
-            null,
-            function (t) {loadPage(t, false);}
-        );
+        if (url.indexOf("?") !== -1) {
+            url = url + "&realm_mode=layout";
+        } else {
+            url = url + "?realm_mode=layout";
+        }
+        ajax(url, null, function (t) {loadPage(t, false);});
     }
 
     function submit(data) {

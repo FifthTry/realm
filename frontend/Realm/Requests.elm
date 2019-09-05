@@ -1,4 +1,4 @@
-module Realm.Requests exposing (ApiData, Error(..), bresult, try)
+module Realm.Requests exposing (ApiData, Error(..), bresult, BResult, try)
 
 import Http
 import Json.Decode as JD
