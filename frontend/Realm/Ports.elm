@@ -1,4 +1,4 @@
-port module Realm.Ports exposing (fromIframe, navigate, shutdown, submit, toIframe)
+port module Realm.Ports exposing (..)
 
 import Json.Encode as JE
 

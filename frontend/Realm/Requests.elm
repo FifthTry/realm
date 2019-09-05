@@ -1,4 +1,4 @@
-module Realm.Requests exposing (ApiData, Error(..), try, bresult)
+module Realm.Requests exposing (ApiData, Error(..), bresult, BResult, try)
 
 import Http
 import Json.Decode as JD
@@ -13,7 +13,7 @@ type Error
 
 error : JD.Decoder Error
 error =
-    JD.field "error" JD.string |> JD.andThen (Error >> JD.succeed)
+    JD.map Error (JD.field "error" JD.string)
 
 
 type alias BResult a =

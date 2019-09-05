@@ -4,6 +4,8 @@ extern crate serde_derive;
 extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate crossbeam_channel;
 
 mod context;
 mod mode;
@@ -12,6 +14,7 @@ pub mod request_config;
 mod response;
 mod serve;
 pub mod utils;
+pub mod watcher;
 
 pub use crate::context::Context;
 pub use crate::mode::Mode;

@@ -24,11 +24,12 @@
 
     function navigate(url) {
         console.log("navigate", url);
-        ajax(
-            url + "?realm_mode=layout",
-            null,
-            function (t) {loadPage(t, false);}
-        );
+        if (url.indexOf("?") !== -1) {
+            url = url + "&realm_mode=layout";
+        } else {
+            url = url + "?realm_mode=layout";
+        }
+        ajax(url, null, function (t) {loadPage(t, false);});
     }
 
     function submit(data) {
@@ -44,12 +45,15 @@
     var testContext = null;
 
     function loadPage(text, isSubmit) {
+        console.log("loadPage", isSubmit);
         if (app && app.ports && app.ports.shutdown) {
+            console.log("shutting down");
             app.ports.shutdown.send(null);
         }
 
         function loadNow() {
             // wait for previous app to cleanup
+            console.log("loadNow");
             if (app && document.body.childElementCount !== 0) {
                 window.requestAnimationFrame(loadNow);
                 return;
@@ -83,13 +87,19 @@
 
             var id = data.id;
             var flags = data;
+            flags.width = window.innerWidth;
+            flags.height = window.innerHeight;
+
             if (!!testContext) {
                 if (testContext.elm !== id) {
                     console.log("expected", testContext.elm, "got", id);
-                    window.parent.app.ports.fromIframe.send({
-                        kind: "BadElm",
-                        message: "Expected: " + testContext.elm + " got: " + id
-                    });
+                    window.parent.app.ports.fromIframe.send([
+                        {
+                            kind: "BadElm",
+                            message: "Expected: " + testContext.elm + " got: " + id
+                        },
+                        {kind: "TestDone"}
+                    ]);
                     return;
                 }
                 id = data.id + "Test";
@@ -97,7 +107,9 @@
                     "id": testContext.id,
                     "title": data.title,
                     "config": data.config,
-                    "context": testContext.context
+                    "context": testContext.context,
+                    "width": window.innerWidth,
+                    "height": window.innerHeight
                 };
             }
 
@@ -127,6 +139,9 @@
         if (cmd.action === "navigate") {
             testContext = cmd;
             navigate(cmd.url);
+        } else if (cmd.action === "submit") {
+            testContext = cmd;
+            submit(cmd.payload);
         } else if (cmd.action === "render") {
             if (app && app.ports.shutdown) {
                 app.ports.shutdown.send(null);
@@ -134,11 +149,15 @@
 
             function renderNow() {
                 // wait for previous app to cleanup
+                console.log("renderNow");
                 if (app && document.body.childElementCount !== 0) {
                     window.requestAnimationFrame(renderNow);
                     return;
                 }
 
+                console.log("renderNow2");
+                cmd.width = window.innerWidth;
+                cmd.height = window.innerHeight;
                 app = getApp(cmd.id).init({flags: cmd});
             }
             renderNow();
@@ -147,7 +166,9 @@
 
     function main() {
         if (document.location.pathname === "/iframe/") {
+            console.log("iframe mode loaded");
             window.handleCmd = handleCmd;
+            window.parent.iframeLoaded();
         } else {
             loadPage(document.getElementById("data").text, false);
         }

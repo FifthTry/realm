@@ -36,7 +36,8 @@ impl PageSpec {
 </html>"#,
             &self.title,
             data,
-        ).into())
+        )
+        .into())
     }
     pub fn with_url(mut self, url: String) -> Self {
         self.url = Some(url);
