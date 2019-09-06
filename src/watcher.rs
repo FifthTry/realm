@@ -103,7 +103,7 @@ pub fn poll(ctx: &crate::Context, hash: String) -> Result<crate::Response, failu
 
 fn get_current() -> Result<String, failure::Error> {
     let output = std::process::Command::new("doit")
-        .arg("fifthtry:iframe")
+        .arg(std::env::var("REALM_WATCHER_DOIT_CMD").unwrap_or_else(|_| "elm".to_string()))
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
         .output()
