@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, pushHash, result, sub0, test, test0, testResult, update0)
+module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, pushHash, result, sub0, test, test0, testResult, tuple, update0)
 
 import Browser as B
 import Browser.Events as BE
@@ -501,6 +501,7 @@ type TestResult
     | BadConfig String
     | Screenshot String
     | BadElm String
+    | UpdateContext (List ( String, JE.Value ))
     | TestDone
 
 
@@ -529,6 +530,10 @@ testResult =
 
                     "TestDone" ->
                         JD.succeed TestDone
+
+                    "UpdateContext" ->
+                        JD.map UpdateContext
+                            (JD.field "context" <| JD.list (tuple JD.string JD.value))
 
                     _ ->
                         JD.fail <| "unknown kind: " ++ kind
@@ -572,6 +577,13 @@ controller c =
 
         TestPassed id ->
             [ ( "kind", JE.string "TestPassed" ), ( "id", JE.string id ) ]
+
+        UpdateContext ctx ->
+            [ ( "kind", JE.string "UpdateContext" )
+            , ( "context"
+              , JE.list (\( k, v ) -> JE.list identity [ JE.string k, v ]) ctx
+              )
+            ]
     )
         |> JE.object
 
@@ -579,3 +591,8 @@ controller c =
 result : Cmd (Msg msg) -> List TestResult -> Cmd (Msg msg)
 result c list =
     Cmd.batch [ c, JE.list controller list |> toIframe ]
+
+
+tuple : JD.Decoder a -> JD.Decoder b -> JD.Decoder ( a, b )
+tuple a b =
+    JD.map2 Tuple.pair (JD.index 0 a) (JD.index 1 b)

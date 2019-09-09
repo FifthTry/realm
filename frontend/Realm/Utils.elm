@@ -109,10 +109,7 @@ fieldError tid name error in_ f =
         R.TestPassed tid
 
 
-tuple : JD.Decoder a -> JD.Decoder b -> JD.Decoder ( a, b )
-tuple a b =
-    JD.map2 Tuple.pair (JD.index 0 a) (JD.index 1 b)
-
+tuple = R.tuple
 
 val : String -> R.In -> Form -> String
 val f in_ frm =

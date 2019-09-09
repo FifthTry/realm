@@ -64,7 +64,7 @@ init : Config -> () -> url -> key -> ( Model, Cmd Msg )
 init config _ _ _ =
     doStep 0
         False
-        { context = JE.object []
+        { context = []
         , current = Nothing
         , title = config.title
         , tests = flatten config.tests
@@ -98,7 +98,7 @@ doStep idx postReset m =
                             , expect = Http.expectString (always ResetDone)
                             , body = Http.emptyBody
                             }
-                        , JE.object tr.ctx
+                        , tr.ctx
                         , m.current
                         )
 
@@ -281,7 +281,7 @@ app config =
 
 
 type alias Context =
-    JE.Value
+    List ( String, JE.Value )
 
 
 flatten :
@@ -304,7 +304,7 @@ navigate elm id url ctx =
     JE.object
         [ ( "action", JE.string "navigate" )
         , ( "url", JE.string url )
-        , ( "context", ctx )
+        , ( "context", JE.object ctx )
         , ( "id", JE.string id )
         , ( "elm", JE.string <| "Pages." ++ elm )
         ]
@@ -316,7 +316,7 @@ submit elm id payload ctx =
     JE.object
         [ ( "action", JE.string "submit" )
         , ( "payload", payload )
-        , ( "context", ctx )
+        , ( "context", JE.object ctx )
         , ( "id", JE.string id )
         , ( "elm", JE.string <| "Pages." ++ elm )
         ]
