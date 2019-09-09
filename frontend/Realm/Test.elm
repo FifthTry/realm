@@ -17,7 +17,18 @@ import Realm.Utils exposing (edges)
 
 
 type alias Test =
-    ( String, List Step )
+    { id : String
+    , context : List ( String, JE.Value )
+    , steps : List Step
+    }
+
+
+type alias TestWithResults =
+    { id : String
+    , ctx : List ( String, JE.Value )
+    , step : Step
+    , results : List R.TestResult
+    }
 
 
 type Step
@@ -34,7 +45,7 @@ type alias Config =
 type alias Model =
     { context : Context
     , current : Maybe Int
-    , tests : Array ( String, Step, List R.TestResult )
+    , tests : Array TestWithResults
     , title : String
     }
 
@@ -63,16 +74,16 @@ init config _ _ _ =
 doStep : Int -> Bool -> Model -> ( Model, Cmd Msg )
 doStep idx postReset m =
     case Array.get idx m.tests of
-        Just ( tid, step, _ ) ->
+        Just tr ->
             let
                 lastId =
                     m.tests
                         |> Array.get (idx - 1)
-                        |> Maybe.map (\( i, _, _ ) -> i)
+                        |> Maybe.map (\t -> t.id)
                         |> Maybe.withDefault "--"
 
-                ( ctx, cmd ) =
-                    case step of
+                cmd =
+                    case tr.step of
                         Navigate elm id url ->
                             navigate elm id url m.context
 
@@ -81,18 +92,18 @@ doStep idx postReset m =
 
                 ( cmd2, ctx2, current ) =
                     -- reset db and context when test changes
-                    if tid /= lastId && not postReset then
+                    if tr.id /= lastId && not postReset then
                         ( Http.post
                             { url = "/test/reset-db/"
                             , expect = Http.expectString (always ResetDone)
                             , body = Http.emptyBody
                             }
-                        , JE.object []
+                        , JE.object tr.ctx
                         , m.current
                         )
 
                     else
-                        ( cmd, ctx, Just idx )
+                        ( cmd, m.context, Just idx )
             in
             ( { m | context = ctx2, current = current }, cmd2 )
 
@@ -114,8 +125,8 @@ update msg m =
                             m.tests
                                 |> Array.get idx
                                 |> Maybe.map
-                                    (\( id, step, lst ) ->
-                                        ( id, step, lst ++ results )
+                                    (\tr ->
+                                        { tr | results = tr.results ++ results }
                                     )
                                 |> Maybe.map (\r -> Array.set idx r m.tests)
                                 |> Maybe.map (\tests -> { m | tests = tests })
@@ -228,19 +239,19 @@ testHead title =
 
 singleTest :
     Model
-    -> ( Int, ( String, Step, List R.TestResult ) )
+    -> ( Int, TestWithResults )
     -> ( String, List (E.Element Msg) )
     -> ( String, List (E.Element Msg) )
-singleTest m ( idx, ( tid, step, results ) ) ( cur, body ) =
+singleTest m ( idx, test ) ( cur, body ) =
     let
         sv =
-            stepView m idx step results
+            stepView m idx test.step test.results
     in
-    if cur == tid then
-        ( tid, body ++ [ sv ] )
+    if cur == test.id then
+        ( test.id, body ++ [ sv ] )
 
     else
-        ( tid, body ++ [ testHead tid, sv ] )
+        ( test.id, body ++ [ testHead test.id, sv ] )
 
 
 listOfTests : Model -> E.Element Msg
@@ -273,18 +284,24 @@ type alias Context =
     JE.Value
 
 
-flatten : List ( String, List Step ) -> Array ( String, Step, List R.TestResult )
+flatten :
+    List Test
+    -> Array TestWithResults
 flatten lst =
     lst
-        |> List.map (\( s, steps ) -> List.map (\step -> ( s, step, [] )) steps)
+        |> List.map
+            (\t ->
+                List.map
+                    (\step -> { id = t.id, ctx = t.context, step = step, results = [] })
+                    t.steps
+            )
         |> List.concat
         |> Array.fromList
 
 
-navigate : String -> String -> String -> Context -> ( Context, Cmd Msg )
+navigate : String -> String -> String -> Context -> Cmd Msg
 navigate elm id url ctx =
-    ( ctx
-    , JE.object
+    JE.object
         [ ( "action", JE.string "navigate" )
         , ( "url", JE.string url )
         , ( "context", ctx )
@@ -292,13 +309,11 @@ navigate elm id url ctx =
         , ( "elm", JE.string <| "Pages." ++ elm )
         ]
         |> toIframe
-    )
 
 
-submit : String -> String -> JE.Value -> Context -> ( Context, Cmd Msg )
+submit : String -> String -> JE.Value -> Context -> Cmd Msg
 submit elm id payload ctx =
-    ( ctx
-    , JE.object
+    JE.object
         [ ( "action", JE.string "submit" )
         , ( "payload", payload )
         , ( "context", ctx )
@@ -306,4 +321,3 @@ submit elm id payload ctx =
         , ( "elm", JE.string <| "Pages." ++ elm )
         ]
         |> toIframe
-    )
