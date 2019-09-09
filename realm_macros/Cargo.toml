@@ -1,0 +1,23 @@
+[package]
+name = "realm_macros"
+version = "0.1.0"
+authors = ["Amit Upadhyay <upadhyay@gmail.com>", "Abrar Khan <abrar.nitk@gmail.com>"]
+edition = "2018"
+description = "Macros for fifthtry and realm."
+license = "MIT"
+include = ["**/*.rs", "Cargo.toml"]
+readme = "README.md"
+repository = "https://github.com/ackotech/realm"
+documentation = "https://github.com/ackotech/realm"
+homepage = "https://github.com/ackotech/realm"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "0.6"
+proc-macro2 = "0.4"
+
+[dependencies.syn]
+version = "0.15.42"
+features = ["full"]

@@ -115,7 +115,10 @@ fn get_current() -> Result<String, failure::Error> {
     };
 
     let output = std::process::Command::new("shasum")
-        .arg("static/fifthtry/iframe.js")
+        .arg(
+            std::env::var("REALM_WATCHER_IFRAME")
+                .unwrap_or_else(|_| "static/iframe.js".to_string()),
+        )
         .output()
         .unwrap();
 

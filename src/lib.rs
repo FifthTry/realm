@@ -6,7 +6,10 @@ extern crate serde_json;
 extern crate lazy_static;
 #[macro_use]
 extern crate crossbeam_channel;
+#[macro_use]
+extern crate diesel;
 
+pub mod base;
 mod context;
 mod mode;
 mod page;
