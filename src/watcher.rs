@@ -102,15 +102,19 @@ pub fn poll(ctx: &crate::Context, hash: String) -> Result<crate::Response, failu
 }
 
 fn get_current() -> Result<String, failure::Error> {
-    let output = std::process::Command::new("doit")
-        .arg(std::env::var("REALM_WATCHER_DOIT_CMD").unwrap_or_else(|_| "elm".to_string()))
+    let doit_cmd =
+        std::env::var("REALM_WATCHER_DOIT_CMD").unwrap_or_else(|_| "doit elm".to_string());
+    let output = std::process::Command::new("sh")
+        .args(&["-c", doit_cmd.as_ref()])
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
         .output()
         .unwrap();
 
     if !output.status.success() {
-        eprintln!("doit fifthtry:storybook failed");
+        eprintln!("{} failed", doit_cmd);
+        eprintln!("stdout: {}", std::str::from_utf8(&output.stdout).unwrap());
+        eprintln!("stderr: {}", std::str::from_utf8(&output.stderr).unwrap());
         return Err(failure::err_msg("doit failed"));
     };
 
