@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Form, edges, err, form, Field, fieldValid, fi, fieldError, formE, link, maybeE, maybeS, val, yesno, zip)
+module Realm.Utils exposing (Field, Form, edges, err, fi, fieldError, fieldValid, form, formE, link, maybeE, maybeS, result, val, yesno, zip)
 
 import Dict exposing (Dict)
 import Element as E
@@ -109,7 +109,9 @@ fieldError tid name error in_ f =
         R.TestPassed tid
 
 
-tuple = R.tuple
+tuple =
+    R.tuple
+
 
 val : String -> R.In -> Form -> String
 val f in_ frm =
@@ -136,3 +138,8 @@ zip fn la lb =
 
         ( [], _ ) ->
             []
+
+
+result : JD.Decoder e -> JD.Decoder s -> JD.Decoder (Result e s)
+result ed sd =
+    JD.oneOf [ JD.field "Err" (JD.map Err ed), JD.field "Ok" (JD.map Ok sd) ]

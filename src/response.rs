@@ -52,7 +52,7 @@ impl Serialize for Response {
             Response::Http(ref s) => {
                 let mut resp = serializer.serialize_struct_variant("Response", 0, "Http", 0)?;
                 resp.serialize_field("status", &s.status().as_u16())?;
-                //                resp.serialize_map("headers", &s.headers())?;
+                // TODO: headers
                 let body = std::str::from_utf8(s.body())
                     .map(|v| v.to_string())
                     .unwrap_or_else(|_| format!("{:?}", s.body()));

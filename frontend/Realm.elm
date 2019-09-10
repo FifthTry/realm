@@ -581,6 +581,7 @@ controller c =
         UpdateContext ctx ->
             [ ( "kind", JE.string "UpdateContext" )
             , ( "context"
+
               , JE.list (\( k, v ) -> JE.list identity [ JE.string k, v ]) ctx
               )
             ]
