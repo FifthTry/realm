@@ -1,5 +1,6 @@
 use crate::mode::Mode;
 use crate::PageSpec;
+use serde::ser::{Serialize, SerializeStructVariant, Serializer};
 
 pub enum Response {
     Http(http::response::Response<Vec<u8>>),
@@ -39,5 +40,89 @@ impl Response {
             }
             Response::Http(_) => unreachable!(),
         }
+    }
+}
+
+impl Serialize for Response {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            Response::Http(ref s) => {
+                let mut resp = serializer.serialize_struct_variant("Response", 0, "Http", 0)?;
+                resp.serialize_field("status", &s.status().as_u16())?;
+                //                resp.serialize_map("headers", &s.headers())?;
+                let body = std::str::from_utf8(s.body())
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|_| format!("{:?}", s.body()));
+                resp.serialize_field("body", &body)?;
+                resp.end()
+            }
+            Response::Page(ref p) => {
+                serializer.serialize_newtype_variant("Response", 1, "PageSpec", p)
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::PageSpec;
+    use http::Response as HttpResponse;
+    use serde_json::Value::Null;
+
+    #[test]
+    fn test_http_resp_default() {
+        let http_resp = HttpResponse::default();
+        let r = super::Response::Http(http_resp);
+        assert_eq!(
+            serde_json::to_value(r).unwrap(),
+            json!({
+                "Http": {
+                    "body": "",
+                    "status": 200
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn test_http_resp_with_body() {
+        let http_resp = HttpResponse::new("hello world".into());
+        let r = super::Response::Http(http_resp);
+        assert_eq!(
+            serde_json::to_value(r).unwrap(),
+            json!({
+                "Http": {
+                    "body": "hello world",
+                    "status": 200
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn test_page_spec() {
+        let page_spec = PageSpec {
+            id: "test-id".into(),
+            config: json!({}),
+            title: "test-title".into(),
+            url: None,
+            replace: None,
+        };
+        let r = super::Response::Page(page_spec);
+        assert_eq!(
+            serde_json::to_value(r).unwrap(),
+            json!({
+                "PageSpec": {
+                    "id": "test-id",
+                    "config": json!({}),
+                    "title": "test-title",
+                    "url": Null,
+                    "replace": Null
+                }
+            })
+        );
     }
 }
