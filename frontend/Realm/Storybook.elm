@@ -25,7 +25,6 @@ import Url.Parser as UP exposing ((</>), (<?>))
 import Url.Parser.Query as Q
 
 
-
 type alias Story =
     { title : String
     , pageTitle : String
@@ -152,7 +151,7 @@ update msg m =
             else
                 ( m, BN.reloadAndSkipCache )
 
-        ( GotHash (Err e), _ ) ->
+        ( GotHash (Err _), _ ) ->
             ( m, Process.sleep 1000 |> Task.perform (always AfterPollError) )
 
         ( AfterPollError, _ ) ->

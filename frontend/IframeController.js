@@ -31,11 +31,10 @@ var lastCmd = null;
 if (app.ports && app.ports.toIframe) {
     app.ports.toIframe.subscribe(function(cmd) {
         console.log("cmd", cmd);
+        lastCmd = cmd;
 
         var iframe = window.frames[0];
-        if (!iframe || !iframe.handleCmd) {
-            lastCmd = cmd;
-        } else {
+        if (iframe && iframe.handleCmd) {
             iframe.handleCmd(cmd);
         }
     });
