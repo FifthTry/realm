@@ -110,7 +110,7 @@ impl Config {
         self.js_code
             .get(id)
             .map(|c| c.clone())
-            .ok_or_else(|| failure::err_msg("key not found"))
+            .ok_or_else(|| failure::err_msg(format!("js file not found: {}", id)))
     }
 
     fn set_js_code_recur(&mut self, path: &Path, parent_path: &Path) -> Result<(), failure::Error> {
