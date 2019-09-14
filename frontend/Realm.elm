@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, pushHash, result, sub0, test, test0, testResult, tuple, update0)
+module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, pushHash, result, sub0, test, test0, testResult, tuple, tupleE, update0)
 
 import Browser as B
 import Browser.Events as BE
@@ -581,7 +581,6 @@ controller c =
         UpdateContext ctx ->
             [ ( "kind", JE.string "UpdateContext" )
             , ( "context"
-
               , JE.list (\( k, v ) -> JE.list identity [ JE.string k, v ]) ctx
               )
             ]
@@ -597,3 +596,8 @@ result c list =
 tuple : JD.Decoder a -> JD.Decoder b -> JD.Decoder ( a, b )
 tuple a b =
     JD.map2 Tuple.pair (JD.index 0 a) (JD.index 1 b)
+
+
+tupleE : (a -> JE.Value) -> (b -> JE.Value) -> ( a, b ) -> JE.Value
+tupleE fa fb ( a, b ) =
+    JE.list identity [ fa a, fb b ]

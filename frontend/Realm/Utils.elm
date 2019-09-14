@@ -68,7 +68,7 @@ formE =
 
 form : JD.Decoder Form
 form =
-    JD.dict (tuple JD.string (JD.maybe JD.string))
+    JD.dict (R.tuple JD.string (JD.maybe JD.string))
 
 
 fieldValid : Field -> Bool
@@ -107,10 +107,6 @@ fieldError tid name error in_ f =
 
     else
         R.TestPassed tid
-
-
-tuple =
-    R.tuple
 
 
 val : String -> R.In -> Form -> String

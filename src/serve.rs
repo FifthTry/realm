@@ -24,7 +24,13 @@ macro_rules! realm_serve {
             req: realm::Request,
         ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
             let mode = realm::Mode::detect(&req);
-            let url = req.uri().path().to_string();
+            let url = req
+                .uri()
+                .path_and_query()
+                .map(|p| p.as_str().to_string())
+                .unwrap_or_else(|| "/".to_string());
+            let url = url.replace("&realm_mode=layout", "");
+            let url = url.replace("?realm_mode=layout", "");
             let ctx = realm::Context::new(req);
 
             match $e(&ctx)

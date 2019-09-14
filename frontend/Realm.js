@@ -70,7 +70,7 @@
             }
             console.log("data", data);
 
-            if (data.url !== document.location.pathname) {
+            if (data.url !== document.location.pathname + document.location.search) {
                 history.replaceState(null, null, data.url);
             }
 
@@ -132,7 +132,9 @@
         loadNow();
     }
 
-    window.onpopstate = function () { navigate(document.location.pathname); };
+    window.onpopstate = function () {
+        navigate(document.location.pathname + document.location.search);
+    };
 
     function handleCmd(cmd) {
         console.log("got message from parent", cmd);
