@@ -1,11 +1,37 @@
-module Realm.Utils exposing (Field, Form, edges, err, fi, fieldError, fieldValid, form, formE, link, maybeE, maybeS, result, val, yesno, zip)
+module Realm.Utils exposing (Field, Form, edges, err, fi, fieldError, fieldValid, form, formE, html, htmlLine, link, maybeE, maybeS, result, val, yesno, zip)
 
 import Dict exposing (Dict)
 import Element as E
 import Element.Events as EE
+import Html.Parser
+import Html.Parser.Util
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
+
+
+html : String -> E.Element (R.Msg msg)
+html md =
+    case Html.Parser.run md of
+        Ok r ->
+            Html.Parser.Util.toVirtualDom r
+                |> List.map E.html
+                |> E.textColumn []
+
+        Err e ->
+            E.text (Debug.toString e)
+
+
+htmlLine : String -> E.Element (R.Msg msg)
+htmlLine md =
+    case Html.Parser.run md of
+        Ok r ->
+            Html.Parser.Util.toVirtualDom r
+                |> List.map E.html
+                |> E.paragraph []
+
+        Err e ->
+            E.text (Debug.toString e)
 
 
 edges : { top : Int, right : Int, bottom : Int, left : Int }
