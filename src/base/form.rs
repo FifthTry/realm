@@ -1,6 +1,30 @@
 use std::collections::HashMap;
 
-pub type FormErrors = HashMap<String, (String, Option<String>)>;
+#[derive(Serialize, Debug)]
+pub struct FormErrors(HashMap<String, (String, Option<String>)>);
+
+impl FormErrors {
+    #[deprecated(since = "0.1.15", note = "Please use FormErrors::empty() instead")]
+    pub fn new() -> FormErrors {
+        FormErrors::empty()
+    }
+
+    pub fn empty() -> FormErrors {
+        FormErrors(HashMap::new())
+    }
+
+    pub fn single(key: &str, value: &str, msg: &str) -> FormErrors {
+        let mut h = HashMap::new();
+        h.insert(key.to_string(), (value.to_string(), Some(msg.to_string())));
+        FormErrors(h)
+    }
+}
+
+impl Default for FormErrors {
+    fn default() -> FormErrors {
+        FormErrors::empty()
+    }
+}
 
 pub struct Form<'a> {
     in_: &'a crate::base::In<'a>,
@@ -11,7 +35,7 @@ impl<'a> Form<'a> {
     pub fn new(in_: &'a crate::base::In<'a>) -> Self {
         Form {
             in_,
-            errors: HashMap::new(),
+            errors: FormErrors(HashMap::new()),
         }
     }
     // f.add_error("field", field, error_message) // overwrites existing error if there
@@ -20,6 +44,7 @@ impl<'a> Form<'a> {
         T: Into<String>,
     {
         self.errors
+            .0
             .insert(name.to_string(), (value.into(), Some(message.to_string())));
     }
 
@@ -30,6 +55,7 @@ impl<'a> Form<'a> {
     {
         if self
             .errors
+            .0
             .get(name)
             .and_then(|(_, e)| e.as_ref())
             .is_some()
@@ -40,7 +66,7 @@ impl<'a> Form<'a> {
         let value = value.into();
         let res = validator(self.in_, value.as_str())?;
 
-        self.errors.insert(name.to_string(), (value, res));
+        self.errors.0.insert(name.to_string(), (value, res));
 
         Ok(())
     }
@@ -62,7 +88,7 @@ impl<'a> Form<'a> {
     }
 
     pub fn invalid(&self) -> bool {
-        self.errors.values().any(|(_, e)| e.is_some())
+        self.errors.0.values().any(|(_, e)| e.is_some())
     }
 
     pub fn errors<T>(self) -> Result<T, FormErrors> {

@@ -22,19 +22,23 @@ Rust / Elm base full stack web framework.
 
 ## Unreleased
 
-- `realm::base::db::RealmConnection`: in release build this is an alias for 
+- `realm::base::db::RealmConnection`: in release build this is an alias for
   `PgConnection`, where as in debug build its an alias for `DebugConnection`, which
-  prints SQL queries and time for execution. It also prints every connection 
+  prints SQL queries and time for execution. It also prints every connection
   established and the time it took to establish the connection.
 - Removed unused `realm::base::UserStatus` type.
 - Added `Realm.Utils.html` and `Realm.Utils.htmlLine` helpers to render server generated
   HTML in Elm.
+  - They depend on html-parser, so add it: `elm install hecrj/html-parser` inside
+    'frontend' folder.
+- Added `realm::base::FormError::empty()`, and deprecated `::new()`.
+- Added `realm::base::FormError::single()` to create one off error messages.
 
 ## 0.1.15
 
-- Added `RequestConfig.param()` to get a parameter from request. 
+- Added `RequestConfig.param()` to get a parameter from request.
 - Deprecated `RequestConfig.get()`, `.param()` should be used now.
-- Added `Realm.tuple : JD.Decoder a -> JD.Decoder b -> JD.Decoder (a, b)` and 
+- Added `Realm.tuple : JD.Decoder a -> JD.Decoder b -> JD.Decoder (a, b)` and
   `Realm.tupleE : (a -> JE.Value) -> (b -> JE.Value) -> ((a, b) -> JE.Value)`.
 - Fix: Query params in URLs are not lost during navigation.
 - Fix: Device switching in /storybook/ was buggy in some cases.
