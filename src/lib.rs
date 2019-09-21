@@ -35,3 +35,18 @@ pub enum Error {
     #[fail(display = "404 Page Not Found: {}", message)]
     PageNotFound { message: String },
 }
+
+pub trait Or404<T> {
+    fn or_404(self) -> std::result::Result<T, failure::Error>;
+}
+
+impl<T> Or404<T> for std::result::Result<T, failure::Error> {
+    fn or_404(self) -> std::result::Result<T, failure::Error> {
+        self.map_err(|e| {
+            Error::PageNotFound {
+                message: e.to_string(),
+            }
+            .into()
+        })
+    }
+}
