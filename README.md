@@ -49,6 +49,9 @@ if e.downcast_ref::<realm::Error>().is_some()
 - Added `realm::Or404` trait and implemented it on `Result<T, failure::Error>` so one
   can do eg `let content = fifthtry_db::content::get(in_, id).or_404()?;` in routes to
   convert arbitrary errors to 404s.
+- Added `realm::request_config::RequestConfig.optional()`, to get optional values.
+- When getting input values using `.params()` or `.option()`, now onwards `null` in
+  json, and empty value in query params are treated same as missing keys.
 
 ## 0.1.15
 

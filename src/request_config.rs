@@ -54,6 +54,18 @@ impl RequestConfig {
         })
     }
 
+    pub fn optional<T>(&mut self, name: &str) -> Result<Option<T>, Error>
+    where
+        T: FromStr + DeserializeOwned,
+        <T as FromStr>::Err: Debug,
+    {
+        match self.param(name) {
+            Ok(t) => Ok(Some(t)),
+            Err(Error::NotFound { .. }) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn param<T>(&mut self, name: &str) -> Result<T, Error>
     where
         T: FromStr + DeserializeOwned,
@@ -83,6 +95,11 @@ impl RequestConfig {
         }
 
         if let Some(v) = query.get(name) {
+            if v.is_empty() {
+                return Err(Error::NotFound {
+                    key: name.to_string(),
+                });
+            }
             return match v.parse() {
                 Ok(v) => Ok(v),
                 Err(e) => Err(Error::InvalidValue {
@@ -94,6 +111,11 @@ impl RequestConfig {
         }
 
         if let Some(v) = data.get(name) {
+            if v.is_null() {
+                return Err(Error::NotFound {
+                    key: name.to_string(),
+                });
+            };
             return serde_json::from_value(v.to_owned()).map_err(|e| Error::InvalidValue {
                 key: name.to_string(),
                 value: v.to_string(),
