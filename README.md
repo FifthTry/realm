@@ -50,9 +50,9 @@ if e.downcast_ref::<realm::Error>().is_some()
   can do eg `let content = fifthtry_db::content::get(in_, id).or_404()?;` in routes to
   convert arbitrary errors to 404s.
 - Added `realm::request_config::RequestConfig.optional()`, to get optional values.
-- When getting input values using `.params()` or `.option()`, now onwards `null` in
+- When getting input values using `.param()` or `.optional()`, now onwards `null` in
   json, and empty value in query params are treated same as missing keys.
-- Renamed `.param()` to `.required()`, which goes better with `.optional()`.
+- Renamed/deprecated `.param()` to `.required()`, which goes better with `.optional()`.
 
 ## 0.1.15
 
