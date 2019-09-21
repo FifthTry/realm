@@ -9,6 +9,18 @@ pub struct RequestConfig {
     pub path: String,
 }
 
+#[derive(Fail, Debug)]
+pub enum Error {
+    #[fail(display = "Expected input parameter not found: {}", key)]
+    NotFound { key: String },
+    #[fail(display = "Can't parse {}={}, error: {}", key, value, message)]
+    InvalidValue {
+        key: String,
+        value: String,
+        message: String,
+    },
+}
+
 pub fn sub_string(s: &str, start: usize, len: Option<usize>) -> String {
     match len {
         Some(len) => s.chars().skip(start).take(len).collect(),
@@ -42,7 +54,7 @@ impl RequestConfig {
         })
     }
 
-    pub fn param<T>(&mut self, name: &str) -> Result<T, failure::Error>
+    pub fn param<T>(&mut self, name: &str) -> Result<T, Error>
     where
         T: FromStr + DeserializeOwned,
         <T as FromStr>::Err: Debug,
@@ -60,7 +72,11 @@ impl RequestConfig {
                     Ok(v) => Ok(v),
                     Err(e) => {
                         // we have to do this because FromStr::Err is not Send/Sync
-                        Err(failure::err_msg(format!("can't parse rest: {:?}", e)))?
+                        Err(Error::InvalidValue {
+                            key: name.to_string(),
+                            value: v.clone(),
+                            message: format!("{:?}", e),
+                        })?
                     }
                 };
             }
@@ -69,22 +85,29 @@ impl RequestConfig {
         if let Some(v) = query.get(name) {
             return match v.parse() {
                 Ok(v) => Ok(v),
-                Err(e) => {
-                    // we have to do this because FromStr::Err is not Send/Sync
-                    Err(failure::err_msg(format!("can't parse query: {:?}", e)))?
-                }
+                Err(e) => Err(Error::InvalidValue {
+                    key: name.to_string(),
+                    value: v.clone(),
+                    message: format!("{:?}", e),
+                })?,
             };
         }
 
         if let Some(v) = data.get(name) {
-            return serde_json::from_value(v.to_owned()).map_err(Into::into);
+            return serde_json::from_value(v.to_owned()).map_err(|e| Error::InvalidValue {
+                key: name.to_string(),
+                value: v.to_string(),
+                message: e.to_string(),
+            });
         }
 
-        Err(failure::err_msg(format!("\"{}\" not found", name)))?
+        Err(Error::NotFound {
+            key: name.to_string(),
+        })?
     }
 
     #[deprecated(since = "0.1.15", note = "Please use realm::router() instead")]
-    pub fn get<T>(&mut self, name: &str, _is_optional: bool) -> Result<T, failure::Error>
+    pub fn get<T>(&mut self, name: &str, _is_optional: bool) -> Result<T, Error>
     where
         T: FromStr + DeserializeOwned,
         <T as FromStr>::Err: Debug,

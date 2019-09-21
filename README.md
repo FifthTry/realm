@@ -33,6 +33,18 @@ Rust / Elm base full stack web framework.
     'frontend' folder.
 - Added `realm::base::FormError::empty()`, and deprecated `::new()`.
 - Added `realm::base::FormError::single()` to create one off error messages.
+- Added `realm::Error` and `realm::request_config::Error` so we can do following error
+  handling in middleware to not handle 404s in missing/invalid input.
+
+```rust
+if e.downcast_ref::<realm::Error>().is_some()
+    || e.downcast_ref::<realm::request_config::Error>().is_some()
+{
+    fifthtry::http404(&in_, error.as_str())
+} else {
+    Err(e)
+}
+```
 
 ## 0.1.15
 

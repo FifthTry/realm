@@ -8,6 +8,8 @@ extern crate lazy_static;
 extern crate crossbeam_channel;
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate failure_derive;
 
 pub mod base;
 mod context;
@@ -27,3 +29,9 @@ pub use crate::serve::{http_to_hyper, THREAD_POOL};
 pub use crate::response::Response;
 pub type Result = std::result::Result<http::Response<Vec<u8>>, failure::Error>;
 pub type Request = http::request::Request<Vec<u8>>;
+
+#[derive(Fail, Debug)]
+pub enum Error {
+    #[fail(display = "404 Page Not Found: {}", message)]
+    PageNotFound { message: String },
+}
