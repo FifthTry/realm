@@ -59,14 +59,23 @@ impl RequestConfig {
         T: FromStr + DeserializeOwned,
         <T as FromStr>::Err: Debug,
     {
-        match self.param(name) {
+        match self.required(name) {
             Ok(t) => Ok(Some(t)),
             Err(Error::NotFound { .. }) => Ok(None),
             Err(e) => Err(e),
         }
     }
 
+    #[deprecated(since = "0.1.16", note = "Please use .required() instead")]
     pub fn param<T>(&mut self, name: &str) -> Result<T, Error>
+    where
+        T: FromStr + DeserializeOwned,
+        <T as FromStr>::Err: Debug,
+    {
+        self.required(name)
+    }
+
+    pub fn required<T>(&mut self, name: &str) -> Result<T, Error>
     where
         T: FromStr + DeserializeOwned,
         <T as FromStr>::Err: Debug,
@@ -128,13 +137,13 @@ impl RequestConfig {
         })?
     }
 
-    #[deprecated(since = "0.1.15", note = "Please use realm::router() instead")]
+    #[deprecated(since = "0.1.15", note = "Please use .required() instead")]
     pub fn get<T>(&mut self, name: &str, _is_optional: bool) -> Result<T, Error>
     where
         T: FromStr + DeserializeOwned,
         <T as FromStr>::Err: Debug,
         T: Default,
     {
-        self.param(name)
+        self.required(name)
     }
 }

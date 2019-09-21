@@ -52,6 +52,7 @@ if e.downcast_ref::<realm::Error>().is_some()
 - Added `realm::request_config::RequestConfig.optional()`, to get optional values.
 - When getting input values using `.params()` or `.option()`, now onwards `null` in
   json, and empty value in query params are treated same as missing keys.
+- Renamed `.param()` to `.required()`, which goes better with `.optional()`.
 
 ## 0.1.15
 
