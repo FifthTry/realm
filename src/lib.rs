@@ -9,7 +9,7 @@ extern crate crossbeam_channel;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
-extern crate failure_derive;
+extern crate failure;
 
 pub mod base;
 mod context;

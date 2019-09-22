@@ -11,7 +11,7 @@ use url::Url;
 
 pub fn set_cookie(name: &str, value: &str, age: i32) -> Result<http::HeaderValue, failure::Error> {
     http::HeaderValue::from_str(format!("{}={}; Max-Age={}; Path=/", name, value, age).as_str())
-        .map_err(|e| failure::err_msg(format!("error: {:?}", e)))
+        .map_err(|e| format_err!("error: {:?}", e))
 }
 
 pub fn get_slash_complete_path(path: &str) -> String {
@@ -60,7 +60,7 @@ where
             "null" => Ok(Maybe(None)),
             _ => match s.parse() {
                 Ok(v) => Ok(Maybe(Some(v))),
-                Err(e) => Err(failure::err_msg(format!("can't parse: {:?}", e))),
+                Err(e) => Err(format_err!("can't parse: {:?}", e)),
             },
         }
     }
@@ -171,7 +171,7 @@ where
         if let Some(v) = first {
             return match v.parse() {
                 Ok(v) => Ok(v),
-                Err(e) => Err(failure::err_msg(format!("can't parse rest: {:?}", e)))?,
+                Err(e) => Err(format_err!("can't parse rest: {:?}", e))?,
             };
         }
     }
@@ -179,7 +179,7 @@ where
     if let Some(v) = query.get(name) {
         return match v.parse() {
             Ok(v) => Ok(v),
-            Err(e) => Err(failure::err_msg(format!("can't parse query: {:?}", e)))?,
+            Err(e) => Err(format_err!("can't parse query: {:?}", e))?,
         };
     }
 
@@ -187,12 +187,12 @@ where
     if let Some(v) = data.get(name) {
         return match serde_json::from_value(v.to_owned()) {
             Ok(v) => Ok(v),
-            Err(e) => Err(failure::err_msg(format!("can't parse data: {:?}", e)))?,
+            Err(e) => Err(format_err!("can't parse data: {:?}", e))?,
         };
     }
 
     if is_optional {
         return Ok(T::default());
     }
-    Err(failure::err_msg(format!("\"{}\" not found", name)))?
+    Err(format_err!("\"{}\" not found", name))?
 }

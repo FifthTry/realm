@@ -1,5 +1,8 @@
-use diesel::{connection::TransactionManager, prelude::*, query_builder::QueryBuilder};
+#[cfg(debug_assertions)]
+use diesel::query_builder::QueryBuilder;
+use diesel::{connection::TransactionManager, prelude::*};
 
+#[cfg(debug_assertions)]
 pub struct DebugConnection {
     pub conn: diesel::PgConnection,
 }
@@ -45,12 +48,14 @@ pub fn rollback_if_required(conn: &RealmConnection) {
     }
 }
 
+#[cfg(debug_assertions)]
 impl diesel::connection::SimpleConnection for DebugConnection {
     fn batch_execute(&self, query: &str) -> QueryResult<()> {
         self.conn.batch_execute(query)
     }
 }
 
+#[cfg(debug_assertions)]
 impl DebugConnection {
     fn new(url: &str) -> ConnectionResult<Self> {
         Ok(DebugConnection {
@@ -59,6 +64,7 @@ impl DebugConnection {
     }
 }
 
+#[cfg(debug_assertions)]
 impl diesel::connection::Connection for DebugConnection {
     type Backend = diesel::pg::Pg;
     type TransactionManager = diesel::connection::AnsiTransactionManager;
