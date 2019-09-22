@@ -90,7 +90,7 @@ init config _ url key =
     in
     ( m
     , Cmd.batch
-        [ poll ""
+        [ poll "empty"
         , m.current
             |> Maybe.andThen (\idx -> Array.get idx stories)
             |> Maybe.map Tuple.second

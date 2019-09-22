@@ -30,7 +30,7 @@ impl Context {
         self.builder.borrow_mut().header(key, value);
     }
 
-    pub fn response<T>(&self, body: T) -> Result<http::response::Response<T>, failure::Error> {
+    pub fn response<T>(&self, body: T) -> Result<http::response::Response<T>, crate::Error> {
         self.builder
             .replace(http::response::Builder::new())
             .body(body)

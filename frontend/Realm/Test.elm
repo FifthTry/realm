@@ -169,7 +169,7 @@ view m =
                 [ E.text <|
                     m.title
                         ++ " Tests: "
-                        ++ Maybe.withDefault "Done" (Maybe.map String.fromInt m.current)
+                        ++ status m
                 ]
             , listOfTests m
             ]
@@ -185,14 +185,45 @@ view m =
         ]
 
 
+isPass : TestWithResults -> Bool
+isPass t =
+    t.results
+        |> List.filter (\r -> not (R.isPass r))
+        |> List.length
+        |> (\c -> c == 0)
+
+
+status : Model -> String
+status m =
+    let
+        total =
+            String.fromInt (Array.length m.tests)
+    in
+    case m.current of
+        Just i ->
+            String.fromInt i ++ " of " ++ total
+
+        Nothing ->
+            m.tests
+                |> Array.filter (\r -> not (isPass r))
+                |> Array.length
+                |> (\c ->
+                        if c /= 0 then
+                            "Failed " ++ String.fromInt c ++ " of " ++ total
+
+                        else
+                            "Passed " ++ total
+                   )
+
+
 stepTitle : Step -> String
 stepTitle s =
     case s of
-        Navigate _ id _ ->
-            id
+        Navigate p id _ ->
+            p ++ ":" ++ id
 
-        Submit _ id _ ->
-            id
+        Submit p id _ ->
+            p ++ ":" ++ id
 
 
 resultView : R.TestResult -> E.Element Msg

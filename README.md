@@ -53,6 +53,7 @@ if e.downcast_ref::<realm::Error>().is_some()
 - When getting input values using `.param()` or `.optional()`, now onwards `null` in
   json, and empty value in query params are treated same as missing keys.
 - Renamed/deprecated `.param()` to `.required()`, which goes better with `.optional()`.
+- Moved test.rs, storybook.rs and iframe.rs to realm.
 
 ## 0.1.15
 

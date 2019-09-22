@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, pushHash, result, sub0, test, test0, testResult, tuple, tupleE, update0)
+module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, isPass, pushHash, result, sub0, test, test0, testResult, tuple, tupleE, update0)
 
 import Browser as B
 import Browser.Events as BE
@@ -503,6 +503,31 @@ type TestResult
     | BadElm String
     | UpdateContext (List ( String, JE.Value ))
     | TestDone
+
+
+isPass : TestResult -> Bool
+isPass r =
+    case r of
+        TestFailed _ _ ->
+            False
+
+        TestPassed _ ->
+            True
+
+        BadConfig _ ->
+            False
+
+        Screenshot _ ->
+            True
+
+        BadElm _ ->
+            False
+
+        UpdateContext _ ->
+            True
+
+        TestDone ->
+            True
 
 
 testResult : JD.Decoder TestResult
