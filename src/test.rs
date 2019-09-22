@@ -35,7 +35,12 @@ pub fn reset_db(in_: &crate::base::In) -> Result<crate::Response, crate::Error> 
     diesel::sql_query("DROP SCHEMA IF EXISTS test CASCADE;").execute(in_.conn)?;
 
     let output = std::process::Command::new("psql")
-        .args(&["-d", std::env::var("DATABASE_URL").unwrap().as_str(), "-f", "schema.sql"])
+        .args(&[
+            "-d",
+            std::env::var("DATABASE_URL")?.as_str(),
+            "-f",
+            "schema.sql",
+        ])
         .output()
         .unwrap();
 

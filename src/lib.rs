@@ -44,6 +44,11 @@ pub enum Error {
         #[cause]
         error: http::Error,
     },
+    #[fail(display = "Env Var Error: {}", error)]
+    VarError {
+        #[cause]
+        error: std::env::VarError,
+    },
     #[fail(display = "Diesel Error: {}", error)]
     DieselError {
         #[cause]
@@ -54,6 +59,12 @@ pub enum Error {
 impl From<diesel::result::Error> for Error {
     fn from(error: diesel::result::Error) -> Error {
         Error::DieselError { error }
+    }
+}
+
+impl From<std::env::VarError> for Error {
+    fn from(error: std::env::VarError) -> Error {
+        Error::VarError { error }
     }
 }
 
