@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, edges, err, fi, fieldError, fieldValid, form, formE, html, htmlLine, link, maybeE, maybeS, result, val, yesno, zip)
+module Realm.Utils exposing (Field, Form, edges, err, fi, fieldError, fieldValid, matchCtx2, form, formE, html, htmlLine, link, match, matchCtx, maybeE, maybeS, result, val, yesno, zip)
 
 import Dict exposing (Dict)
 import Element as E
@@ -165,3 +165,44 @@ zip fn la lb =
 result : JD.Decoder e -> JD.Decoder s -> JD.Decoder (Result e s)
 result ed sd =
     JD.oneOf [ JD.field "Err" (JD.map Err ed), JD.field "Ok" (JD.map Ok sd) ]
+
+
+match : String -> a -> a -> R.TestResult
+match tid exp got =
+    if exp /= got then
+        R.TestFailed tid ("Expected: " ++ Debug.toString exp ++ " got: " ++ Debug.toString got)
+
+    else
+        R.TestPassed tid
+
+
+matchCtx : a -> String -> JD.Decoder a -> JE.Value -> R.TestResult
+matchCtx exp key dec v =
+    let
+        tid =
+            "matchCTX." ++ key
+    in
+    case JD.decodeValue (JD.field key dec) v of
+        Ok got ->
+            if exp /= got then
+                R.TestFailed tid ("Expected: " ++ Debug.toString exp ++ " got: " ++ Debug.toString got)
+
+            else
+                R.TestPassed tid
+
+        Err e ->
+            R.TestFailed tid ("Failed to decode: " ++ Debug.toString e)
+
+
+matchCtx2 : String -> ( String, JD.Decoder a, JE.Value ) -> (a -> Bool) -> R.TestResult
+matchCtx2 tid ( key, dec, v ) f =
+    case JD.decodeValue (JD.field key dec) v of
+        Ok a ->
+            if f a then
+                R.TestFailed tid "Test Failed"
+
+            else
+                R.TestPassed tid
+
+        Err e ->
+            R.TestFailed tid <| "Failed to decode: " ++ Debug.toString e

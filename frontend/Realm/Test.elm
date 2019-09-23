@@ -33,6 +33,7 @@ type alias TestWithResults =
 
 type Step
     = Navigate String String String
+    | NavigateS ( String, String ) String (String -> String)
     | Submit String String JE.Value
 
 
@@ -87,6 +88,9 @@ doStep idx postReset m =
                         Navigate elm id url ->
                             navigate elm id url m.context
 
+                        NavigateS ( elm, id ) key f ->
+                            navigate elm id (resolve key JD.string f (JE.object m.context)) m.context
+
                         Submit elm id payload ->
                             submit elm id payload m.context
 
@@ -111,7 +115,17 @@ doStep idx postReset m =
             ( { m | current = Nothing }, Cmd.none )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+resolve : String -> JD.Decoder a -> (a -> String) -> JE.Value -> String
+resolve key dec f v =
+    case JD.decodeValue (JD.field key dec) v of
+        Ok a ->
+            f a
+
+        Err _ ->
+            "TODO: fix this"
+
+
+update : Msg -> Model-> ( Model, Cmd Msg )
 update msg m =
     case Debug.log "Test.msg" ( msg, m.current ) of
         ( NoOp, _ ) ->
@@ -220,6 +234,9 @@ stepTitle : Step -> String
 stepTitle s =
     case s of
         Navigate p id _ ->
+            p ++ ":" ++ id
+
+        NavigateS ( p, id ) _ _ ->
             p ++ ":" ++ id
 
         Submit p id _ ->

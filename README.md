@@ -20,7 +20,7 @@ Rust / Elm base full stack web framework.
 
 # ChangeLog
 
-## Unreleased
+## 0.1.16 - 23 Sept 2019
 
 - `realm::base::db::RealmConnection`: in release build this is an alias for
   `PgConnection`, where as in debug build its an alias for `DebugConnection`, which
@@ -55,7 +55,7 @@ if e.downcast_ref::<realm::Error>().is_some()
 - Renamed/deprecated `.param()` to `.required()`, which goes better with `.optional()`.
 - Moved test.rs, storybook.rs and iframe.rs to realm.
 
-## 0.1.15
+## 0.1.15 - 14 Sept 2019
 
 - Added `RequestConfig.param()` to get a parameter from request.
 - Deprecated `RequestConfig.get()`, `.param()` should be used now.
@@ -65,6 +65,6 @@ if e.downcast_ref::<realm::Error>().is_some()
 - Fix: Device switching in /storybook/ was buggy in some cases.
 
 
-## 0.1.14
+## 0.1.14 - 10 Sept 2019
 
 - `realm::Response` now implements `serde::Serialize`.
