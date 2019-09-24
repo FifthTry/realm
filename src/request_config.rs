@@ -19,6 +19,8 @@ pub enum Error {
         value: String,
         message: String,
     },
+    #[fail(display = "Errors: {:?}", _0)]
+    Multi(Vec<Error>),
 }
 
 pub fn sub_string(s: &str, start: usize, len: Option<usize>) -> String {
@@ -73,6 +75,103 @@ impl RequestConfig {
         <T as FromStr>::Err: Debug,
     {
         self.required(name)
+    }
+
+    pub fn required2<T1, T2>(&mut self, n1: &str, n2: &str) -> Result<(T1, T2), Error>
+    where
+        T1: FromStr + DeserializeOwned,
+        <T1 as FromStr>::Err: Debug,
+        T2: FromStr + DeserializeOwned,
+        <T2 as FromStr>::Err: Debug,
+    {
+        match (self.required(n1), self.required(n2)) {
+            (Ok(t1), Ok(t2)) => Ok((t1, t2)),
+            (r1, r2) => {
+                let mut errors = vec![];
+                if let Err(e) = r1 {
+                    errors.push(e)
+                };
+                if let Err(e) = r2 {
+                    errors.push(e)
+                };
+                Err(Error::Multi(errors))
+            }
+        }
+    }
+
+    pub fn required3<T1, T2, T3>(
+        &mut self,
+        n1: &str,
+        n2: &str,
+        n3: &str,
+    ) -> Result<(T1, T2, T3), Error>
+    where
+        T1: FromStr + DeserializeOwned,
+        <T1 as FromStr>::Err: Debug,
+        T2: FromStr + DeserializeOwned,
+        <T2 as FromStr>::Err: Debug,
+        T3: FromStr + DeserializeOwned,
+        <T3 as FromStr>::Err: Debug,
+    {
+        match (self.required(n1), self.required(n2), self.required(n3)) {
+            (Ok(t1), Ok(t2), Ok(t3)) => Ok((t1, t2, t3)),
+            (r1, r2, r3) => {
+                let mut errors = vec![];
+                if let Err(e) = r1 {
+                    errors.push(e)
+                };
+                if let Err(e) = r2 {
+                    errors.push(e)
+                };
+                if let Err(e) = r3 {
+                    errors.push(e)
+                };
+                Err(Error::Multi(errors))
+            }
+        }
+    }
+
+    pub fn required4<T1, T2, T3, T4>(
+        &mut self,
+        n1: &str,
+        n2: &str,
+        n3: &str,
+        n4: &str,
+    ) -> Result<(T1, T2, T3, T4), Error>
+    where
+        T1: FromStr + DeserializeOwned,
+        <T1 as FromStr>::Err: Debug,
+        T2: FromStr + DeserializeOwned,
+        <T2 as FromStr>::Err: Debug,
+        T3: FromStr + DeserializeOwned,
+        <T3 as FromStr>::Err: Debug,
+        T4: FromStr + DeserializeOwned,
+        <T4 as FromStr>::Err: Debug,
+    {
+        match (
+            self.required(n1),
+            self.required(n2),
+            self.required(n3),
+            self.required(n4),
+        ) {
+            (Ok(t1), Ok(t2), Ok(t3), Ok(t4)) => Ok((t1, t2, t3, t4)),
+            (r1, r2, r3, r4) => {
+                let mut errors = vec![];
+                if let Err(e) = r1 {
+                    errors.push(e)
+                };
+                if let Err(e) = r2 {
+                    errors.push(e)
+                };
+                if let Err(e) = r3 {
+                    errors.push(e)
+                };
+                if let Err(e) = r4 {
+                    errors.push(e)
+                };
+                Err(Error::Multi(errors))
+            }
+        }
     }
 
     pub fn required<T>(&mut self, name: &str) -> Result<T, Error>

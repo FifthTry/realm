@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, edges, err, fi, fieldError, fieldValid, matchCtx2, form, formE, html, htmlLine, link, match, matchCtx, maybeE, maybeS, result, val, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), edges, err, fi, fieldError, fieldValid, form, formE, html, htmlLine, link, match, matchCtx, matchCtx2, maybeE, maybeS, rendered, renderedE, result, val, yesno, zip)
 
 import Dict exposing (Dict)
 import Element as E
@@ -10,8 +10,22 @@ import Json.Encode as JE
 import Realm as R
 
 
-html : String -> E.Element (R.Msg msg)
-html md =
+type Rendered
+    = Rendered String
+
+
+rendered : JD.Decoder Rendered
+rendered =
+    JD.map Rendered JD.string
+
+
+renderedE : Rendered -> JE.Value
+renderedE (Rendered md) =
+    JE.string md
+
+
+html : Rendered -> E.Element (R.Msg msg)
+html (Rendered md) =
     case Html.Parser.run md of
         Ok r ->
             Html.Parser.Util.toVirtualDom r
@@ -22,8 +36,8 @@ html md =
             E.text (Debug.toString e)
 
 
-htmlLine : String -> E.Element (R.Msg msg)
-htmlLine md =
+htmlLine : Rendered -> E.Element (R.Msg msg)
+htmlLine (Rendered md) =
     case Html.Parser.run md of
         Ok r ->
             Html.Parser.Util.toVirtualDom r
@@ -185,13 +199,17 @@ matchCtx exp key dec v =
     case JD.decodeValue (JD.field key dec) v of
         Ok got ->
             if exp /= got then
-                R.TestFailed tid ("Expected: " ++ Debug.toString exp ++ " got: " ++ Debug.toString got)
+                R.TestFailed tid <|
+                    "Expected: "
+                        ++ Debug.toString exp
+                        ++ " got: "
+                        ++ Debug.toString got
 
             else
                 R.TestPassed tid
 
         Err e ->
-            R.TestFailed tid ("Failed to decode: " ++ Debug.toString e)
+            R.TestFailed tid (JD.errorToString e)
 
 
 matchCtx2 : String -> ( String, JD.Decoder a, JE.Value ) -> (a -> Bool) -> R.TestResult
@@ -205,4 +223,4 @@ matchCtx2 tid ( key, dec, v ) f =
                 R.TestPassed tid
 
         Err e ->
-            R.TestFailed tid <| "Failed to decode: " ++ Debug.toString e
+            R.TestFailed tid (JD.errorToString e)

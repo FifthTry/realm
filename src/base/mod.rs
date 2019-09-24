@@ -8,7 +8,7 @@ mod utils;
 pub use db::{connection, rollback_if_required, DIESEL_POOL};
 pub use form::{Form, FormErrors};
 pub use in_::In;
-pub use sql_types::citext;
+pub use sql_types::{citext, CiString};
 pub use utils::elapsed;
 
 pub type Request = http::Request<Vec<u8>>;

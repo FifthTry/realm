@@ -2,6 +2,7 @@ port module Realm.Test exposing (Step(..), Test, app)
 
 import Array exposing (Array)
 import Browser as B
+import Browser.Events as BE
 import Element as E exposing (..)
 import Element.Background as Bg
 import Element.Border as EB
@@ -13,7 +14,7 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
 import Realm.Ports exposing (fromIframe, toIframe)
-import Realm.Utils exposing (edges)
+import Realm.Utils exposing (edges, yesno)
 
 
 type alias Test =
@@ -48,6 +49,7 @@ type alias Model =
     , current : Maybe Int
     , tests : Array TestWithResults
     , title : String
+    , errorOnly : Bool
     }
 
 
@@ -55,6 +57,7 @@ type Msg
     = FromChild JE.Value
     | NoOp
     | ResetDone
+    | OnKey String
 
 
 
@@ -69,6 +72,7 @@ init config _ _ _ =
         , current = Nothing
         , title = config.title
         , tests = flatten config.tests
+        , errorOnly = False
         }
 
 
@@ -112,7 +116,18 @@ doStep idx postReset m =
             ( { m | context = ctx2, current = current }, cmd2 )
 
         Nothing ->
-            ( { m | current = Nothing }, Cmd.none )
+            ( { m
+                | current = Nothing
+
+                -- if any test is failed, narrow to only failed tests
+                , errorOnly =
+                    m.tests
+                        |> Array.filter (\t -> not (isPass t))
+                        |> Array.length
+                        |> (\c -> c /= 0)
+              }
+            , Cmd.none
+            )
 
 
 resolve : String -> JD.Decoder a -> (a -> String) -> JE.Value -> String
@@ -125,7 +140,7 @@ resolve key dec f v =
             "TODO: fix this"
 
 
-update : Msg -> Model-> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case Debug.log "Test.msg" ( msg, m.current ) of
         ( NoOp, _ ) ->
@@ -164,6 +179,12 @@ update msg m =
 
         ( ResetDone, Just idx ) ->
             doStep (idx + 1) True m
+
+        ( OnKey "e", _ ) ->
+            ( { m | errorOnly = not m.errorOnly }, Cmd.none )
+
+        ( OnKey _, _ ) ->
+            ( m, Cmd.none )
 
 
 document : Model -> B.Document Msg
@@ -243,8 +264,8 @@ stepTitle s =
             p ++ ":" ++ id
 
 
-resultView : R.TestResult -> E.Element Msg
-resultView r =
+resultView : Model -> R.TestResult -> E.Element Msg
+resultView m r =
     if r == R.TestDone then
         E.none
 
@@ -253,6 +274,7 @@ resultView r =
             [ E.paddingEach { bottom = 3, left = 15, right = 5, top = 4 }
             , EF.light
             , EF.size 14
+            , EF.color (yesno (R.isPass r) (E.rgb 0 0 0) (E.rgb 0.93 0 0))
             ]
             [ E.text <| "> " ++ Debug.toString r ]
 
@@ -273,7 +295,7 @@ stepView m idx s results =
             E.paragraph [ E.pointer, E.paddingXY 5 3, EF.light ]
                 [ E.text <| "- " ++ stepTitle s ]
         )
-            :: List.map resultView results
+            :: List.map (resultView m) results
 
 
 testHead : String -> E.Element Msg
@@ -304,16 +326,29 @@ singleTest m ( idx, test ) ( cur, body ) =
 
 listOfTests : Model -> E.Element Msg
 listOfTests m =
-    m.tests
+    filterErrorOnly m
         |> Array.toIndexedList
         |> List.foldl (singleTest m) ( "", [] )
         |> Tuple.second
         |> E.column [ E.width E.fill ]
 
 
+filterErrorOnly : Model -> Array TestWithResults
+filterErrorOnly { errorOnly, tests } =
+    if errorOnly then
+        tests
+            |> Array.filter (\t -> not (isPass t))
+
+    else
+        tests
+
+
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    fromIframe FromChild
+    Sub.batch
+        [ fromIframe FromChild
+        , BE.onKeyDown (JD.map OnKey (JD.field "key" JD.string))
+        ]
 
 
 app : Config -> Program () Model Msg

@@ -20,6 +20,20 @@ Rust / Elm base full stack web framework.
 
 # ChangeLog
 
+## Unpublished
+
+- `realm::base::CiString` is public now.
+- Elm backward incompatible: changed signature of `Realm.Utils.html` and
+  `Realm.Utils.htmlLine` to take `Realm.Utils.Rendered` as input instead of `String`.
+- `Realm.Test`: show failures in red
+- `Realm.Test`: keyboard shortcut `e` to toggle between showing all tests vs only
+  failed ones
+- `Realm.Test`: on test completion narrow to only failed tests if test failed.
+- Added `.required2()`, `.required3()` and `.required4()` to
+  `realm::request_config::RequestConfig`. Advantage of these variants over multiple
+  invocations of `.required()`: all errors are shown in one go, with `.required()`, only
+  the first error is shown in response.
+
 ## 0.1.16 - 23 Sept 2019
 
 - `realm::base::db::RealmConnection`: in release build this is an alias for
