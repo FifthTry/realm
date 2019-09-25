@@ -33,6 +33,8 @@ Rust / Elm base full stack web framework.
   `realm::request_config::RequestConfig`. Advantage of these variants over multiple
   invocations of `.required()`: all errors are shown in one go, with `.required()`, only
   the first error is shown in response.
+- Added `Realm.Utils.maybe : Json.Decode.Decoder a -> Json.Decode.Decoder (Maybe a)`,
+  which is a better version of `Json.Decode.maybe`.
 
 ## 0.1.16 - 23 Sept 2019
 

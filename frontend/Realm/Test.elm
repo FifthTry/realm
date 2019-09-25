@@ -266,17 +266,21 @@ stepTitle s =
 
 resultView : Model -> R.TestResult -> E.Element Msg
 resultView m r =
-    if r == R.TestDone then
-        E.none
+    case r of
+        R.TestDone ->
+            E.none
 
-    else
-        E.paragraph
-            [ E.paddingEach { bottom = 3, left = 15, right = 5, top = 4 }
-            , EF.light
-            , EF.size 14
-            , EF.color (yesno (R.isPass r) (E.rgb 0 0 0) (E.rgb 0.93 0 0))
-            ]
-            [ E.text <| "> " ++ Debug.toString r ]
+        R.UpdateContext _ ->
+            E.none
+
+        _ ->
+            E.paragraph
+                [ E.paddingEach { bottom = 3, left = 15, right = 5, top = 4 }
+                , EF.light
+                , EF.size 14
+                , EF.color (yesno (R.isPass r) (E.rgb 0 0 0) (E.rgb 0.93 0 0))
+                ]
+                [ E.text <| "> " ++ Debug.toString r ]
 
 
 stepView : Model -> Int -> Step -> List R.TestResult -> E.Element Msg

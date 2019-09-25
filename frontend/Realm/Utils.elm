@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), edges, err, fi, fieldError, fieldValid, form, formE, html, htmlLine, link, match, matchCtx, matchCtx2, maybeE, maybeS, rendered, renderedE, result, val, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), edges, err, fi, fieldError, fieldValid, form, formE, html, htmlLine, link, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, rendered, renderedE, result, val, yesno, zip)
 
 import Dict exposing (Dict)
 import Element as E
@@ -8,6 +8,11 @@ import Html.Parser.Util
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
+
+
+maybe : JD.Decoder a -> JD.Decoder (Maybe a)
+maybe dec =
+    JD.oneOf [ JD.null Nothing, JD.map Just dec ]
 
 
 type Rendered
@@ -108,7 +113,7 @@ formE =
 
 form : JD.Decoder Form
 form =
-    JD.dict (R.tuple JD.string (JD.maybe JD.string))
+    JD.dict (R.tuple JD.string (maybe JD.string))
 
 
 fieldValid : Field -> Bool
@@ -191,13 +196,13 @@ match tid exp got =
 
 
 matchCtx : a -> String -> JD.Decoder a -> JE.Value -> R.TestResult
-matchCtx exp key dec v =
+matchCtx got key dec v =
     let
         tid =
             "matchCTX." ++ key
     in
     case JD.decodeValue (JD.field key dec) v of
-        Ok got ->
+        Ok exp ->
             if exp /= got then
                 R.TestFailed tid <|
                     "Expected: "
