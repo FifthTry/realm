@@ -41,6 +41,29 @@ impl Response {
             Response::Http(_) => unreachable!(),
         }
     }
+
+    pub fn redirect<T>(in_: &crate::base::In, next: T) -> Result<crate::Response, failure::Error>
+    where
+        T: Into<String>,
+    {
+        use http::{header, Response as HttpResponse, StatusCode};
+        match in_.get_mode() {
+            Mode::Layout => Ok(Response::Page(PageSpec {
+                id: "".to_owned(),
+                config: json!({}),
+                title: "".to_owned(),
+                url: None,
+                replace: None,
+                redirect: Some(next.into()),
+            })),
+            _ => {
+                let mut response = HttpResponse::builder();
+                response.status(StatusCode::SEE_OTHER);
+                response.header(header::LOCATION, next.into());
+                Ok(Response::Http(response.body("".into())?))
+            }
+        }
+    }
 }
 
 impl Serialize for Response {
@@ -110,6 +133,7 @@ mod tests {
             title: "test-title".into(),
             url: None,
             replace: None,
+            redirect: None,
         };
         let r = super::Response::Page(page_spec);
         assert_eq!(
