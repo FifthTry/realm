@@ -1,6 +1,23 @@
 #[cfg(debug_assertions)]
+use colored::Colorize;
+#[cfg(debug_assertions)]
 use diesel::query_builder::QueryBuilder;
 use diesel::{connection::TransactionManager, prelude::*};
+
+#[cfg(debug_assertions)]
+lazy_static! {
+    pub static ref SS: syntect::parsing::SyntaxSet =
+        { syntect::parsing::SyntaxSet::load_defaults_newlines() };
+    pub static ref TS: syntect::highlighting::ThemeSet =
+        { syntect::highlighting::ThemeSet::load_defaults() };
+}
+
+fn colored(sql: &str) -> String {
+    let syntax = SS.find_syntax_by_extension("sql").unwrap();
+    let mut h = syntect::easy::HighlightLines::new(syntax, &TS.themes["base16-ocean.dark"]);
+    let ranges: Vec<(syntect::highlighting::Style, &str)> = h.highlight(sql, &SS);
+    syntect::util::as_24_bit_terminal_escaped(&ranges[..], false) + "\x1b[0m"
+}
 
 #[cfg(debug_assertions)]
 pub struct DebugConnection {
@@ -41,9 +58,13 @@ pub fn connection() -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<Rea
 
 pub fn rollback_if_required(conn: &RealmConnection) {
     if let Err(e) = diesel::sql_query("SELECT 1").execute(conn) {
-        eprintln!("connection_not_clean: {:?}", e);
+        eprintln!("{}: {:?}", "connection_not_clean".red(), e);
         if let Err(e) = conn.transaction_manager().rollback_transaction(conn) {
-            eprintln!("connection_not_clean_and_cleanup_failed: {:?}", e);
+            eprintln!(
+                "{}: {:?}",
+                "connection_not_clean_and_cleanup_failed".red(),
+                e
+            );
         }
     }
 }
@@ -80,7 +101,7 @@ impl diesel::connection::Connection for DebugConnection {
         let r = self.conn.execute(query);
         eprintln!(
             "ExecuteQuery: {} in {}.",
-            query,
+            colored(query),
             crate::base::elapsed(start)
         );
         r
@@ -101,7 +122,7 @@ impl diesel::connection::Connection for DebugConnection {
 
         eprintln!(
             "QueryByIndex: {} in {}.",
-            debug_query,
+            colored(debug_query.as_str()),
             crate::base::elapsed(start)
         );
         r
@@ -119,7 +140,11 @@ impl diesel::connection::Connection for DebugConnection {
             qb.finish()
         };
         let r = self.conn.query_by_name(source);
-        eprintln!("QueryByName: {} in {}", query, crate::base::elapsed(start));
+        eprintln!(
+            "QueryByName: {} in {}",
+            colored(query.as_str()),
+            crate::base::elapsed(start)
+        );
         r
     }
 
@@ -136,7 +161,7 @@ impl diesel::connection::Connection for DebugConnection {
         let r = self.conn.execute_returning_count(source);
         eprintln!(
             "ExecuteReturningCount: {} in {}",
-            query,
+            colored(query.as_str()),
             crate::base::elapsed(start)
         );
         r
