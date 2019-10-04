@@ -5,6 +5,7 @@ pub struct PageSpec {
     pub title: String,
     pub url: Option<String>,
     pub replace: Option<String>,
+    pub next: Option<String>,
 }
 
 fn escape(s: &str) -> String {
@@ -64,6 +65,7 @@ pub trait Page: serde::ser::Serialize {
             title: title.into(),
             url: None,
             replace: None,
+            next: None,
         }))
     }
 }

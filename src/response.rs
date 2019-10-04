@@ -42,17 +42,33 @@ impl Response {
         }
     }
 
-    pub fn redirect(self, in_: &crate::base::In, next: String) -> crate::base::Result<realm::Response>{
-        match Mode::detect(in_.ctx.request){
-            Mode::Layout =>{
-
+    pub fn redirect(in_: &crate::base::In, next: String) -> crate::base::Result<crate::Response> {
+        match Mode::detect(&in_.ctx.request) {
+            Mode::Layout => {
+                let page_spec = PageSpec {
+                    id: "redirect".into(),
+                    config: json!({}),
+                    title: "redirect".into(),
+                    url: None,
+                    replace: None,
+                    next: Some(next),
+                };
+                let r = crate::Response::Page(page_spec);
+                Ok(r)
             }
             _ => {
-
+                let mut response_b = http::response::Response::builder();
+                response_b.status(http::status::StatusCode::TEMPORARY_REDIRECT);
+                response_b.header(
+                    http::header::LOCATION,
+                    format!("http://127.0.0.1:3000{}", next.as_str()).as_str(),
+                );
+                let response: crate::response::Response =
+                    crate::response::Response::Http(response_b.body(vec![]).unwrap());
+                Ok(response)
             }
         }
     }
-
 }
 
 impl Serialize for Response {
