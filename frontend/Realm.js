@@ -70,6 +70,24 @@
             }
             console.log("data", data);
 
+            if (data.next !== null){
+                if (!!testContext) {
+                    if (testContext.target_url !== data.next) {
+                        console.log("expected", testContext.elm, "got", id);
+                        window.parent.app.ports.fromIframe.send([
+                            {
+                                kind: "GoodElm",
+                                message: "Expected: " + testContext.elm + " got: " + id
+                            },
+                            {kind: "TestDone"}
+                        ]);
+                        return ;
+                    }
+
+                }
+                window.location = data.next;
+            }
+
             if (data.url !== document.location.pathname + document.location.search) {
                 history.replaceState(null, null, data.url);
             }

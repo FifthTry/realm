@@ -502,6 +502,7 @@ type TestResult
     | Screenshot String
     | BadElm String
     | UpdateContext (List ( String, JE.Value ))
+    | Redirected String
     | TestDone
 
 
