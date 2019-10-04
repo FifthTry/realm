@@ -41,6 +41,18 @@ impl Response {
             Response::Http(_) => unreachable!(),
         }
     }
+
+    pub fn redirect(self, in_: &crate::base::In, next: String) -> crate::base::Result<realm::Response>{
+        match Mode::detect(in_.ctx.request){
+            Mode::Layout =>{
+
+            }
+            _ => {
+
+            }
+        }
+    }
+
 }
 
 impl Serialize for Response {
