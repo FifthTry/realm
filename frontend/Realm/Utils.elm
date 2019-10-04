@@ -1,13 +1,96 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), edges, err, fi, fieldError, fieldValid, form, formE, html, htmlLine, link, match, matchCtx, matchCtx2, maybeE, maybeS, rendered, renderedE, result, val, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, edges, err, escEnter, fi, fieldError, fieldValid, form, formE, html, htmlLine, iff, link, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, rendered, renderedE, result, val, yesno, zip)
 
 import Dict exposing (Dict)
 import Element as E
 import Element.Events as EE
+import Element.Input as EI
+import Html.Events
 import Html.Parser
 import Html.Parser.Util
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
+
+
+iff : Bool -> E.Element msg -> E.Element msg
+iff c e =
+    yesno c e E.none
+
+
+onEnter : msg -> E.Attribute msg
+onEnter msg =
+    E.htmlAttribute
+        (Html.Events.on "keyup"
+            (JD.field "key" JD.string
+                |> JD.andThen
+                    (\key ->
+                        if key == "Enter" then
+                            JD.succeed msg
+
+                        else
+                            JD.fail "Not the enter key"
+                    )
+            )
+        )
+
+
+escEnter : msg -> msg -> E.Attribute msg
+escEnter esc enter =
+    E.htmlAttribute
+        (Html.Events.on "keyup"
+            (JD.field "key" JD.string
+                |> JD.andThen
+                    (\key ->
+                        case key of
+                            "Enter" ->
+                                JD.succeed enter
+
+                            "Escape" ->
+                                JD.succeed esc
+
+                            _ ->
+                                JD.fail "Not the enter key"
+                    )
+            )
+        )
+
+
+onSpaceOrEnter : msg -> E.Attribute msg
+onSpaceOrEnter msg =
+    E.htmlAttribute
+        (Html.Events.on "keyup"
+            (JD.field "key" JD.string
+                |> JD.andThen
+                    (\key ->
+                        if key == " " || key == "Enter" then
+                            JD.succeed msg
+
+                        else
+                            JD.fail "Not the space key"
+                    )
+            )
+        )
+
+
+button :
+    List (E.Attribute msg)
+    ->
+        { onPress : Maybe msg
+        , label : E.Element msg
+        }
+    -> E.Element msg
+button attrs args =
+    case args.onPress of
+        Just msg ->
+            EI.button (onSpaceOrEnter msg :: attrs) args
+
+        Nothing ->
+            EI.button attrs args
+
+
+maybe : JD.Decoder a -> JD.Decoder (Maybe a)
+maybe dec =
+    JD.oneOf [ JD.null Nothing, JD.map Just dec ]
 
 
 type Rendered
@@ -24,25 +107,25 @@ renderedE (Rendered md) =
     JE.string md
 
 
-html : Rendered -> E.Element (R.Msg msg)
-html (Rendered md) =
+html : List (E.Attribute (R.Msg msg)) -> Rendered -> E.Element (R.Msg msg)
+html attrs (Rendered md) =
     case Html.Parser.run md of
         Ok r ->
             Html.Parser.Util.toVirtualDom r
                 |> List.map E.html
-                |> E.textColumn []
+                |> E.textColumn attrs
 
         Err e ->
             E.text (Debug.toString e)
 
 
-htmlLine : Rendered -> E.Element (R.Msg msg)
-htmlLine (Rendered md) =
+htmlLine : List (E.Attribute (R.Msg msg)) -> Rendered -> E.Element (R.Msg msg)
+htmlLine attrs (Rendered md) =
     case Html.Parser.run md of
         Ok r ->
             Html.Parser.Util.toVirtualDom r
                 |> List.map E.html
-                |> E.paragraph []
+                |> E.paragraph attrs
 
         Err e ->
             E.text (Debug.toString e)
@@ -108,7 +191,7 @@ formE =
 
 form : JD.Decoder Form
 form =
-    JD.dict (R.tuple JD.string (JD.maybe JD.string))
+    JD.dict (R.tuple JD.string (maybe JD.string))
 
 
 fieldValid : Field -> Bool
@@ -191,13 +274,13 @@ match tid exp got =
 
 
 matchCtx : a -> String -> JD.Decoder a -> JE.Value -> R.TestResult
-matchCtx exp key dec v =
+matchCtx got key dec v =
     let
         tid =
             "matchCTX." ++ key
     in
     case JD.decodeValue (JD.field key dec) v of
-        Ok got ->
+        Ok exp ->
             if exp /= got then
                 R.TestFailed tid <|
                     "Expected: "
