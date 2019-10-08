@@ -58,6 +58,7 @@ impl Response {
             })),
             _ => {
                 in_.ctx.header(header::LOCATION, next.into());
+                in_.ctx.status(StatusCode::TEMPORARY_REDIRECT);
                 Ok(Response::Http(in_.ctx.response("".into())?))
             }
         }
