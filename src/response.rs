@@ -57,10 +57,8 @@ impl Response {
                 redirect: Some(next.into()),
             })),
             _ => {
-                let mut response = HttpResponse::builder();
-                response.status(StatusCode::SEE_OTHER);
-                response.header(header::LOCATION, next.into());
-                Ok(Response::Http(response.body("".into())?))
+                in_.ctx.header(header::LOCATION, next.into());
+                Ok(Response::Http(in_.ctx.response("".into())?))
             }
         }
     }
