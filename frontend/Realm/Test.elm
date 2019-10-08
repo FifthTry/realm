@@ -93,7 +93,10 @@ doStep idx postReset m =
                             navigate elm id url m.context
 
                         NavigateS ( elm, id ) key f ->
-                            navigate elm id (resolve key JD.string f (JE.object m.context)) m.context
+                            navigate elm
+                                id
+                                (resolve key JD.string f (JE.object m.context))
+                                m.context
 
                         Submit elm id payload ->
                             submit elm id payload m.context
@@ -265,7 +268,7 @@ stepTitle s =
 
 
 resultView : Model -> R.TestResult -> E.Element Msg
-resultView m r =
+resultView _ r =
     case r of
         R.TestDone ->
             E.none
