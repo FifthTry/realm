@@ -47,7 +47,7 @@ impl Response {
     where
         T: Into<String>,
     {
-        use http::{header, StatusCode};
+        use http::header;
         match in_.get_mode() {
             Mode::Layout => Ok(Response::Page(PageSpec {
                 id: "".to_owned(),
@@ -69,7 +69,7 @@ impl Response {
     where
         T: Into<String>,
     {
-        use http::{header, StatusCode};
+        use http::header;
         match in_.get_mode() {
             Mode::Layout => Ok(Response::Page(PageSpec {
                 id: "".to_owned(),
