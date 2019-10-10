@@ -1,7 +1,7 @@
 use crate::mode::Mode;
 use crate::PageSpec;
-use serde::ser::{Serialize, SerializeStructVariant, Serializer};
 use http::StatusCode;
+use serde::ser::{Serialize, SerializeStructVariant, Serializer};
 
 pub enum Response {
     Http(http::response::Response<Vec<u8>>),
@@ -65,7 +65,11 @@ impl Response {
         }
     }
 
-    pub fn redirect_with<T>(in_: &crate::base::In, next: T, status: StatusCode) -> Result<crate::Response, failure::Error>
+    pub fn redirect_with<T>(
+        in_: &crate::base::In,
+        next: T,
+        status: StatusCode,
+    ) -> Result<crate::Response, failure::Error>
     where
         T: Into<String>,
     {
@@ -85,7 +89,6 @@ impl Response {
                 Ok(Response::Http(in_.ctx.response("".into())?))
             }
         }
-
     }
 }
 
