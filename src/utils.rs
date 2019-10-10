@@ -114,7 +114,7 @@ where
         for each_element in s.split("||") {
             let element: T = match each_element.parse() {
                 Ok(v) => v,
-                Err(_e) => Err(failure::err_msg("can't parse".to_string()))?,
+                Err(_e) => return Err(failure::err_msg("can't parse".to_string())),
             };
             vec_t.push(element);
         }
@@ -159,9 +159,8 @@ pub fn get<T, S: ::std::hash::BuildHasher>(
     is_optional: bool,
 ) -> Result<T, failure::Error>
 where
-    T: FromStr + DeserializeOwned,
+    T: FromStr + DeserializeOwned + Default,
     <T as FromStr>::Err: Debug,
-    T: Default,
 {
     // handle path
     if !rest.is_empty() {
@@ -171,7 +170,7 @@ where
         if let Some(v) = first {
             return match v.parse() {
                 Ok(v) => Ok(v),
-                Err(e) => Err(format_err!("can't parse rest: {:?}", e))?,
+                Err(e) => return Err(format_err!("can't parse rest: {:?}", e)),
             };
         }
     }
@@ -179,7 +178,7 @@ where
     if let Some(v) = query.get(name) {
         return match v.parse() {
             Ok(v) => Ok(v),
-            Err(e) => Err(format_err!("can't parse query: {:?}", e))?,
+            Err(e) => return Err(format_err!("can't parse query: {:?}", e)),
         };
     }
 
@@ -187,12 +186,13 @@ where
     if let Some(v) = data.get(name) {
         return match serde_json::from_value(v.to_owned()) {
             Ok(v) => Ok(v),
-            Err(e) => Err(format_err!("can't parse data: {:?}", e))?,
+            Err(e) => return Err(format_err!("can't parse data: {:?}", e)),
         };
     }
 
     if is_optional {
         return Ok(T::default());
     }
-    Err(format_err!("\"{}\" not found", name))?
+
+    Err(format_err!("\"{}\" not found", name))
 }

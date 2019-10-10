@@ -21,6 +21,7 @@ mod response;
 mod serve;
 pub mod storybook;
 pub mod test;
+mod urls;
 pub mod utils;
 pub mod watcher;
 
@@ -28,6 +29,7 @@ pub use crate::context::Context;
 pub use crate::mode::Mode;
 pub use crate::page::{Page, PageSpec};
 pub use crate::serve::{http_to_hyper, THREAD_POOL};
+pub use crate::urls::{handle, is_realm_url};
 
 pub use crate::response::Response;
 pub type Result = std::result::Result<http::Response<Vec<u8>>, failure::Error>;

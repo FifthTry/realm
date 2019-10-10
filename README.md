@@ -35,6 +35,14 @@ Rust / Elm base full stack web framework.
   the first error is shown in response.
 - Added `Realm.Utils.maybe : Json.Decode.Decoder a -> Json.Decode.Decoder (Maybe a)`,
   which is a better version of `Json.Decode.maybe`.
+- Added `Realm.Utils.iff : Bool -> E.Element msg -> E.Element msg` (show something or
+  use E.none if false).
+- Added `Realm.Utils.escEnter` to attach event handler for Escape and Enter keys. Also
+  `.onEnter`, `.onSpaceAndEnter` and `.button`.
+- Added logging of SQL queries to console in debug mode.
+- Added `Realm.Utils.mapIth` and `.mapAIth` for updating ith member of a list/array.
+- Fix: Constructing URL properly when doing submit with URLs including query parameters.
+- Added `realm::is_realm_url()` and `realm::handle()` to handle realm related URLs.
 
 ## 0.1.16 - 23 Sept 2019
 
