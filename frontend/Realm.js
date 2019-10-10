@@ -71,6 +71,10 @@
                 throw e;
             }
             console.log("data", data);
+            //Redirect if redirect is present
+            if (data.redirect) {
+                window.location.replace(data.redirect);
+            }
 
             if (data.url !== document.location.pathname + document.location.search) {
                 history.replaceState(null, null, data.url);

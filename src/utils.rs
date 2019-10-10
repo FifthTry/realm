@@ -196,3 +196,17 @@ where
 
     Err(format_err!("\"{}\" not found", name))
 }
+
+
+pub fn append_params(prefix: &str, q_params: &Vec<(String, String)> ) -> String{
+    let mut url: String = prefix.into();
+    for (arg, val) in q_params {
+            if (!url.contains("?")){
+                url.push_str(&format!("?{}={}", arg, val));
+            }
+            else{
+                url.push_str(&format!("&{}={}", arg, val));
+            }
+    }
+    url
+}
