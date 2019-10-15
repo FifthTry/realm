@@ -45,6 +45,7 @@ Rust / Elm base full stack web framework.
 - Added `realm::is_realm_url()` and `realm::handle()` to handle realm related URLs.
 - Fix: `realm::base::rollback_if_required()` now rolls back if transaction depth managed
   by diesel is wrong.
+- Location for `elm.js` if `APP_NAME` environment variable is configured: `/static/APP_NAME/elm.js`. Default location for `elm.js` is `/static/elm.js`.
 
 ## 0.1.16 - 23 Sept 2019
 
