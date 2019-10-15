@@ -3,6 +3,7 @@ use colored::Colorize;
 #[cfg(debug_assertions)]
 use diesel::query_builder::QueryBuilder;
 use diesel::{connection::TransactionManager, prelude::*};
+use failure::Error;
 
 #[cfg(debug_assertions)]
 lazy_static! {
@@ -79,6 +80,21 @@ pub fn rollback_if_required(conn: &RealmConnection) {
             rollback(conn);
         }
     }
+}
+
+pub fn db_test_conn<F>(run: F)
+where
+    F: FnOnce(&RealmConnection) -> Result<(), Error>,
+{
+    let conn = connection();
+    conn.test_transaction::<_, failure::Error, _>(|| {
+        let r = run(&conn).map_err(|e| {
+            eprintln!("failed: {:?}", &e);
+            e
+        });
+        rollback_if_required(&conn);
+        r
+    })
 }
 
 #[cfg(debug_assertions)]
