@@ -82,7 +82,7 @@ pub fn rollback_if_required(conn: &RealmConnection) {
     }
 }
 
-pub fn db_test_conn<F>(run: F)
+pub fn db_test<F>(run: F)
 where
     F: FnOnce(&RealmConnection) -> Result<(), Error>,
 {
