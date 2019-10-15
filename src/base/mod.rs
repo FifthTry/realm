@@ -5,7 +5,7 @@ pub mod point;
 pub mod sql_types;
 mod utils;
 
-pub use db::{connection, rollback_if_required, DIESEL_POOL};
+pub use db::{connection, rollback_if_required, DIESEL_POOL, db_test};
 pub use form::{Form, FormErrors};
 pub use in_::In;
 pub use sql_types::{citext, CiString};
