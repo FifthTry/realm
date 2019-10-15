@@ -34,11 +34,13 @@
 
     function submit(data) {
         console.log("submit", data);
-        ajax(
-            data.url + "?realm_mode=layout",
-            data.data,
-            function (t) {loadPage(t, true);}
-        );
+        var url = data.url;
+        if (url.indexOf("?") !== -1) {
+            url = url + "&realm_mode=layout";
+        } else {
+            url = url + "?realm_mode=layout";
+        }
+        ajax(url, data.data, function (t) {loadPage(t, true);});
     }
 
     var app = null;
@@ -69,6 +71,10 @@
                 throw e;
             }
             console.log("data", data);
+            //Redirect if redirect is present
+            if (data.redirect) {
+                window.location.replace(data.redirect);
+            }
 
             if (data.url !== document.location.pathname + document.location.search) {
                 history.replaceState(null, null, data.url);

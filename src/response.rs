@@ -1,5 +1,6 @@
 use crate::mode::Mode;
 use crate::PageSpec;
+use http::StatusCode;
 use serde::ser::{Serialize, SerializeStructVariant, Serializer};
 
 pub enum Response {
@@ -39,6 +40,54 @@ impl Response {
                 })?)
             }
             Response::Http(_) => unreachable!(),
+        }
+    }
+
+    pub fn redirect<T>(in_: &crate::base::In, next: T) -> Result<crate::Response, failure::Error>
+    where
+        T: Into<String>,
+    {
+        use http::header;
+        match in_.get_mode() {
+            Mode::Layout => Ok(Response::Page(PageSpec {
+                id: "".to_owned(),
+                config: json!({}),
+                title: "".to_owned(),
+                url: None,
+                replace: None,
+                redirect: Some(next.into()),
+            })),
+            _ => {
+                in_.ctx.header(header::LOCATION, next.into());
+                in_.ctx.status(StatusCode::TEMPORARY_REDIRECT);
+                Ok(Response::Http(in_.ctx.response("".into())?))
+            }
+        }
+    }
+
+    pub fn redirect_with<T>(
+        in_: &crate::base::In,
+        next: T,
+        status: StatusCode,
+    ) -> Result<crate::Response, failure::Error>
+    where
+        T: Into<String>,
+    {
+        use http::header;
+        match in_.get_mode() {
+            Mode::Layout => Ok(Response::Page(PageSpec {
+                id: "".to_owned(),
+                config: json!({}),
+                title: "".to_owned(),
+                url: None,
+                replace: None,
+                redirect: Some(next.into()),
+            })),
+            _ => {
+                in_.ctx.header(header::LOCATION, next.into());
+                in_.ctx.status(status);
+                Ok(Response::Http(in_.ctx.response("".into())?))
+            }
         }
     }
 }
@@ -110,6 +159,7 @@ mod tests {
             title: "test-title".into(),
             url: None,
             replace: None,
+            redirect: None,
         };
         let r = super::Response::Page(page_spec);
         assert_eq!(

@@ -41,6 +41,10 @@ impl<'a> In<'a> {
             .map(|v| v.to_string())
     }
 
+    pub fn get_mode(&self) -> crate::Mode {
+        crate::Mode::detect(&self.ctx.request)
+    }
+
     pub fn user_id(&self) -> Option<i32> {
         *self.user_id.borrow()
     }

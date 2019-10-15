@@ -56,15 +56,27 @@ pub fn connection() -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<Rea
     DIESEL_POOL.get().expect("Couldn't open DB connection.")
 }
 
+fn rollback(conn: &RealmConnection) {
+    if let Err(e) = conn.transaction_manager().rollback_transaction(conn) {
+        eprintln!(
+            "{}: {:?}",
+            "connection_not_clean_and_cleanup_failed".red(),
+            e
+        );
+    };
+}
+
 pub fn rollback_if_required(conn: &RealmConnection) {
     if let Err(e) = diesel::sql_query("SELECT 1").execute(conn) {
         eprintln!("{}: {:?}", "connection_not_clean".red(), e);
-        if let Err(e) = conn.transaction_manager().rollback_transaction(conn) {
-            eprintln!(
-                "{}: {:?}",
-                "connection_not_clean_and_cleanup_failed".red(),
-                e
-            );
+        rollback(conn);
+    } else {
+        let t: &dyn diesel::connection::TransactionManager<RealmConnection> =
+            conn.transaction_manager();
+        let depth = t.get_transaction_depth();
+        if depth != 0 {
+            eprintln!("{}: {}", "connection_depth_not_zero".red(), depth);
+            rollback(conn);
         }
     }
 }

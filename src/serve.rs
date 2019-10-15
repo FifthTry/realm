@@ -39,7 +39,7 @@ macro_rules! realm_serve {
             {
                 Ok(a) => Ok(a),
                 Err(e) => {
-                    println!("error : {:?}", e);
+                    println!("error: {:?}", e);
                     unimplemented!()
                 }
             }

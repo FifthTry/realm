@@ -192,11 +192,11 @@ impl RequestConfig {
                     Ok(v) => Ok(v),
                     Err(e) => {
                         // we have to do this because FromStr::Err is not Send/Sync
-                        Err(Error::InvalidValue {
+                        return Err(Error::InvalidValue {
                             key: name.to_string(),
                             value: v.clone(),
                             message: format!("{:?}", e),
-                        })?
+                        });
                     }
                 };
             }
@@ -210,11 +210,13 @@ impl RequestConfig {
             }
             return match v.parse() {
                 Ok(v) => Ok(v),
-                Err(e) => Err(Error::InvalidValue {
-                    key: name.to_string(),
-                    value: v.clone(),
-                    message: format!("{:?}", e),
-                })?,
+                Err(e) => {
+                    return Err(Error::InvalidValue {
+                        key: name.to_string(),
+                        value: v.clone(),
+                        message: format!("{:?}", e),
+                    })
+                }
             };
         }
 
@@ -233,15 +235,14 @@ impl RequestConfig {
 
         Err(Error::NotFound {
             key: name.to_string(),
-        })?
+        })
     }
 
     #[deprecated(since = "0.1.15", note = "Please use .required() instead")]
     pub fn get<T>(&mut self, name: &str, _is_optional: bool) -> Result<T, Error>
     where
-        T: FromStr + DeserializeOwned,
+        T: FromStr + DeserializeOwned + Default,
         <T as FromStr>::Err: Debug,
-        T: Default,
     {
         self.required(name)
     }
