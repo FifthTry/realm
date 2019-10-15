@@ -17,7 +17,10 @@ fn escape(s: &str) -> String {
 impl PageSpec {
     pub fn render(&self) -> Result<Vec<u8>, failure::Error> {
         let data = escape(serde_json::to_string_pretty(&self)?.as_str());
-
+        let script_path = match std::env::var("APP_NAME") {
+            Ok(path) => format!("/static/{}/elm.js", path),
+            Err(_err) => format!("/static/elm.js"),
+        };
         Ok(format!(
             // TODO: add other stuff to html
             r#"<!DOCTYPE html>
@@ -32,11 +35,12 @@ impl PageSpec {
     </head>
     <body>
         <div id="main"></div>
-        <script src='/static/elm.js'></script>
+        <script src='{}'></script>
     </body>
 </html>"#,
             &self.title,
             data,
+            script_path,
         )
         .into())
     }
