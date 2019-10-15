@@ -17,7 +17,9 @@
         var current = Elm;
         var mod_list = id.split(".");
         mod_list.forEach(function (element) {
-            current = current[element];
+            if (current) {
+                current = current[element];
+            }
         });
         return current;
     }
@@ -119,7 +121,22 @@
                 };
             }
 
-            app = getApp(id).init({flags: flags});
+            app = getApp(id);
+            if (!app) {
+                console.log("No app found for ", id);
+                if (!!testContext) {
+                    window.parent.app.ports.fromIframe.send([
+                        {
+                            kind: "BadElm",
+                            message: "No app found for: " + id
+                        },
+                        {kind: "TestDone"}
+                    ]);
+                }
+                return;
+            }
+
+            app = app.init({flags: flags});
             if (app.ports && app.ports.navigate) {
                 app.ports.navigate.subscribe(navigate);
             }

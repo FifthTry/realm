@@ -45,8 +45,17 @@ Rust / Elm base full stack web framework.
 - Added `realm::is_realm_url()` and `realm::handle()` to handle realm related URLs.
 - Fix: `realm::base::rollback_if_required()` now rolls back if transaction depth managed
   by diesel is wrong.
-- Added `realm::Response::redirect(next)` and `realm::Response::redirect_with(next, StatusCode)` methods. In `Layout` mode, redirect to `next` page. In `HTML/API` mode, sends HTTP 3xx response with `location` header as `next`.
-- Location for `elm.js` if `APP_NAME` environment variable is configured: `/static/APP_NAME/elm.js`. Default location for `elm.js` is `/static/elm.js`.
+- Fix: If a nested elm module sent by server is not in `Elm`, then `getApp()` returns
+  none instead of crashing, so it is consistent with what happens when a non nested,
+  missing elm module is sent.
+- Fix: in test mode, on missing elm module, a proper message is shown and
+  test continues.
+- Added `realm::Response::redirect(next)` and `realm::Response::redirect_with(next,
+  StatusCode)` methods. In `Layout` mode, redirect to `next` page. In `HTML/API` mode,
+  sends HTTP 3xx response with `location` header as `next`.
+- Location for `elm.js` if `APP_NAME` environment variable is configured:
+  `/static/APP_NAME/elm.js`. Default location for `elm.js` is `/static/elm.js`.
+- Added `realm::base::db::db_test()` back.
 
 ## 0.1.16 - 23 Sept 2019
 
