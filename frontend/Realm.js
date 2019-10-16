@@ -70,6 +70,19 @@
                 console.log("failed to parse json");
                 console.log("json: ", text);
                 console.log("error: ", e);
+                if (!!testContext) {
+                    var message = "Server Error: " + e + ", text=" + text;
+                    if (text === "") {
+                        message = "ServerCrashed (empty body)"
+                    }
+                    window.parent.app.ports.fromIframe.send([
+                        {
+                            kind: "BadServer",
+                            message: message,
+                        },
+                        {kind: "TestDone"}
+                    ]);
+                }
                 throw e;
             }
             console.log("data", data);

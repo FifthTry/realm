@@ -20,6 +20,10 @@ Rust / Elm base full stack web framework.
 
 # ChangeLog
 
+## Unreleased
+
+- Fix: `Realm.Test` on error from server, report it and keep tests running.
+
 ## 0.1.17 - 16 Oct 2019
 
 - `realm::base::CiString` is public now.

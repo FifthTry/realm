@@ -1,5 +1,6 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), mapAIth, mapIth, button, edges, err, escEnter, fi, fieldError, fieldValid, form, formE, html, htmlLine, iff, link, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, rendered, renderedE, result, val, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, edges, err, escEnter, fi, fieldError, fieldValid, form, formE, html, htmlLine, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, rendered, renderedE, result, val, yesno, zip)
 
+import Array exposing (Array)
 import Dict exposing (Dict)
 import Element as E
 import Element.Events as EE
@@ -10,16 +11,17 @@ import Html.Parser.Util
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
-import Array exposing (Array)
 
 
 mapIth : Int -> (a -> a) -> List a -> List a
 mapIth idx f =
-     List.indexedMap (\i a -> yesno (i == idx) (f a) a)
+    List.indexedMap (\i a -> yesno (i == idx) (f a) a)
+
 
 mapAIth : Int -> (a -> a) -> Array a -> Array a
 mapAIth idx f =
-     Array.indexedMap (\i a -> yesno (i == idx) (f a) a)
+    Array.indexedMap (\i a -> yesno (i == idx) (f a) a)
+
 
 iff : Bool -> E.Element msg -> E.Element msg
 iff c e =

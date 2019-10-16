@@ -501,6 +501,7 @@ type TestResult
     | BadConfig String
     | Screenshot String
     | BadElm String
+    | BadServer String
     | UpdateContext (List ( String, JE.Value ))
     | TestDone
 
@@ -521,6 +522,9 @@ isPass r =
             True
 
         BadElm _ ->
+            False
+
+        BadServer _ ->
             False
 
         UpdateContext _ ->
@@ -552,6 +556,9 @@ testResult =
 
                     "BadElm" ->
                         JD.map BadElm (JD.field "message" JD.string)
+
+                    "BadServer" ->
+                        JD.map BadServer (JD.field "message" JD.string)
 
                     "TestDone" ->
                         JD.succeed TestDone
@@ -599,6 +606,9 @@ controller c =
 
         BadElm msg ->
             [ ( "kind", JE.string "BadElm" ), ( "message", JE.string msg ) ]
+
+        BadServer msg ->
+            [ ( "kind", JE.string "BadServer" ), ( "message", JE.string msg ) ]
 
         TestPassed id ->
             [ ( "kind", JE.string "TestPassed" ), ( "id", JE.string id ) ]
