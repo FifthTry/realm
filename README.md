@@ -20,7 +20,7 @@ Rust / Elm base full stack web framework.
 
 # ChangeLog
 
-## Unpublished
+## 0.1.17 - 16 Oct 2019
 
 - `realm::base::CiString` is public now.
 - Elm backward incompatible: changed signature of `Realm.Utils.html` and

@@ -19,7 +19,7 @@ impl PageSpec {
         let data = escape(serde_json::to_string_pretty(&self)?.as_str());
         let script_path = match std::env::var("APP_NAME") {
             Ok(path) => format!("/static/{}/elm.js", path),
-            Err(_err) => format!("/static/elm.js"),
+            Err(_err) => "/static/elm.js".to_string(),
         };
         Ok(format!(
             // TODO: add other stuff to html

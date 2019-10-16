@@ -1,6 +1,6 @@
 [package]
 name = "realm"
-version = "0.1.16"
+version = "0.1.17"
 authors = ["Amit Upadhyay <amitu@acko.com>"]
 description = "Rust / Elm base full stack web framework."
 license = "MIT"
