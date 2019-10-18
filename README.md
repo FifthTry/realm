@@ -23,6 +23,22 @@ Rust / Elm base full stack web framework.
 ## Unreleased
 
 - Fix: `Realm.Test` on error from server, report it and keep tests running.
+- `realm::RequestConfig::required()` etc methods now return `realm::Error(InputError)`
+  instead of `realm::request_config::Error`, middleware need only catch single error
+  now:
+```rust
+    let resp = match forward::magic(&in_) {
+        Ok(r) => Ok(r),
+        Err(e) => {
+            match e.downcast_ref::<realm::Error>()
+            {
+                Some(realm::Error::PageNotFound {message}) => fifthtry::http404(&in_, message.as_str()),
+                Some(realm::Error::InputError {error}) => fifthtry::http404(&in_, &error.to_string()),
+                _ => Err(e)
+            }
+        }
+    };
+```
 
 ## 0.1.17 - 16 Oct 2019
 

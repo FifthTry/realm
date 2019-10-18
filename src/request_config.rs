@@ -56,20 +56,20 @@ impl RequestConfig {
         })
     }
 
-    pub fn optional<T>(&mut self, name: &str) -> Result<Option<T>, Error>
+    pub fn optional<T>(&mut self, name: &str) -> Result<Option<T>, crate::Error>
     where
         T: FromStr + DeserializeOwned,
         <T as FromStr>::Err: Debug,
     {
-        match self.required(name) {
+        match self.required_(name) {
             Ok(t) => Ok(Some(t)),
             Err(Error::NotFound { .. }) => Ok(None),
-            Err(e) => Err(e),
+            Err(e) => Err(e.into()),
         }
     }
 
     #[deprecated(since = "0.1.16", note = "Please use .required() instead")]
-    pub fn param<T>(&mut self, name: &str) -> Result<T, Error>
+    pub fn param<T>(&mut self, name: &str) -> Result<T, crate::Error>
     where
         T: FromStr + DeserializeOwned,
         <T as FromStr>::Err: Debug,
@@ -77,14 +77,14 @@ impl RequestConfig {
         self.required(name)
     }
 
-    pub fn required2<T1, T2>(&mut self, n1: &str, n2: &str) -> Result<(T1, T2), Error>
+    pub fn required2<T1, T2>(&mut self, n1: &str, n2: &str) -> Result<(T1, T2), crate::Error>
     where
         T1: FromStr + DeserializeOwned,
         <T1 as FromStr>::Err: Debug,
         T2: FromStr + DeserializeOwned,
         <T2 as FromStr>::Err: Debug,
     {
-        match (self.required(n1), self.required(n2)) {
+        match (self.required_(n1), self.required_(n2)) {
             (Ok(t1), Ok(t2)) => Ok((t1, t2)),
             (r1, r2) => {
                 let mut errors = vec![];
@@ -94,7 +94,7 @@ impl RequestConfig {
                 if let Err(e) = r2 {
                     errors.push(e)
                 };
-                Err(Error::Multi(errors))
+                Err(Error::Multi(errors).into())
             }
         }
     }
@@ -104,7 +104,7 @@ impl RequestConfig {
         n1: &str,
         n2: &str,
         n3: &str,
-    ) -> Result<(T1, T2, T3), Error>
+    ) -> Result<(T1, T2, T3), crate::Error>
     where
         T1: FromStr + DeserializeOwned,
         <T1 as FromStr>::Err: Debug,
@@ -113,7 +113,7 @@ impl RequestConfig {
         T3: FromStr + DeserializeOwned,
         <T3 as FromStr>::Err: Debug,
     {
-        match (self.required(n1), self.required(n2), self.required(n3)) {
+        match (self.required_(n1), self.required_(n2), self.required_(n3)) {
             (Ok(t1), Ok(t2), Ok(t3)) => Ok((t1, t2, t3)),
             (r1, r2, r3) => {
                 let mut errors = vec![];
@@ -126,7 +126,7 @@ impl RequestConfig {
                 if let Err(e) = r3 {
                     errors.push(e)
                 };
-                Err(Error::Multi(errors))
+                Err(Error::Multi(errors).into())
             }
         }
     }
@@ -137,7 +137,7 @@ impl RequestConfig {
         n2: &str,
         n3: &str,
         n4: &str,
-    ) -> Result<(T1, T2, T3, T4), Error>
+    ) -> Result<(T1, T2, T3, T4), crate::Error>
     where
         T1: FromStr + DeserializeOwned,
         <T1 as FromStr>::Err: Debug,
@@ -149,10 +149,10 @@ impl RequestConfig {
         <T4 as FromStr>::Err: Debug,
     {
         match (
-            self.required(n1),
-            self.required(n2),
-            self.required(n3),
-            self.required(n4),
+            self.required_(n1),
+            self.required_(n2),
+            self.required_(n3),
+            self.required_(n4),
         ) {
             (Ok(t1), Ok(t2), Ok(t3), Ok(t4)) => Ok((t1, t2, t3, t4)),
             (r1, r2, r3, r4) => {
@@ -169,12 +169,20 @@ impl RequestConfig {
                 if let Err(e) = r4 {
                     errors.push(e)
                 };
-                Err(Error::Multi(errors))
+                Err(Error::Multi(errors).into())
             }
         }
     }
 
-    pub fn required<T>(&mut self, name: &str) -> Result<T, Error>
+    pub fn required<T>(&mut self, name: &str) -> Result<T, crate::Error>
+    where
+        T: FromStr + DeserializeOwned,
+        <T as FromStr>::Err: Debug,
+    {
+        self.required_(name).map_err(Into::into)
+    }
+
+    fn required_<T>(&mut self, name: &str) -> Result<T, Error>
     where
         T: FromStr + DeserializeOwned,
         <T as FromStr>::Err: Debug,
@@ -239,7 +247,7 @@ impl RequestConfig {
     }
 
     #[deprecated(since = "0.1.15", note = "Please use .required() instead")]
-    pub fn get<T>(&mut self, name: &str, _is_optional: bool) -> Result<T, Error>
+    pub fn get<T>(&mut self, name: &str, _is_optional: bool) -> Result<T, crate::Error>
     where
         T: FromStr + DeserializeOwned + Default,
         <T as FromStr>::Err: Debug,

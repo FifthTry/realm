@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, isPass, pushHash, result, sub0, test, test0, testResult, tuple, tupleE, update0)
+module Realm exposing (App, In, Msg(..), message, TestFlags, TestResult(..), app, controller, document, getHash, init0, isPass, pushHash, result, sub0, test, test0, testResult, tuple, tupleE, update0)
 
 import Browser as B
 import Browser.Events as BE
@@ -35,6 +35,7 @@ type Msg msg
     | Shutdown ()
     | UpdateHashKV String String
     | OnResize Int Int
+    | ReloadPage
 
 
 type alias In =
@@ -189,8 +190,16 @@ appUpdate a msg am =
         ( Shutdown _, False ) ->
             ( { am | shuttingDown = True }, Cmd.none )
 
+        ( ReloadPage, _ ) ->
+            ( am, BN.reload )
+
         _ ->
             ( am, Cmd.none )
+
+
+message : msg -> Cmd msg
+message x =
+    Task.perform identity (Task.succeed x)
 
 
 appSubscriptions : App config model msg -> Model model -> Sub (Msg msg)
@@ -589,10 +598,10 @@ test0 a init =
 controller : TestResult -> JE.Value
 controller c =
     (case c of
-        TestFailed id message ->
+        TestFailed id msg ->
             [ ( "kind", JE.string "TestFailed" )
             , ( "id", JE.string id )
-            , ( "message", JE.string message )
+            , ( "message", JE.string msg )
             ]
 
         Screenshot id ->

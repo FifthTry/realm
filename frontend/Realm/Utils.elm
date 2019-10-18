@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, edges, err, escEnter, fi, fieldError, fieldValid, form, formE, html, htmlLine, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, rendered, renderedE, result, val, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, err, escEnter, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, onlyErrors, rendered, renderedE, result, val, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -241,6 +241,86 @@ fieldError tid name error in_ f =
 
     else
         R.TestPassed tid
+
+
+fieldValue : String -> String -> String -> R.In -> Form -> R.TestResult
+fieldValue tid name value in_ f =
+    let
+        field =
+            fi name in_ f
+    in
+    if field.value /= value then
+        R.TestFailed tid <| "Expected: " ++ value ++ ", got: " ++ field.value
+
+    else
+        R.TestPassed tid
+
+
+fieldNoError : String -> String -> R.In -> Form -> R.TestResult
+fieldNoError tid name in_ f =
+    let
+        field =
+            fi name in_ f
+    in
+    if field.error /= Nothing then
+        R.TestFailed tid <|
+            "Expected No Error, got: "
+                ++ Maybe.withDefault "no error" field.error
+
+    else
+        R.TestPassed tid
+
+
+contains : a -> List a -> Bool
+contains a lst =
+    not (List.isEmpty (List.filter (\name -> name == a) lst))
+
+
+onlyErrors : String -> List String -> R.In -> Form -> R.TestResult
+onlyErrors tid names in_ f =
+    let
+        unexpected =
+            f
+                |> Dict.toList
+                |> List.filter (\( n, ( _, e ) ) -> e /= Nothing && not (contains n names))
+                |> List.map (\( n, _ ) -> n)
+    in
+    if List.isEmpty unexpected then
+        R.TestPassed tid
+
+    else
+        R.TestFailed tid <|
+            "Following fields have errors: "
+                ++ String.join
+                    " & "
+                    (List.map
+                        (\name ->
+                            name ++ ":" ++ Maybe.withDefault "" (fi name in_ f).error
+                        )
+                        unexpected
+                    )
+
+
+fieldsNoError : String -> List String -> R.In -> Form -> R.TestResult
+fieldsNoError tid names in_ f =
+    let
+        fieldsWithError =
+            List.filter (\name -> (fi name in_ f).error /= Nothing) names
+    in
+    if List.isEmpty fieldsWithError then
+        R.TestPassed tid
+
+    else
+        R.TestFailed tid <|
+            "Following fields have errors: "
+                ++ String.join
+                    " & "
+                    (List.map
+                        (\name ->
+                            name ++ ":" ++ Maybe.withDefault "" (fi name in_ f).error
+                        )
+                        fieldsWithError
+                    )
 
 
 val : String -> R.In -> Form -> String

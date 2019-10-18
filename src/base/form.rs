@@ -18,6 +18,18 @@ impl FormErrors {
         h.insert(key.to_string(), (value.to_string(), Some(msg.to_string())));
         FormErrors(h)
     }
+
+    pub fn single_value(key: &str, value: &str) -> FormErrors {
+        let mut f = FormErrors::empty();
+        f.0.insert(key.to_string(), (value.to_string(), None));
+        f
+    }
+
+    pub fn and_error(mut self, key: &str, value: &str, msg: &str) -> FormErrors {
+        self.0
+            .insert(key.to_string(), (value.to_string(), Some(msg.to_string())));
+        self
+    }
 }
 
 impl Default for FormErrors {

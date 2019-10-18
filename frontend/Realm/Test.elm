@@ -36,6 +36,7 @@ type Step
     = Navigate String String String
     | NavigateS ( String, String ) String (String -> String)
     | Submit String String JE.Value
+    | SubmitS ( String, String ) String (String -> JE.Value)
 
 
 type alias Config =
@@ -101,6 +102,19 @@ doStep idx postReset m =
                         Submit elm id payload ->
                             submit elm id payload m.context
 
+                        SubmitS ( elm, id ) key f ->
+                            let
+                                _ =
+                                    Debug.log "key" key
+
+                                _ =
+                                    Debug.log "context" (JE.encode 4 (JE.object m.context))
+                            in
+                            submit elm
+                                id
+                                (resolveA key JD.string f (JE.object m.context))
+                                m.context
+
                 ( cmd2, ctx2, current ) =
                     -- reset db and context when test changes
                     if tr.id /= lastId && not postReset then
@@ -143,6 +157,17 @@ resolve key dec f v =
             "TODO: fix this"
 
 
+resolveA : String -> JD.Decoder a -> (a -> JE.Value) -> JE.Value -> JE.Value
+resolveA key dec f v =
+    case JD.decodeValue (JD.field key dec) v of
+        Ok a ->
+            f a
+
+        Err _ ->
+            -- "TODO: fix this"
+            JE.null
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case Debug.log "Test.msg" ( msg, m.current ) of
@@ -163,12 +188,25 @@ update msg m =
                                 |> Maybe.map (\r -> Array.set idx r m.tests)
                                 |> Maybe.map (\tests -> { m | tests = tests })
                                 |> Maybe.withDefault m
+
+                        f =
+                            \r mod ->
+                                case r of
+                                    R.UpdateContext lst ->
+                                        { mod | context = m.context ++ lst }
+
+                                    _ ->
+                                        mod
+
+                        m3 =
+                            results
+                                |> List.foldl f m2
                     in
                     if List.any ((==) R.TestDone) (Debug.log "results" results) then
-                        doStep (idx + 1) False m2
+                        doStep (idx + 1) False m3
 
                     else
-                        ( m2, Cmd.none )
+                        ( m3, Cmd.none )
 
                 Err _ ->
                     ( m, Cmd.none )
@@ -266,24 +304,35 @@ stepTitle s =
         Submit p id _ ->
             p ++ ":" ++ id
 
+        SubmitS ( p, id ) _ _ ->
+            p ++ ":" ++ id
+
 
 resultView : Model -> R.TestResult -> E.Element Msg
 resultView _ r =
+    let
+        p =
+            \t ->
+                E.paragraph
+                    [ E.paddingEach { bottom = 3, left = 15, right = 5, top = 4 }
+                    , EF.light
+                    , EF.size 14
+                    , EF.color (yesno (R.isPass r) (E.rgb 0 0 0) (E.rgb 0.93 0 0))
+                    ]
+                    [ E.text <| "> " ++ t ]
+    in
     case r of
         R.TestDone ->
             E.none
 
-        R.UpdateContext _ ->
-            E.none
+        R.UpdateContext lst ->
+            ("UpdateContext: " ++ String.join "," (List.map Tuple.first lst))
+                |> p
 
         _ ->
-            E.paragraph
-                [ E.paddingEach { bottom = 3, left = 15, right = 5, top = 4 }
-                , EF.light
-                , EF.size 14
-                , EF.color (yesno (R.isPass r) (E.rgb 0 0 0) (E.rgb 0.93 0 0))
-                ]
-                [ E.text <| "> " ++ Debug.toString r ]
+            r
+                |> Debug.toString
+                |> p
 
 
 stepView : Model -> Int -> Step -> List R.TestResult -> E.Element Msg

@@ -39,6 +39,11 @@ pub type Request = http::request::Request<Vec<u8>>;
 pub enum Error {
     #[fail(display = "404 Page Not Found: {}", message)]
     PageNotFound { message: String },
+    #[fail(display = "Input Error: {:?}", error)]
+    InputError {
+        #[cause]
+        error: crate::request_config::Error,
+    },
     #[fail(display = "Internal Server Error: {}", message)]
     CustomError { message: String },
     #[fail(display = "HTTP Error: {}", error)]
@@ -73,6 +78,12 @@ impl From<std::env::VarError> for Error {
 impl From<http::Error> for Error {
     fn from(error: http::Error) -> Error {
         Error::HttpError { error }
+    }
+}
+
+impl From<crate::request_config::Error> for Error {
+    fn from(error: crate::request_config::Error) -> Error {
+        Error::InputError { error }
     }
 }
 

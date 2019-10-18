@@ -1,5 +1,6 @@
-module Realm.Requests exposing (ApiData, Error(..), bresult, BResult, try)
+module Realm.Requests exposing (ApiData, BResult, Error(..), bresult, try)
 
+import Dict exposing (Dict)
 import Http
 import Json.Decode as JD
 import RemoteData as RD
@@ -7,7 +8,7 @@ import RemoteData as RD
 
 type Error
     = HttpError Http.Error
-      -- | FieldErrors (Dict String String)
+    | FieldErrors (Dict String String)
     | Error String
 
 
@@ -16,10 +17,15 @@ error =
     JD.map Error (JD.field "error" JD.string)
 
 
+type StringOrDict
+    = AString String
+    | ADict (Dict String String)
+
+
 type alias BResult a =
     { success : Bool
     , result : Maybe a
-    , error : Maybe String
+    , error : Maybe StringOrDict
     }
 
 
@@ -38,7 +44,14 @@ bresult decoder =
                     JD.map3 BResult
                         (JD.succeed False)
                         (JD.succeed Nothing)
-                        (JD.field "error" JD.string |> JD.map Just)
+                        (JD.field "error"
+                            (JD.oneOf
+                                [ JD.map AString JD.string
+                                , JD.map ADict (JD.dict JD.string)
+                                ]
+                                |> JD.map Just
+                            )
+                        )
             )
 
 
@@ -55,10 +68,15 @@ try res =
                         Err (Error "Got success with no result.")
 
             else
-                b.error
-                    |> Maybe.withDefault "success false, but no error"
-                    |> Error
-                    |> Err
+                case b.error of
+                    Just (AString s) ->
+                        Err (Error s)
+
+                    Just (ADict d) ->
+                        Err (FieldErrors d)
+
+                    Nothing ->
+                        Err (Error "success false, but no error")
 
         Err e ->
             Err (HttpError e)
