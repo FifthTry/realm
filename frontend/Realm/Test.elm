@@ -14,7 +14,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
-import Realm.Ports exposing (fromIframe, toIframe)
+import Realm.Ports exposing (changePage, fromIframe, toIframe)
 import Realm.Requests as RR
 import Realm.Utils exposing (edges, yesno)
 import RemoteData as RD
@@ -40,6 +40,7 @@ type Step
     | NavigateS ( String, String ) String (String -> String)
     | Submit String String JE.Value
     | SubmitS ( String, String ) String (String -> JE.Value)
+    | SubmitForm String String ( String, JE.Value )
     | FormError String (List FormErrorAssertion) ( String, JE.Value )
 
 
@@ -75,7 +76,12 @@ type Msg
     | NoOp
     | ResetDone
     | OnKey String
-    | OnSubmitResponse String (List FormErrorAssertion) (RR.ApiData RR.LayoutResponse)
+    | OnSubmitResponse FormThing (RR.ApiData RR.LayoutResponse)
+
+
+type FormThing
+    = FormErrorTest String (List FormErrorAssertion)
+    | SubmitTest String String
 
 
 
@@ -94,8 +100,8 @@ init config _ _ _ =
         }
 
 
-submit2 : String -> List FormErrorAssertion -> ( String, JE.Value ) -> Cmd Msg
-submit2 id assertions ( url, data ) =
+submit2 : FormThing -> ( String, JE.Value ) -> Cmd Msg
+submit2 thing ( url, data ) =
     let
         url2 =
             if String.contains "?" url then
@@ -108,7 +114,7 @@ submit2 id assertions ( url, data ) =
         { url = url2
         , body = Http.jsonBody data
         , expect =
-            Http.expectJson (RR.try >> OnSubmitResponse id assertions)
+            Http.expectJson (RR.try >> OnSubmitResponse thing)
                 (RR.bresult RR.layoutResponse)
         }
 
@@ -138,6 +144,9 @@ doStep idx postReset m =
                         Submit elm id payload ->
                             submit elm id payload m.context
 
+                        SubmitForm elm id ( url, data ) ->
+                            submit2 (SubmitTest elm id) ( url, data )
+
                         SubmitS ( elm, id ) key f ->
                             let
                                 _ =
@@ -152,7 +161,7 @@ doStep idx postReset m =
                                 m.context
 
                         FormError id assertions ( url, data ) ->
-                            submit2 id assertions ( url, data )
+                            submit2 (FormErrorTest id assertions) ( url, data )
 
                 ( cmd2, ctx2, current ) =
                     -- reset db and context when test changes
@@ -351,14 +360,14 @@ update msg m =
         ( OnKey _, _ ) ->
             ( m, Cmd.none )
 
-        ( OnSubmitResponse id assertions (RD.Success (RR.FErrors d)), Just idx ) ->
+        ( OnSubmitResponse (FormErrorTest _ assertions) (RD.Success (RR.FErrors d)), Just idx ) ->
             let
                 results =
                     checkAssertions assertions d
             in
             doStep (idx + 1) False (insertResults results idx m)
 
-        ( OnSubmitResponse id _ (RD.Success (RR.Navigate _)), Just idx ) ->
+        ( OnSubmitResponse (FormErrorTest id _) (RD.Success (RR.Navigate _)), Just idx ) ->
             doStep (idx + 1)
                 False
                 (insertResults
@@ -367,7 +376,7 @@ update msg m =
                     m
                 )
 
-        ( OnSubmitResponse id _ (RD.Failure e), Just idx ) ->
+        ( OnSubmitResponse (FormErrorTest id _) (RD.Failure e), Just idx ) ->
             -- test failed
             doStep (idx + 1)
                 False
@@ -377,7 +386,29 @@ update msg m =
                     m
                 )
 
-        ( OnSubmitResponse _ _ _, _ ) ->
+        ( OnSubmitResponse (SubmitTest id _) (RD.Success (RR.FErrors d)), Just idx ) ->
+            doStep (idx + 1)
+                False
+                (insertResults
+                    [ R.TestFailed id ("Expected Navigation, found FormErrors: " ++ Debug.toString d), R.TestDone ]
+                    idx
+                    m
+                )
+
+        ( OnSubmitResponse (SubmitTest elm id) (RD.Success (RR.Navigate payload)), Just _ ) ->
+            ( m, submit elm id payload m.context )
+
+        ( OnSubmitResponse (SubmitTest id _) (RD.Failure e), Just idx ) ->
+            -- test failed
+            doStep (idx + 1)
+                False
+                (insertResults
+                    [ R.TestFailed id ("Request failed: " ++ Debug.toString e), R.TestDone ]
+                    idx
+                    m
+                )
+
+        ( OnSubmitResponse _ _, _ ) ->
             -- shouldn't happen
             ( m, Cmd.none )
 
@@ -456,6 +487,9 @@ stepTitle s =
             p ++ ":" ++ id
 
         Submit p id _ ->
+            p ++ ":" ++ id
+
+        SubmitForm p id _ ->
             p ++ ":" ++ id
 
         SubmitS ( p, id ) _ _ ->
