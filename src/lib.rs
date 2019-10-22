@@ -39,23 +39,33 @@ pub type Request = http::request::Request<Vec<u8>>;
 pub enum Error {
     #[fail(display = "404 Page Not Found: {}", message)]
     PageNotFound { message: String },
+
     #[fail(display = "Input Error: {:?}", error)]
     InputError {
         #[cause]
         error: crate::request_config::Error,
     },
+
+    #[fail(display = "Form Error: {:?}", errors)]
+    FormError {
+        errors: std::collections::HashMap<String, String>,
+    },
+
     #[fail(display = "Internal Server Error: {}", message)]
     CustomError { message: String },
+
     #[fail(display = "HTTP Error: {}", error)]
     HttpError {
         #[cause]
         error: http::Error,
     },
+
     #[fail(display = "Env Var Error: {}", error)]
     VarError {
         #[cause]
         error: std::env::VarError,
     },
+
     #[fail(display = "Diesel Error: {}", error)]
     DieselError {
         #[cause]

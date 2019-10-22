@@ -45,6 +45,11 @@
         ajax(url, data.data, function (t) {loadPage(t, true);});
     }
 
+    function changePage(data) {
+        console.log("changePage", data);
+        loadPage(JSON.stringify(data), true);
+    }
+
     var app = null;
     var testContext = null;
 
@@ -162,6 +167,10 @@
                     window.parent.app.ports.fromIframe.send(r);
                 });
             }
+            if (app.ports && app.ports.changePage) {
+                app.ports.changePage.subscribe(changePage);
+            }
+
             console.log("initialized app", id, flags, app);
         }
 

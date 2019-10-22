@@ -106,4 +106,17 @@ impl<'a> Form<'a> {
     pub fn errors<T>(self) -> Result<T, FormErrors> {
         Err(self.errors)
     }
+
+    pub fn errors2<T>(self) -> Result<T, failure::Error> {
+        Err(crate::Error::FormError {
+            errors: self
+                .errors
+                .0
+                .into_iter()
+                .filter(|(_, (_, e))| e.is_some())
+                .map(|(k, (_, e))| (k, e.unwrap()))
+                .collect(),
+        }
+        .into())
+    }
 }

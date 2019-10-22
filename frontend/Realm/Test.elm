@@ -1,8 +1,9 @@
-port module Realm.Test exposing (Step(..), Test, app)
+port module Realm.Test exposing (FormErrorAssertion(..), Step(..), Test, app, only)
 
 import Array exposing (Array)
 import Browser as B
 import Browser.Events as BE
+import Dict exposing (Dict)
 import Element as E exposing (..)
 import Element.Background as Bg
 import Element.Border as EB
@@ -14,7 +15,9 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
 import Realm.Ports exposing (fromIframe, toIframe)
+import Realm.Requests as RR
 import Realm.Utils exposing (edges, yesno)
+import RemoteData as RD
 
 
 type alias Test =
@@ -37,6 +40,19 @@ type Step
     | NavigateS ( String, String ) String (String -> String)
     | Submit String String JE.Value
     | SubmitS ( String, String ) String (String -> JE.Value)
+    | FormError String (List FormErrorAssertion) ( String, JE.Value )
+
+
+type FormErrorAssertion
+    = ErrorPresent String
+    | ExactError String String
+    | ErrorAbsent String
+    | TotalErrors Int
+
+
+only : String -> String -> List FormErrorAssertion
+only key val =
+    [ ExactError key val, TotalErrors 1 ]
 
 
 type alias Config =
@@ -59,6 +75,7 @@ type Msg
     | NoOp
     | ResetDone
     | OnKey String
+    | OnSubmitResponse String (List FormErrorAssertion) (RR.ApiData RR.LayoutResponse)
 
 
 
@@ -74,6 +91,25 @@ init config _ _ _ =
         , title = config.title
         , tests = flatten config.tests
         , errorOnly = False
+        }
+
+
+submit2 : String -> List FormErrorAssertion -> ( String, JE.Value ) -> Cmd Msg
+submit2 id assertions ( url, data ) =
+    let
+        url2 =
+            if String.contains "?" url then
+                url ++ "&realm_mode=submit"
+
+            else
+                url ++ "?realm_mode=submit"
+    in
+    Http.post
+        { url = url2
+        , body = Http.jsonBody data
+        , expect =
+            Http.expectJson (RR.try >> OnSubmitResponse id assertions)
+                (RR.bresult RR.layoutResponse)
         }
 
 
@@ -114,6 +150,9 @@ doStep idx postReset m =
                                 id
                                 (resolveA key JD.string f (JE.object m.context))
                                 m.context
+
+                        FormError id assertions ( url, data ) ->
+                            submit2 id assertions ( url, data )
 
                 ( cmd2, ctx2, current ) =
                     -- reset db and context when test changes
@@ -168,6 +207,99 @@ resolveA key dec f v =
             JE.null
 
 
+insertResults : List R.TestResult -> Int -> Model -> Model
+insertResults results idx m =
+    m.tests
+        |> Array.get idx
+        |> Maybe.map
+            (\tr ->
+                { tr | results = tr.results ++ results }
+            )
+        |> Maybe.map (\r -> Array.set idx r m.tests)
+        |> Maybe.map (\tests -> { m | tests = tests })
+        |> Maybe.withDefault m
+
+
+checkAssertions : List FormErrorAssertion -> Dict String String -> List R.TestResult
+checkAssertions assertions d =
+    let
+        checkAssertion : FormErrorAssertion -> R.TestResult
+        checkAssertion assertion =
+            case assertion of
+                ErrorPresent key ->
+                    case Dict.get key d of
+                        Just val ->
+                            R.TestPassed ("ErrorPresent: " ++ key ++ "=" ++ val)
+
+                        Nothing ->
+                            R.TestFailed "ErrorPresent" <|
+                                "Expected error in "
+                                    ++ key
+                                    ++ ", found nothing."
+
+                ExactError key val ->
+                    case Dict.get key d of
+                        Just got ->
+                            if got == val then
+                                R.TestPassed ("ExactError: " ++ key)
+
+                            else
+                                R.TestFailed "ExactError" <|
+                                    "Expected "
+                                        ++ key
+                                        ++ " error to be "
+                                        ++ val
+                                        ++ ", found:"
+                                        ++ val
+                                        ++ "."
+
+                        Nothing ->
+                            R.TestFailed "ExactError" <|
+                                "Expected error in "
+                                    ++ key
+                                    ++ ", found nothing."
+
+                ErrorAbsent key ->
+                    case Dict.get key d of
+                        Nothing ->
+                            R.TestPassed ("ErrorAbsent: " ++ key)
+
+                        Just _ ->
+                            R.TestFailed "ErrorAbsent" <|
+                                "Expected error in "
+                                    ++ key
+                                    ++ ", found nothing."
+
+                TotalErrors t ->
+                    let
+                        size =
+                            Dict.size d
+                    in
+                    if size == t then
+                        R.TestPassed <|
+                            "TotalErrors: found "
+                                ++ String.fromInt t
+                                ++ " error"
+                                ++ (if t == 1 then
+                                        ""
+
+                                    else
+                                        "s"
+                                   )
+                                ++ " as expected."
+
+                    else
+                        R.TestFailed "TotalErrors" <|
+                            "Expected "
+                                ++ String.fromInt t
+                                ++ " errors, found "
+                                ++ String.fromInt size
+                                ++ ". Errors: "
+                                ++ Debug.toString d
+    in
+    List.map checkAssertion assertions ++ [ R.TestDone ]
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case Debug.log "Test.msg" ( msg, m.current ) of
@@ -179,15 +311,7 @@ update msg m =
                 Ok results ->
                     let
                         m2 =
-                            m.tests
-                                |> Array.get idx
-                                |> Maybe.map
-                                    (\tr ->
-                                        { tr | results = tr.results ++ results }
-                                    )
-                                |> Maybe.map (\r -> Array.set idx r m.tests)
-                                |> Maybe.map (\tests -> { m | tests = tests })
-                                |> Maybe.withDefault m
+                            insertResults results idx m
 
                         f =
                             \r mod ->
@@ -225,6 +349,36 @@ update msg m =
             ( { m | errorOnly = not m.errorOnly }, Cmd.none )
 
         ( OnKey _, _ ) ->
+            ( m, Cmd.none )
+
+        ( OnSubmitResponse id assertions (RD.Success (RR.FErrors d)), Just idx ) ->
+            let
+                results =
+                    checkAssertions assertions d
+            in
+            doStep (idx + 1) False (insertResults results idx m)
+
+        ( OnSubmitResponse id _ (RD.Success (RR.Navigate _)), Just idx ) ->
+            doStep (idx + 1)
+                False
+                (insertResults
+                    [ R.TestFailed id "Expected errors, found Navigation", R.TestDone ]
+                    idx
+                    m
+                )
+
+        ( OnSubmitResponse id _ (RD.Failure e), Just idx ) ->
+            -- test failed
+            doStep (idx + 1)
+                False
+                (insertResults
+                    [ R.TestFailed id ("Request failed: " ++ Debug.toString e), R.TestDone ]
+                    idx
+                    m
+                )
+
+        ( OnSubmitResponse _ _ _, _ ) ->
+            -- shouldn't happen
             ( m, Cmd.none )
 
 
@@ -306,6 +460,9 @@ stepTitle s =
 
         SubmitS ( p, id ) _ _ ->
             p ++ ":" ++ id
+
+        FormError id _ _ ->
+            "FormError:" ++ id
 
 
 resultView : Model -> R.TestResult -> E.Element Msg

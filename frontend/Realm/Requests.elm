@@ -1,8 +1,9 @@
-module Realm.Requests exposing (ApiData, BResult, Error(..), bresult, try)
+module Realm.Requests exposing (ApiData, BResult, Error(..), LayoutResponse(..), bresult, layoutResponse, try)
 
 import Dict exposing (Dict)
 import Http
 import Json.Decode as JD
+import Json.Encode as JE
 import RemoteData as RD
 
 
@@ -86,3 +87,25 @@ try res =
 
 type alias ApiData a =
     RD.RemoteData Error a
+
+
+type LayoutResponse
+    = Navigate JE.Value
+    | FErrors (Dict String String)
+
+
+layoutResponse : JD.Decoder LayoutResponse
+layoutResponse =
+    JD.field "kind" JD.string
+        |> JD.andThen
+            (\tag ->
+                case tag of
+                    "navigate" ->
+                        JD.field "data" (JD.map Navigate JD.value)
+
+                    "errors" ->
+                        JD.field "data" (JD.map FErrors (JD.dict JD.string))
+
+                    _ ->
+                        JD.fail <| "unknown tag: " ++ tag
+            )

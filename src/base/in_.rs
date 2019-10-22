@@ -86,6 +86,25 @@ impl<'a> In<'a> {
         self.ctx.cookie("ud", "", 0);
     }
 
+    pub fn form_error(
+        &self,
+        errors: &std::collections::HashMap<String, String>,
+    ) -> std::result::Result<crate::Response, failure::Error> {
+        self.ctx
+            .response(
+                serde_json::to_string_pretty(&json!({
+                    "success": true,
+                    "result": {
+                        "kind": "errors",
+                        "data": errors,
+                    }
+                }))?
+                .into(),
+            )
+            .map(crate::Response::Http)
+            .map_err(Into::into)
+    }
+
     pub fn parse_ud_cookie(ud: String) -> Option<(i32, String, i32)> {
         let ud: String = match signed_cookies::signed_value(
             ud.as_str(),

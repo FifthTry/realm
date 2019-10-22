@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, err, escEnter, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, onlyErrors, rendered, renderedE, result, val, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, onlyErrors, rendered, renderedE, result, val, withError, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -210,10 +210,23 @@ fieldValid f =
     f.value /= "" && f.error == Nothing
 
 
+withError : Dict String String -> String -> Field -> Field
+withError d k f =
+    { f | error = Dict.get k d }
+
+
 type alias Field =
     { value : String
     , error : Maybe String
     , edited : Bool
+    }
+
+
+emptyField : Field
+emptyField =
+    { value = ""
+    , edited = False
+    , error = Nothing
     }
 
 

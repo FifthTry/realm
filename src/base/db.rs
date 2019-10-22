@@ -13,6 +13,7 @@ lazy_static! {
         { syntect::highlighting::ThemeSet::load_defaults() };
 }
 
+#[cfg(debug_assertions)]
 fn colored(sql: &str) -> String {
     let syntax = SS.find_syntax_by_extension("sql").unwrap();
     let mut h = syntect::easy::HighlightLines::new(syntax, &TS.themes["base16-ocean.dark"]);
