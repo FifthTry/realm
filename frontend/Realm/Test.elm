@@ -14,7 +14,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
-import Realm.Ports exposing (changePage, fromIframe, toIframe)
+import Realm.Ports exposing (fromIframe, toIframe)
 import Realm.Requests as RR
 import Realm.Utils exposing (edges, yesno)
 import RemoteData as RD
@@ -42,6 +42,7 @@ type Step
     | SubmitS ( String, String ) String (String -> JE.Value)
     | SubmitForm String String ( String, JE.Value )
     | FormError String (List FormErrorAssertion) ( String, JE.Value )
+    | FormErrorS ( String, String ) (List FormErrorAssertion) (String -> ( String, JE.Value ))
 
 
 type FormErrorAssertion
@@ -148,13 +149,6 @@ doStep idx postReset m =
                             submit2 (SubmitTest elm id) ( url, data )
 
                         SubmitS ( elm, id ) key f ->
-                            let
-                                _ =
-                                    Debug.log "key" key
-
-                                _ =
-                                    Debug.log "context" (JE.encode 4 (JE.object m.context))
-                            in
                             submit elm
                                 id
                                 (resolveA key JD.string f (JE.object m.context))
@@ -162,6 +156,10 @@ doStep idx postReset m =
 
                         FormError id assertions ( url, data ) ->
                             submit2 (FormErrorTest id assertions) ( url, data )
+
+                        FormErrorS ( id, key ) assertions f ->
+                            submit2 (FormErrorTest id assertions)
+                                (resolveA2 key JD.string f (JE.object m.context))
 
                 ( cmd2, ctx2, current ) =
                     -- reset db and context when test changes
@@ -214,6 +212,17 @@ resolveA key dec f v =
         Err _ ->
             -- "TODO: fix this"
             JE.null
+
+
+resolveA2 : String -> JD.Decoder a -> (a -> ( String, JE.Value )) -> JE.Value -> ( String, JE.Value )
+resolveA2 key dec f v =
+    case JD.decodeValue (JD.field key dec) v of
+        Ok a ->
+            f a
+
+        Err _ ->
+            -- "TODO: fix this"
+            ( "", JE.null )
 
 
 insertResults : List R.TestResult -> Int -> Model -> Model
@@ -496,6 +505,9 @@ stepTitle s =
             p ++ ":" ++ id
 
         FormError id _ _ ->
+            "FormError:" ++ id
+
+        FormErrorS ( id, _ ) _ _ ->
             "FormError:" ++ id
 
 
