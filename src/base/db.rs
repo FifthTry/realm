@@ -62,20 +62,22 @@ pub fn connection() -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<Rea
 pub fn connection_with_url(
     db_url: String,
 ) -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<RealmConnection>> {
-    if let Some(pool) = DIESEL_POOLS.read().get(&db_url) {
-        pool.get().unwrap()
-    } else {
-        match DIESEL_POOLS.write().entry(db_url.clone()) {
-            Entry::Vacant(e) => {
-                let conn_pool = _connection_pool(db_url);
-                let conn = conn_pool.get().unwrap();
-                e.insert(conn_pool);
-                conn
-            }
-            Entry::Occupied(e) => e.get().get().unwrap(),
+    {
+        if let Some(pool) = DIESEL_POOLS.read().get(&db_url) {
+            return pool.get().unwrap();
         }
     }
+    match DIESEL_POOLS.write().entry(db_url.clone()) {
+        Entry::Vacant(e) => {
+            let conn_pool = _connection_pool(db_url);
+            let conn = conn_pool.get().unwrap();
+            e.insert(conn_pool);
+            conn
+        }
+        Entry::Occupied(e) => e.get().get().unwrap(),
+    }
 }
+
 pub fn red<T>(err_str: &str, err: T)
 where
     T: std::fmt::Display,

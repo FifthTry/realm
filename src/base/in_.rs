@@ -90,17 +90,24 @@ impl<'a> In<'a> {
         &self,
         errors: &std::collections::HashMap<String, String>,
     ) -> std::result::Result<crate::Response, failure::Error> {
+        let mode = self.get_mode();
         self.ctx
-            .response(
-                serde_json::to_string_pretty(&json!({
-                    "success": true,
-                    "result": {
-                        "kind": "errors",
-                        "data": errors,
-                    }
-                }))?
-                .into(),
-            )
+            .header(http::header::CONTENT_TYPE, mode.content_type());
+        let data = match mode {
+            crate::Mode::Submit => json!({
+                "success": true,
+                "result": {
+                    "kind": "errors",
+                    "data": errors,
+                }
+            }),
+            _ => json!({
+                "success": false,
+                "errors": errors,
+            }),
+        };
+        self.ctx
+            .response(serde_json::to_string_pretty(&data)?.into())
             .map(crate::Response::Http)
             .map_err(Into::into)
     }
