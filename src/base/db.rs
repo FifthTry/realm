@@ -4,6 +4,7 @@ use colored::Colorize;
 use diesel::query_builder::QueryBuilder;
 use diesel::{connection::TransactionManager, prelude::*};
 use failure::Error;
+use std::collections::{hash_map::Entry, HashMap};
 
 #[cfg(debug_assertions)]
 lazy_static! {
@@ -31,8 +32,8 @@ pub type RealmConnection = DebugConnection;
 #[cfg(not(debug_assertions))]
 pub type RealmConnection = diesel::PgConnection;
 
-fn _connection_pool() -> r2d2::Pool<r2d2_diesel::ConnectionManager<RealmConnection>> {
-    let mut db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set");
+fn _connection_pool(db_url: String) -> r2d2::Pool<r2d2_diesel::ConnectionManager<RealmConnection>> {
+    let mut db_url = db_url.clone();
     if crate::base::is_test() {
         // add search_path=test (%3D is = sign)
         if db_url.contains('?') {
@@ -50,34 +51,57 @@ fn _connection_pool() -> r2d2::Pool<r2d2_diesel::ConnectionManager<RealmConnecti
 }
 
 lazy_static! {
-    pub static ref DIESEL_POOL: r2d2::Pool<r2d2_diesel::ConnectionManager<RealmConnection>> =
-        _connection_pool();
+    pub static ref DIESEL_POOLS: antidote::RwLock<HashMap<String, r2d2::Pool<r2d2_diesel::ConnectionManager<RealmConnection>>>> =
+        antidote::RwLock::new(HashMap::new());
 }
 
 pub fn connection() -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<RealmConnection>> {
-    DIESEL_POOL.get().expect("Couldn't open DB connection.")
+    connection_with_url(std::env::var("DATABASE_URL").expect("DATABASE_URL not set"))
+}
+
+pub fn connection_with_url(
+    db_url: String,
+) -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<RealmConnection>> {
+    if let Some(pool) = DIESEL_POOLS.read().get(&db_url) {
+        pool.get().unwrap()
+    } else {
+        match DIESEL_POOLS.write().entry(db_url.clone()) {
+            Entry::Vacant(e) => {
+                let conn_pool = _connection_pool(db_url);
+                let conn = conn_pool.get().unwrap();
+                e.insert(conn_pool);
+                conn
+            }
+            Entry::Occupied(e) => e.get().get().unwrap(),
+        }
+    }
+}
+pub fn red<T>(err_str: &str, err: T)
+where
+    T: std::fmt::Display,
+{
+    #[cfg(debug_assertions)]
+    eprintln!("{}: {}", err_str.red(), err);
+    #[cfg(not(debug_assertions))]
+    eprintln!("{}: {}", err_str, err);
 }
 
 fn rollback(conn: &RealmConnection) {
     if let Err(e) = conn.transaction_manager().rollback_transaction(conn) {
-        eprintln!(
-            "{}: {:?}",
-            "connection_not_clean_and_cleanup_failed".red(),
-            e
-        );
+        red("connection_not_clean_and_cleanup_failed", e);
     };
 }
 
 pub fn rollback_if_required(conn: &RealmConnection) {
     if let Err(e) = diesel::sql_query("SELECT 1").execute(conn) {
-        eprintln!("{}: {:?}", "connection_not_clean".red(), e);
+        red("connection_not_clean", e);
         rollback(conn);
     } else {
         let t: &dyn diesel::connection::TransactionManager<RealmConnection> =
             conn.transaction_manager();
         let depth = t.get_transaction_depth();
         if depth != 0 {
-            eprintln!("{}: {}", "connection_depth_not_zero".red(), depth);
+            red("connection_not_clean", depth);
             rollback(conn);
         }
     }
