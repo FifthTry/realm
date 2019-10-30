@@ -78,7 +78,7 @@ pub fn connection_with_url(
     }
 }
 
-pub fn red<T>(err_str: &str, err: T)
+fn red<T>(err_str: &str, err: T)
 where
     T: std::fmt::Display,
 {

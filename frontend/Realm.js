@@ -52,19 +52,25 @@
 
     var app = null;
     var testContext = null;
+    var unloadTest = 0;
 
     function loadPage(text, isSubmit) {
         console.log("loadPage", isSubmit);
         if (app && app.ports && app.ports.shutdown) {
             console.log("shutting down");
             app.ports.shutdown.send(null);
+            unloadTest = 0;
         }
 
         function loadNow() {
             // wait for previous app to cleanup
             console.log("loadNow");
-            if (app && document.body.childElementCount !== 0) {
+            if (app && document.body.childElementCount !== 0 && unloadTest < 10) {
                 window.requestAnimationFrame(loadNow);
+                unloadTest += 1;
+                if (unloadTest === 9) {
+                    console.log("too many attempts to get window to clear");
+                }
                 return;
             }
 
