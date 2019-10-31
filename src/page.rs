@@ -84,6 +84,7 @@ pub fn default_page() -> String {
                 <script id="data" type="application/json">
         _data
                 </script>
+                <style>p {{margin: 0}}</style>
             </head>
             <body>
                 <div id="main"></div>

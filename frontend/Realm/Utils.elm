@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, err, escEnter, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, onlyErrors, rendered, renderedE, result, val, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, rendered, renderedE, result, val, withError, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -154,7 +154,8 @@ link :
     -> E.Element msg
     -> E.Element msg
 link url attrs msg label =
-    E.link (EE.onClick (msg url) :: attrs) { label = label, url = url }
+    E.link (EE.onClick (msg url) :: EE.onDoubleClick (msg url) :: attrs)
+        { label = label, url = url }
 
 
 maybeE : (a -> JE.Value) -> Maybe a -> JE.Value
@@ -210,10 +211,23 @@ fieldValid f =
     f.value /= "" && f.error == Nothing
 
 
+withError : Dict String String -> String -> Field -> Field
+withError d k f =
+    { f | error = Dict.get k d }
+
+
 type alias Field =
     { value : String
     , error : Maybe String
     , edited : Bool
+    }
+
+
+emptyField : Field
+emptyField =
+    { value = ""
+    , edited = False
+    , error = Nothing
     }
 
 
@@ -274,31 +288,6 @@ fieldNoError tid name in_ f =
 contains : a -> List a -> Bool
 contains a lst =
     not (List.isEmpty (List.filter (\name -> name == a) lst))
-
-
-onlyErrors : String -> List String -> R.In -> Form -> R.TestResult
-onlyErrors tid names in_ f =
-    let
-        unexpected =
-            f
-                |> Dict.toList
-                |> List.filter (\( n, ( _, e ) ) -> e /= Nothing && not (contains n names))
-                |> List.map (\( n, _ ) -> n)
-    in
-    if List.isEmpty unexpected then
-        R.TestPassed tid
-
-    else
-        R.TestFailed tid <|
-            "Following fields have errors: "
-                ++ String.join
-                    " & "
-                    (List.map
-                        (\name ->
-                            name ++ ":" ++ Maybe.withDefault "" (fi name in_ f).error
-                        )
-                        unexpected
-                    )
 
 
 fieldsNoError : String -> List String -> R.In -> Form -> R.TestResult

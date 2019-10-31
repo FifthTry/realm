@@ -2,6 +2,7 @@ pub enum Mode {
     API,
     Layout,
     HTML,
+    Submit,
 }
 
 impl Mode {
@@ -19,6 +20,7 @@ impl Mode {
         match q.get("realm_mode").map(String::as_str) {
             Some("api") => return Mode::API,
             Some("layout") => return Mode::Layout,
+            Some("submit") => return Mode::Submit,
             Some("html") => return Mode::HTML,
             _ => {}
         };

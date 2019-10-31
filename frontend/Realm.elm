@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), message, TestFlags, TestResult(..), app, controller, document, getHash, init0, isPass, pushHash, result, sub0, test, test0, testResult, tuple, tupleE, update0)
+module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, isPass, message, pushHash, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
 
 import Browser as B
 import Browser.Events as BE
@@ -6,16 +6,19 @@ import Browser.Navigation as BN
 import Dict exposing (Dict)
 import Element as E
 import Html as H
+import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Platform
-import Realm.Ports exposing (shutdown, toIframe)
+import Realm.Ports exposing (changePage, shutdown, toIframe)
+import Realm.Requests as RR
+import RemoteData as RD
 import Task
 import Url exposing (Url)
 
 
 type alias Model model =
-    { model : Result PortError model
+    { model : Result SomeError model
     , key : BN.Key
     , url : Url
     , shuttingDown : Bool
@@ -34,8 +37,26 @@ type Msg msg
     | UrlChange Url
     | Shutdown ()
     | UpdateHashKV String String
+    | OnSubmitResponse (Dict String String -> msg) (RR.ApiData RR.LayoutResponse)
     | OnResize Int Int
     | ReloadPage
+
+
+submit : (Dict String String -> msg) -> ( String, JE.Value ) -> Cmd (Msg msg)
+submit ctr ( url, data ) =
+    let
+        url2 =
+            if String.contains "?" url then
+                url ++ "&realm_mode=submit"
+
+            else
+                url ++ "?realm_mode=submit"
+    in
+    Http.post
+        { url = url2
+        , body = Http.jsonBody data
+        , expect = Http.expectJson (RR.try >> OnSubmitResponse ctr) (RR.bresult RR.layoutResponse)
+        }
 
 
 type alias In =
@@ -106,7 +127,7 @@ appInit a flags url key =
                         |> (\( f, s ) -> ( f, s, ( d, flags.height, flags.width ) ))
 
                 Err e ->
-                    ( Err { value = flags.config, jd = e }
+                    ( Err (PError { value = flags.config, jd = e })
                     , Cmd.none
                     , ( { class = E.Desktop, orientation = E.Landscape }
                       , 1024
@@ -192,6 +213,29 @@ appUpdate a msg am =
 
         ( ReloadPage, _ ) ->
             ( am, BN.reload )
+
+        ( OnSubmitResponse _ (RD.Success (RR.Navigate n)), False ) ->
+            ( am, changePage n )
+
+        ( OnSubmitResponse ctr (RD.Success (RR.FErrors e)), False ) ->
+            case am.model of
+                Err _ ->
+                    ( am, Cmd.none )
+
+                Ok model ->
+                    a.update
+                        { title = am.title
+                        , hash = am.dict
+                        , device = am.device
+                        , height = am.height
+                        , width = am.width
+                        }
+                        (ctr e)
+                        model
+                        |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
+
+        ( OnSubmitResponse _ (RD.Failure e), False ) ->
+            ( { am | model = Err (SubmitError e) }, Cmd.none )
 
         _ ->
             ( am, Cmd.none )
@@ -296,6 +340,11 @@ update0 _ _ model =
 document : In -> E.Element (Msg msg) -> B.Document (Msg msg)
 document in_ el =
     { title = in_.title, body = [ E.layout [] el ] }
+
+
+type SomeError
+    = PError PortError
+    | SubmitError RR.Error
 
 
 type alias PortError =

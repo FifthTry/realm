@@ -16,3 +16,6 @@ port toIframe : JE.Value -> Cmd msg
 
 
 port fromIframe : (JE.Value -> msg) -> Sub msg
+
+
+port changePage : JE.Value -> Cmd msg

@@ -37,6 +37,14 @@ impl Response {
                     Mode::API => serde_json::to_string_pretty(&spec.config)?.into(),
                     Mode::HTML => spec.render()?,
                     Mode::Layout => serde_json::to_string(&spec)?.into(),
+                    Mode::Submit => serde_json::to_string(&json!({
+                        "success": true,
+                        "result": {
+                            "kind": "navigate",
+                            "data": spec,
+                        }
+                    }))?
+                    .into(),
                 })?)
             }
             Response::Http(_) => unreachable!(),
