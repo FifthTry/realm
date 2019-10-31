@@ -1,3 +1,5 @@
+use std::{env, fs};
+
 #[derive(Serialize)]
 pub struct PageSpec {
     pub id: String,
@@ -21,28 +23,15 @@ impl PageSpec {
             Ok(path) => format!("/static/{}/elm.js", path),
             Err(_err) => "/static/elm.js".to_string(),
         };
-        Ok(format!(
-            // TODO: add other stuff to html
-            r#"<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8" />
-        <title>{}</title>
-        <meta name="viewport" content="width=device-width" />
-        <script id="data" type="application/json">
-{}
-        </script>
-    </head>
-    <body>
-        <div id="main"></div>
-        <script src='{}'></script>
-    </body>
-</html>"#,
-            &self.title,
-            data,
-            script_path,
-        )
-        .into())
+
+        let mut html = HTML_PAGE.clone();
+
+        html = html
+            .replace("_title", &self.title)
+            .replace("_data", &data)
+            .replace("_script_path", &script_path);
+
+        Ok(html.into())
     }
     pub fn with_url(mut self, url: String) -> Self {
         self.url = Some(url);
@@ -72,4 +61,34 @@ pub trait Page: serde::ser::Serialize {
             redirect: None,
         }))
     }
+}
+
+lazy_static! {
+    pub static ref HTML_PAGE: String = {
+        let proj_dir = env::current_dir().expect("Could not find current dir");
+        let path = proj_dir.join("page.html");
+        match fs::read_to_string(path) {
+            Ok(p) => p,
+            Err(_err) => default_page(),
+        }
+    };
+}
+
+pub fn default_page() -> String {
+    r#"<!DOCTYPE html>
+        <html>
+            <head>
+                <meta charset="utf-8" />
+                <title>_title</title>
+                <meta name="viewport" content="width=device-width" />
+                <script id="data" type="application/json">
+        _data
+                </script>
+            </head>
+            <body>
+                <div id="main"></div>
+                <script src='_script_path'></script>
+            </body>
+        </html>"#
+        .to_string()
 }
