@@ -6,6 +6,7 @@ import Browser.Navigation as BN
 import Dict exposing (Dict)
 import Element as E
 import Html as H
+import Html.Attributes
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
@@ -284,7 +285,15 @@ appDocument a am =
                 model
 
         ( _, True ) ->
-            { title = "shuttingDown", body = [] }
+            { title = "shuttingDown"
+            , body =
+                [ H.div
+                    [ Html.Attributes.id
+                        "appShutdownEmptyElement"
+                    ]
+                    []
+                ]
+            }
 
 
 updateHash : Model model -> Cmd (Msg msg)
