@@ -178,6 +178,14 @@
                 app.ports.changePage.subscribe(changePage);
             }
 
+            if (app.ports) {
+                for (let [portName, port]  of Object.entries(app.ports)) {
+                    if(window.extra_ports.hasOwnProperty(portName)) {
+                        port.subscribe(window.extra_ports.get(portName));
+                    }
+                }
+            }
+
             console.log("initialized app", id, flags, app);
         }
 
