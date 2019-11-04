@@ -78,6 +78,7 @@ and realm will use this while rendering a page.
 - Location for `elm.js` if `APP_NAME` environment variable is configured:
   `/static/APP_NAME/elm.js`. Default location for `elm.js` is `/static/elm.js`.
 - Added `realm::base::db::db_test()` back.
+- Added support for extra Elm ports. Applications can add ports to `window.extra_ports` in `Javascript`.
 
 ## 0.1.16 - 23 Sept 2019
 
