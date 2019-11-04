@@ -180,7 +180,8 @@
 
             if (app.ports) {
                 for (let [portName, port]  of Object.entries(app.ports)) {
-                    if(window.extra_ports.hasOwnProperty(portName)) {
+                    if(window.extra_ports && window.extra_ports.hasOwnProperty
+                    (portName)) {
                         port.subscribe(window.extra_ports.get(portName));
                     }
                 }
