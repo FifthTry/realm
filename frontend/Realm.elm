@@ -41,6 +41,7 @@ type Msg msg
     | OnSubmitResponse (Dict String String -> msg) (RR.ApiData RR.LayoutResponse)
     | OnResize Int Int
     | ReloadPage
+    | NoOp
 
 
 submit : (Dict String String -> msg) -> ( String, JE.Value ) -> Cmd (Msg msg)
