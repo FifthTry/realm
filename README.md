@@ -41,6 +41,20 @@ Rust / Elm base full stack web framework.
 ```
 - Added support for using custom html. Applications can create `page.html` 
 and realm will use this while rendering a page.
+- Added support for extra Elm ports. Applications can add ports to `window
+.realm_extra_ports` in `Javascript`. Applications can create `Ports.elm` and specify ports like this: `port something : JE.Value -> Cmd msg`. Applications can create a Javascript file and add the port and callback function like this to `window.realm_extra_ports`:
+```
+function fun() {
+    //do something
+}
+
+function main(){
+    if (!window.extra_ports) {
+        window.realm_extra_ports = new Map();
+    }
+    window.realm_extra_ports["something"] = fun;
+}
+```
 
 ## 0.1.17 - 16 Oct 2019
 
@@ -78,7 +92,6 @@ and realm will use this while rendering a page.
 - Location for `elm.js` if `APP_NAME` environment variable is configured:
   `/static/APP_NAME/elm.js`. Default location for `elm.js` is `/static/elm.js`.
 - Added `realm::base::db::db_test()` back.
-- Added support for extra Elm ports. Applications can add ports to `window.extra_ports` in `Javascript`.
 
 ## 0.1.16 - 23 Sept 2019
 
