@@ -39,8 +39,11 @@ Rust / Elm base full stack web framework.
         }
     };
 ```
-- Added support for using custom html. Applications can create `page.html` and realm
-  will use this while rendering a page.
+- Added support for using custom html. Applications can create `index.html` and realm
+  will use this while rendering a page. `index.html` must contains special strings:
+  `__realm_title__` and `__realm_data__`, these will be replaced by page title and page
+  data.
+- Removed `APP_NAME` feature, use custom `index.html` to overwrite script name instead.
 
 ## 0.1.17 - 16 Oct 2019
 
