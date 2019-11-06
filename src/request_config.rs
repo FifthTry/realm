@@ -174,6 +174,56 @@ impl RequestConfig {
         }
     }
 
+    pub fn required5<T1, T2, T3, T4, T5>(
+        &mut self,
+        n1: &str,
+        n2: &str,
+        n3: &str,
+        n4: &str,
+        n5: &str,
+    ) -> Result<(T1, T2, T3, T4, T5), crate::Error>
+    where
+        T1: FromStr + DeserializeOwned,
+        <T1 as FromStr>::Err: Debug,
+        T2: FromStr + DeserializeOwned,
+        <T2 as FromStr>::Err: Debug,
+        T3: FromStr + DeserializeOwned,
+        <T3 as FromStr>::Err: Debug,
+        T4: FromStr + DeserializeOwned,
+        <T4 as FromStr>::Err: Debug,
+        T5: FromStr + DeserializeOwned,
+        <T5 as FromStr>::Err: Debug,
+    {
+        match (
+            self.required_(n1),
+            self.required_(n2),
+            self.required_(n3),
+            self.required_(n4),
+            self.required_(n5),
+        ) {
+            (Ok(t1), Ok(t2), Ok(t3), Ok(t4), Ok(t5)) => Ok((t1, t2, t3, t4, t5)),
+            (r1, r2, r3, r4, r5) => {
+                let mut errors = vec![];
+                if let Err(e) = r1 {
+                    errors.push(e)
+                };
+                if let Err(e) = r2 {
+                    errors.push(e)
+                };
+                if let Err(e) = r3 {
+                    errors.push(e)
+                };
+                if let Err(e) = r4 {
+                    errors.push(e)
+                };
+                if let Err(e) = r5 {
+                    errors.push(e)
+                };
+                Err(Error::Multi(errors).into())
+            }
+        }
+    }
+
     pub fn required<T>(&mut self, name: &str) -> Result<T, crate::Error>
     where
         T: FromStr + DeserializeOwned,

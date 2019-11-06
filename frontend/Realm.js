@@ -65,8 +65,11 @@
         function loadNow() {
             // wait for previous app to cleanup
             console.log("loadNow");
-            if (app && !document.getElementById("appShutdownEmptyElement") && unloadTest <
-            10) {
+            if (
+                app
+                && !document.getElementById("appShutdownEmptyElement")
+                && unloadTest < 10
+            ) {
                 window.requestAnimationFrame(loadNow);
                 unloadTest += 1;
                 if (unloadTest === 9) {

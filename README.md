@@ -39,8 +39,8 @@ Rust / Elm base full stack web framework.
         }
     };
 ```
-- Added support for using custom html. Applications can create `page.html` 
-and realm will use this while rendering a page.
+- Added support for using custom html. Applications can create `page.html` and realm
+  will use this while rendering a page.
 
 ## 0.1.17 - 16 Oct 2019
 
