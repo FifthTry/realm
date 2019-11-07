@@ -39,6 +39,20 @@ Rust / Elm base full stack web framework.
         }
     };
 ```
+- Added support for extra Elm ports. Applications can add ports to `window
+.realm_extra_ports` in `Javascript`. Applications can create `Ports.elm` and specify ports like this: `port something : JE.Value -> Cmd msg`. Applications can create a Javascript file and add the port and callback function like this to `window.realm_extra_ports`:
+```
+function fun() {
+    //do something
+}
+
+function main(){
+    if (!window.extra_ports) {
+        window.realm_extra_ports = new Map();
+    }
+    window.realm_extra_ports["something"] = fun;
+}
+```
 - Added support for using custom html. Applications can create `index.html` and realm
   will use this while rendering a page. `index.html` must contains special strings:
   `__realm_title__` and `__realm_data__`, these will be replaced by page title and page

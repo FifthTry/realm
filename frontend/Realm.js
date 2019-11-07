@@ -163,7 +163,6 @@
                 }
                 return;
             }
-
             app = app.init({flags: flags});
             if (app.ports && app.ports.navigate) {
                 app.ports.navigate.subscribe(navigate);
@@ -179,6 +178,19 @@
             }
             if (app.ports && app.ports.changePage) {
                 app.ports.changePage.subscribe(changePage);
+            }
+
+            if (app.ports) {
+                for (var portName in app.ports) {
+                    if(window.realm_extra_ports && window.realm_extra_ports.hasOwnProperty
+                    (portName)) {
+                        app.ports[portName].subscribe(window.realm_extra_ports[portName]);
+                    }
+                }
+            }
+
+            if(!window.realm_app){
+                window.realm_app = app;
             }
 
             console.log("initialized app", id, flags, app);
