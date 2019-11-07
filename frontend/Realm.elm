@@ -287,13 +287,7 @@ appDocument a am =
 
         ( _, True ) ->
             { title = "shuttingDown"
-            , body =
-                [ H.div
-                    [ Html.Attributes.id
-                        "appShutdownEmptyElement"
-                    ]
-                    []
-                ]
+            , body = [ H.div [ Html.Attributes.id "appShutdownEmptyElement" ] [] ]
             }
 
 
