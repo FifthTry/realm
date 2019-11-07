@@ -39,25 +39,29 @@ Rust / Elm base full stack web framework.
         }
     };
 ```
-- Added support for extra Elm ports. Applications can add ports to `window
-.realm_extra_ports` in `Javascript`. Applications can create `Ports.elm` and specify ports like this: `port something : JE.Value -> Cmd msg`. Applications can create a Javascript file and add the port and callback function like this to `window.realm_extra_ports`:
-```
-function fun() {
-    //do something
-}
+- Added support for extra Elm ports. Applications can add ports to
+  `window.realm_extra_ports` in `Javascript`. Applications can create `Ports.elm` and
+  specify ports like this: `port something : JE.Value -> Cmd msg`. Applications can
+  create a Javascript file and add the port and callback function like this to
+  `window.realm_extra_ports`:
 
-function main(){
-    if (!window.extra_ports) {
-        window.realm_extra_ports = new Map();
+```javascript
+window.realm_extra_ports = {
+    "something": function(data) {
     }
-    window.realm_extra_ports["something"] = fun;
-}
+};
+
+// the realm app is available as window.realm_app. so you can also do:
+window.addEventListener("foo", function(evt) { window.realm_app.ports.foo.send(evt) })
 ```
+
 - Added support for using custom html. Applications can create `index.html` and realm
   will use this while rendering a page. `index.html` must contains special strings:
   `__realm_title__` and `__realm_data__`, these will be replaced by page title and page
   data.
 - Removed `APP_NAME` feature, use custom `index.html` to overwrite script name instead.
+- Added `window.realm_app_init()` and `window.realm_app_shutdown()` hooks, if you want
+  to do something after realm app is initialized and is shutting down.
 
 ## 0.1.17 - 16 Oct 2019
 

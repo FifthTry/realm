@@ -11,7 +11,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Platform
-import Realm.Ports exposing (changePage, shutdown, toIframe)
+import Realm.Ports exposing (changePage, shutdown, toIframe, viewPortChanged)
 import Realm.Requests as RR
 import RemoteData as RD
 import Task
@@ -29,7 +29,27 @@ type alias Model model =
     , device : E.Device
     , height : Int
     , width : Int
+    , iphoneX : Bool
+    , notch : Notch
     }
+
+
+type Notch
+    = NoNotch
+    | NotchOnLeft
+    | NotchOnRight
+
+
+intToNotch : Int -> Notch
+intToNotch i =
+    if i == 1 then
+        NotchOnLeft
+
+    else if i == -1 then
+        NotchOnRight
+
+    else
+        NoNotch
 
 
 type Msg msg
@@ -41,6 +61,7 @@ type Msg msg
     | OnSubmitResponse (Dict String String -> msg) (RR.ApiData RR.LayoutResponse)
     | OnResize Int Int
     | ReloadPage
+    | ViewPortChanged JE.Value
     | NoOp
 
 
@@ -67,6 +88,8 @@ type alias In =
     , device : E.Device
     , height : Int
     , width : Int
+    , iphoneX : Bool
+    , notch : Notch
     }
 
 
@@ -79,15 +102,28 @@ type alias App config model msg =
     }
 
 
-type alias Flags =
-    { config : JE.Value
-    , title : String
+type alias Flags config =
+    { title : String
+    , config : config
     , width : Int
     , height : Int
+    , iphoneX : Int
+    , notch : Int
     }
 
 
-app : App config model msg -> Program Flags (Model model) (Msg msg)
+flags : JD.Decoder config -> JD.Decoder (Flags config)
+flags config =
+    JD.map6 Flags
+        (JD.field "title" JD.string)
+        (JD.field "config" config)
+        (JD.field "width" JD.int)
+        (JD.field "height" JD.int)
+        (JD.field "iphoneX" JD.int)
+        (JD.field "notch" JD.int)
+
+
+app : App config model msg -> Program JE.Value (Model model) (Msg msg)
 app a =
     B.application
         { init = appInit a
@@ -101,52 +137,58 @@ app a =
 
 appInit :
     App config model msg
-    -> Flags
+    -> JE.Value
     -> Url
     -> BN.Key
     -> ( Model model, Cmd (Msg msg) )
-appInit a flags url key =
+appInit a vflags url key =
     let
         hash =
             fromHash url
 
-        ( im, cmd, ( device, height, width ) ) =
-            case JD.decodeValue a.config flags.config of
-                Ok config ->
+        ( ( title, im ), ( cmd, iphoneX, notch ), ( device, width, height ) ) =
+            case JD.decodeValue (flags a.config) vflags of
+                Ok f ->
                     let
                         d =
-                            E.classifyDevice flags
+                            E.classifyDevice f
                     in
                     a.init
-                        { title = flags.title
+                        { title = f.title
                         , hash = hash
                         , device = d
-                        , height = flags.height
-                        , width = flags.width
+                        , height = f.height
+                        , width = f.width
+                        , iphoneX = f.iphoneX == 1
+                        , notch = intToNotch f.notch
                         }
-                        config
+                        f.config
                         |> Tuple.mapFirst Ok
-                        |> (\( f, s ) -> ( f, s, ( d, flags.height, flags.width ) ))
+                        |> (\( f1, s ) ->
+                                ( ( f.title, f1 )
+                                , ( s, f.iphoneX, f.notch )
+                                , ( d, f.width, f.height )
+                                )
+                           )
 
                 Err e ->
-                    ( Err (PError { value = flags.config, jd = e })
-                    , Cmd.none
-                    , ( { class = E.Desktop, orientation = E.Landscape }
-                      , 1024
-                      , 1024
-                      )
+                    ( ( "", Err (PError { value = vflags, jd = e }) )
+                    , ( Cmd.none, 0, 0 )
+                    , ( { class = E.Desktop, orientation = E.Landscape }, 0, 0 )
                     )
     in
     ( { url = url
       , key = key
       , model = im
       , shuttingDown = False
-      , title = flags.title
+      , title = title
       , dict = hash
       , clearedHash = False
       , device = device
       , height = height
       , width = width
+      , iphoneX = iphoneX == 1
+      , notch = intToNotch notch
       }
     , cmd
     )
@@ -171,6 +213,8 @@ appUpdate a msg am =
                         , device = am.device
                         , height = am.height
                         , width = am.width
+                        , iphoneX = am.iphoneX
+                        , notch = am.notch
                         }
                         imsg
                         model
@@ -210,6 +254,26 @@ appUpdate a msg am =
             in
             ( m, updateHash m )
 
+        ( ViewPortChanged v, False ) ->
+            case
+                JD.decodeValue
+                    (JD.map3 (\x y z -> ( x, y, z ))
+                        (JD.field "width" JD.int)
+                        (JD.field "height" JD.int)
+                        (JD.field "notch" JD.int)
+                    )
+                    v
+            of
+                Ok ( w, h, n ) ->
+                    let
+                        am2 =
+                            { am | width = w, height = h, notch = intToNotch n }
+                    in
+                    ( { am2 | device = E.classifyDevice am2 }, Cmd.none )
+
+                _ ->
+                    ( am, Cmd.none )
+
         ( Shutdown _, False ) ->
             ( { am | shuttingDown = True }, Cmd.none )
 
@@ -231,6 +295,8 @@ appUpdate a msg am =
                         , device = am.device
                         , height = am.height
                         , width = am.width
+                        , iphoneX = am.iphoneX
+                        , notch = am.notch
                         }
                         (ctr e)
                         model
@@ -254,12 +320,15 @@ appSubscriptions a am =
         ( Ok model, False ) ->
             Sub.batch
                 [ shutdown Shutdown
+                , viewPortChanged ViewPortChanged
                 , a.subscriptions
                     { title = am.title
                     , hash = am.dict
                     , device = am.device
                     , height = am.height
                     , width = am.width
+                    , iphoneX = am.iphoneX
+                    , notch = am.notch
                     }
                     model
                 , BE.onResize OnResize
@@ -273,7 +342,12 @@ appDocument : App config model msg -> Model model -> B.Document (Msg msg)
 appDocument a am =
     case ( am.model, am.shuttingDown ) of
         ( Err e, False ) ->
-            { title = "failed to parse", body = [ H.text (Debug.toString e) ] }
+            case e of
+                PError p ->
+                    { title = "failed to parse", body = [ H.text ("value: " ++ JE.encode 4 p.value) ] }
+
+                _ ->
+                    { title = "failed to parse", body = [ H.text ("Network Error: " ++ Debug.toString e) ] }
 
         ( Ok model, False ) ->
             a.document
@@ -282,6 +356,8 @@ appDocument a am =
                 , device = am.device
                 , height = am.height
                 , width = am.width
+                , iphoneX = am.iphoneX
+                , notch = am.notch
                 }
                 model
 
@@ -398,18 +474,22 @@ type alias TestFlags config =
     , context : JE.Value
     , width : Int
     , height : Int
+    , iphoneX : Int
+    , notch : Int
     }
 
 
 testFlags : JD.Decoder config -> JD.Decoder (TestFlags config)
 testFlags config =
-    JD.map6 TestFlags
+    JD.map8 TestFlags
         (JD.field "id" JD.string)
         (JD.field "config" config)
         (JD.field "title" JD.string)
         (JD.field "context" JD.value)
         (JD.field "width" JD.int)
         (JD.field "height" JD.int)
+        (JD.field "iphoneX" JD.int)
+        (JD.field "notch" JD.int)
 
 
 type alias TModel model =
@@ -419,6 +499,8 @@ type alias TModel model =
     , device : E.Device
     , height : Int
     , width : Int
+    , iphoneX : Bool
+    , notch : Notch
     }
 
 
@@ -428,8 +510,8 @@ testInit :
     -> Url
     -> BN.Key
     -> ( TModel model, Cmd (Msg msg) )
-testInit t flags _ _ =
-    case JD.decodeValue (testFlags t.config) flags of
+testInit t vflags _ _ =
+    case JD.decodeValue (testFlags t.config) vflags of
         Ok tflags ->
             let
                 device =
@@ -441,6 +523,8 @@ testInit t flags _ _ =
                 , device = device
                 , height = tflags.height
                 , width = tflags.width
+                , iphoneX = tflags.iphoneX == 1
+                , notch = intToNotch tflags.notch
                 }
                 tflags
                 |> Tuple.mapFirst
@@ -451,6 +535,8 @@ testInit t flags _ _ =
                         , device = device
                         , height = tflags.height
                         , width = tflags.width
+                        , iphoneX = tflags.iphoneX == 1
+                        , notch = intToNotch tflags.notch
                         }
                     )
 
@@ -461,6 +547,8 @@ testInit t flags _ _ =
               , device = { class = E.Desktop, orientation = E.Landscape }
               , height = 1024
               , width = 1024
+              , iphoneX = False
+              , notch = NoNotch
               }
             , result Cmd.none [ BadConfig <| JD.errorToString e, TestDone ]
             )
@@ -480,6 +568,8 @@ testUpdate t msg m =
                 , device = m.device
                 , height = m.height
                 , width = m.width
+                , iphoneX = m.iphoneX
+                , notch = m.notch
                 }
                 imsg
                 model
@@ -505,6 +595,8 @@ testDocument t m =
                 , device = m.device
                 , height = m.height
                 , width = m.width
+                , iphoneX = m.iphoneX
+                , notch = m.notch
                 }
                 model
 
@@ -526,6 +618,8 @@ testSubscriptions t m =
                     , device = m.device
                     , height = m.height
                     , width = m.width
+                    , iphoneX = m.iphoneX
+                    , notch = m.notch
                     }
                     model
                 , BE.onResize OnResize

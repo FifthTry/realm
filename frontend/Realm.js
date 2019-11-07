@@ -1,6 +1,14 @@
 (function (window) {
     "use strict";
 
+    var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    var ratio = window.devicePixelRatio || 1;
+    var screen = {
+        width : window.screen.width * ratio,
+        height : window.screen.height * ratio
+    };
+    var iphoneX = (iOS && screen.width === 1242 && screen.height === 2688)? 1 : 0;
+
     var ajax = function (url, data, callback) {
         var x = new (XMLHttpRequest || ActiveXObject)("MSXML2.XMLHTTP.3.0");
         x.open(data ? "POST" : "GET", url, true);
@@ -54,12 +62,52 @@
     var testContext = null;
     var unloadTest = 0;
 
+    function detectNotch() {
+        var _notch = 0;
+
+        if( 'orientation' in window ) {
+          // Mobile
+          if (window.orientation == 90) {
+            _notch = 1;
+          } else if (window.orientation == -90) {
+            _notch = -1;
+          }
+        } else if ( 'orientation' in window.screen ) {
+          // Webkit
+          if( screen.orientation.type === 'landscape-primary') {
+            _notch = 1;
+          } else if( screen.orientation.type === 'landscape-secondary') {
+            _notch = -1;
+          }
+        } else if( 'mozOrientation' in window.screen ) {
+          // Firefox
+          if( screen.mozOrientation === 'landscape-primary') {
+            _notch = 1;
+          } else if( screen.mozOrientation === 'landscape-secondary') {
+            _notch = -1;
+          }
+        }
+        return _notch;
+    }
+
+    function viewPortChanged() {
+        app.ports.viewPortChanged.send({
+            "width": window.innerWidth,
+            "height": window.innerHeight,
+            "notch": detectNotch(),
+        })
+    }
+
     function loadPage(text, isSubmit) {
         console.log("loadPage", isSubmit);
         if (app && app.ports && app.ports.shutdown) {
             console.log("shutting down");
             app.ports.shutdown.send(null);
             unloadTest = 0;
+
+            if (window.realm_app_shutdown) {
+                window.realm_app_shutdown();
+            }
         }
 
         function loadNow() {
@@ -125,6 +173,8 @@
             var flags = data;
             flags.width = window.innerWidth;
             flags.height = window.innerHeight;
+            flags.iphoneX = iphoneX;
+            flags.notch = detectNotch();
 
             if (!!testContext) {
                 if (testContext.elm !== id) {
@@ -145,7 +195,9 @@
                     "config": data.config,
                     "context": testContext.context,
                     "width": window.innerWidth,
-                    "height": window.innerHeight
+                    "height": window.innerHeight,
+                    "iphoneX": iphoneX,
+                    "notch": detectNotch()
                 };
             }
 
@@ -163,6 +215,7 @@
                 }
                 return;
             }
+
             app = app.init({flags: flags});
             if (app.ports && app.ports.navigate) {
                 app.ports.navigate.subscribe(navigate);
@@ -179,18 +232,22 @@
             if (app.ports && app.ports.changePage) {
                 app.ports.changePage.subscribe(changePage);
             }
+            if (app.ports.viewPortChanged) {
+                window.addEventListener("resize", viewPortChanged);
+                window.addEventListener("orientationchange", viewPortChanged);
+            }
 
-            if (app.ports) {
+            if (app.ports && window.realm_extra_ports) {
                 for (var portName in app.ports) {
-                    if(window.realm_extra_ports && window.realm_extra_ports.hasOwnProperty
-                    (portName)) {
+                    if(window.realm_extra_ports.hasOwnProperty(portName)) {
                         app.ports[portName].subscribe(window.realm_extra_ports[portName]);
                     }
                 }
             }
 
-            if(!window.realm_app){
-                window.realm_app = app;
+            window.realm_app = app;
+            if (window.realm_app_init) {
+                window.realm_app_init(id, flags, app);
             }
 
             console.log("initialized app", id, flags, app);
