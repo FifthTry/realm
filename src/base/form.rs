@@ -30,6 +30,10 @@ impl FormErrors {
             .insert(key.to_string(), (value.to_string(), Some(msg.to_string())));
         self
     }
+    
+    pub fn get_errors(self) -> HashMap<String, (String, Option<String>)> {
+        self.0
+    }
 }
 
 impl From<FormErrors> for failure::Error {
