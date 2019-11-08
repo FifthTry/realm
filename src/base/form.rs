@@ -31,7 +31,7 @@ impl FormErrors {
         self
     }
     
-    pub fn get_error(self) -> HashMap<String, (String, Option<String>)> {
+    pub fn get_errors(self) -> HashMap<String, (String, Option<String>)> {
         self.0
     }
 }
