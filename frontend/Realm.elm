@@ -280,6 +280,9 @@ appUpdate a msg am =
         ( ReloadPage, _ ) ->
             ( am, BN.reload )
 
+        ( OnResize w h, _ ) ->
+            ( { am | width = w, height = h }, Cmd.none )
+
         ( OnSubmitResponse _ (RD.Success (RR.Navigate n)), False ) ->
             ( am, changePage n )
 
