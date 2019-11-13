@@ -29,7 +29,6 @@ type alias Model model =
     , device : E.Device
     , height : Int
     , width : Int
-    , iphoneX : Bool
     , notch : Notch
     }
 
@@ -88,7 +87,6 @@ type alias In =
     , device : E.Device
     , height : Int
     , width : Int
-    , iphoneX : Bool
     , notch : Notch
     }
 
@@ -146,7 +144,7 @@ appInit a vflags url key =
         hash =
             fromHash url
 
-        ( ( title, im ), ( cmd, iphoneX, notch ), ( device, width, height ) ) =
+        ( ( title, im ), ( cmd, notch ), ( device, width, height ) ) =
             case JD.decodeValue (flags a.config) vflags of
                 Ok f ->
                     let
@@ -159,21 +157,20 @@ appInit a vflags url key =
                         , device = d
                         , height = f.height
                         , width = f.width
-                        , iphoneX = f.iphoneX == 1
                         , notch = intToNotch f.notch
                         }
                         f.config
                         |> Tuple.mapFirst Ok
                         |> (\( f1, s ) ->
                                 ( ( f.title, f1 )
-                                , ( s, f.iphoneX, f.notch )
+                                , ( s, f.notch )
                                 , ( d, f.width, f.height )
                                 )
                            )
 
                 Err e ->
                     ( ( "", Err (PError { value = vflags, jd = e }) )
-                    , ( Cmd.none, 0, 0 )
+                    , ( Cmd.none, 0 )
                     , ( { class = E.Desktop, orientation = E.Landscape }, 0, 0 )
                     )
     in
@@ -187,7 +184,6 @@ appInit a vflags url key =
       , device = device
       , height = height
       , width = width
-      , iphoneX = iphoneX == 1
       , notch = intToNotch notch
       }
     , cmd
@@ -213,7 +209,6 @@ appUpdate a msg am =
                         , device = am.device
                         , height = am.height
                         , width = am.width
-                        , iphoneX = am.iphoneX
                         , notch = am.notch
                         }
                         imsg
@@ -298,7 +293,6 @@ appUpdate a msg am =
                         , device = am.device
                         , height = am.height
                         , width = am.width
-                        , iphoneX = am.iphoneX
                         , notch = am.notch
                         }
                         (ctr e)
@@ -330,7 +324,6 @@ appSubscriptions a am =
                     , device = am.device
                     , height = am.height
                     , width = am.width
-                    , iphoneX = am.iphoneX
                     , notch = am.notch
                     }
                     model
@@ -359,7 +352,6 @@ appDocument a am =
                 , device = am.device
                 , height = am.height
                 , width = am.width
-                , iphoneX = am.iphoneX
                 , notch = am.notch
                 }
                 model
@@ -526,7 +518,6 @@ testInit t vflags _ _ =
                 , device = device
                 , height = tflags.height
                 , width = tflags.width
-                , iphoneX = tflags.iphoneX == 1
                 , notch = intToNotch tflags.notch
                 }
                 tflags
@@ -571,7 +562,6 @@ testUpdate t msg m =
                 , device = m.device
                 , height = m.height
                 , width = m.width
-                , iphoneX = m.iphoneX
                 , notch = m.notch
                 }
                 imsg
@@ -598,7 +588,6 @@ testDocument t m =
                 , device = m.device
                 , height = m.height
                 , width = m.width
-                , iphoneX = m.iphoneX
                 , notch = m.notch
                 }
                 model
@@ -621,7 +610,6 @@ testSubscriptions t m =
                     , device = m.device
                     , height = m.height
                     , width = m.width
-                    , iphoneX = m.iphoneX
                     , notch = m.notch
                     }
                     model
