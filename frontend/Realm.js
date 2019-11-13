@@ -74,16 +74,16 @@
           }
         } else if ( 'orientation' in window.screen ) {
           // Webkit
-          if( screen.orientation.type === 'landscape-primary') {
+          if( window.screen.orientation.type === 'landscape-primary') {
             _notch = 1;
-          } else if( screen.orientation.type === 'landscape-secondary') {
+          } else if( window.screen.orientation.type === 'landscape-secondary') {
             _notch = -1;
           }
         } else if( 'mozOrientation' in window.screen ) {
           // Firefox
-          if( screen.mozOrientation === 'landscape-primary') {
+          if( window.screen.mozOrientation === 'landscape-primary') {
             _notch = 1;
-          } else if( screen.mozOrientation === 'landscape-secondary') {
+          } else if( window.screen.mozOrientation === 'landscape-secondary') {
             _notch = -1;
           }
         }
