@@ -1,4 +1,44 @@
-module Realm.Utils exposing (Field, htmlWith, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, rendered, renderedE, result, val, withError, yesno, zip)
+module Realm.Utils exposing
+    ( Field
+    , Form
+    , Rendered(..)
+    , button
+    , contains
+    , edges
+    , emptyField
+    , err
+    , escEnter
+    , fi
+    , fieldError
+    , fieldNoError
+    , fieldValid
+    , fieldValue
+    , fieldsNoError
+    , form
+    , formE
+    , html
+    , htmlLine
+    , htmlWith
+    , iff
+    , link
+    , mapAIth
+    , mapIth
+    , match
+    , matchCtx
+    , matchCtx2
+    , maybe
+    , maybeE
+    , maybeS
+    , onEnter
+    , plainLink
+    , rendered
+    , renderedE
+    , result
+    , val
+    , withError
+    , yesno
+    , zip
+    )
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -172,6 +212,16 @@ link :
     -> E.Element msg
 link url attrs msg label =
     E.link (EE.onClick (msg url) :: EE.onDoubleClick (msg url) :: attrs)
+        { label = label, url = url }
+
+
+plainLink :
+    String
+    -> List (E.Attribute msg)
+    -> E.Element msg
+    -> E.Element msg
+plainLink url attrs label =
+    E.link attrs
         { label = label, url = url }
 
 
