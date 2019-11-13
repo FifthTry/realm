@@ -1,51 +1,10 @@
-module Realm.Utils exposing
-    ( Field
-    , Form
-    , Rendered(..)
-    , button
-    , contains
-    , edges
-    , emptyField
-    , err
-    , escEnter
-    , fi
-    , fieldError
-    , fieldNoError
-    , fieldValid
-    , fieldValue
-    , fieldsNoError
-    , form
-    , formE
-    , html
-    , htmlLine
-    , htmlWith
-    , iff
-    , link
-    , mapAIth
-    , mapIth
-    , match
-    , matchCtx
-    , matchCtx2
-    , maybe
-    , maybeE
-    , maybeS
-    , onEnter
-    , plainLink
-    , rendered
-    , renderedE
-    , result
-    , val
-    , withError
-    , yesno
-    , zip
-    )
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, plainLink, rendered, renderedE, result, val, withError, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Element as E
 import Element.Events as EE
 import Element.Input as EI
-import Html as H
 import Html.Events
 import Html.Parser
 import Html.Parser.Util
@@ -159,7 +118,7 @@ renderedE (Rendered md) =
     JE.string md
 
 
-html : List (E.Attribute (R.Msg msg)) -> Rendered -> E.Element (R.Msg msg)
+html : List (E.Attribute msg) -> Rendered -> E.Element msg
 html attrs (Rendered md) =
     case Html.Parser.run md of
         Ok r ->
@@ -172,10 +131,10 @@ html attrs (Rendered md) =
 
 
 htmlWith :
-    List (E.Attribute (R.Msg msg))
-    -> (E.Element (R.Msg msg) -> E.Element (R.Msg msg))
+    List (E.Attribute msg)
+    -> (E.Element msg -> E.Element msg)
     -> Rendered
-    -> E.Element (R.Msg msg)
+    -> E.Element msg
 htmlWith attrs wrapper (Rendered md) =
     case Html.Parser.run md of
         Ok r ->
@@ -187,7 +146,7 @@ htmlWith attrs wrapper (Rendered md) =
             E.text (Debug.toString e)
 
 
-htmlLine : List (E.Attribute (R.Msg msg)) -> Rendered -> E.Element (R.Msg msg)
+htmlLine : List (E.Attribute msg) -> Rendered -> E.Element msg
 htmlLine attrs (Rendered md) =
     case Html.Parser.run md of
         Ok r ->

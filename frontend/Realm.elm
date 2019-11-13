@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, isPass, message, pushHash, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
+module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, isPass, message, pushHash, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
 
 import Browser as B
 import Browser.Events as BE

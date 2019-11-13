@@ -178,7 +178,8 @@ mod tests {
                     "config": json!({}),
                     "title": "test-title",
                     "url": Null,
-                    "replace": Null
+                    "replace": Null,
+                    "redirect": Null
                 }
             })
         );
