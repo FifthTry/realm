@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, onEnter, plainLink, rendered, renderedE, result, val, withError, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, newTabLink, onEnter, plainLink, rendered, renderedE, result, val, withError, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -180,6 +180,15 @@ plainLink :
     -> E.Element msg
     -> E.Element msg
 plainLink url attrs label =
+    E.link attrs
+        { label = label, url = url }
+
+newTabLink :
+    String
+    -> List (E.Attribute msg)
+    -> E.Element msg
+    -> E.Element msg
+newTabLink url attrs label =
     E.newTabLink attrs
         { label = label, url = url }
 
