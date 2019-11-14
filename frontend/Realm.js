@@ -151,6 +151,9 @@
             console.log("data", data);
             //Redirect if redirect is present
             if (data.redirect) {
+                if (!data.redirect.startsWith("/")) {
+                    data.redirect = "/" + data.redirect;
+                }
                 window.location.replace(data.redirect);
             }
 
