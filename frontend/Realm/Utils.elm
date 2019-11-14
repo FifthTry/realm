@@ -180,7 +180,7 @@ plainLink :
     -> E.Element msg
     -> E.Element msg
 plainLink url attrs label =
-    E.link attrs
+    E.newTabLink attrs
         { label = label, url = url }
 
 
