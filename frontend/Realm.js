@@ -100,32 +100,6 @@
 
     function loadPage(text, isSubmit) {
         console.log("loadPage", isSubmit);
-        if (app && app.ports && app.ports.shutdown) {
-            console.log("shutting down");
-            app.ports.shutdown.send(null);
-            unloadTest = 0;
-
-            if (window.realm_app_shutdown) {
-                window.realm_app_shutdown();
-            }
-        }
-
-        function loadNow() {
-            // wait for previous app to cleanup
-            console.log("loadNow");
-            if (
-                app
-                && !document.getElementById("appShutdownEmptyElement")
-                && unloadTest < 10
-            ) {
-                window.requestAnimationFrame(loadNow);
-                unloadTest += 1;
-                if (unloadTest === 9) {
-                    console.log("too many attempts to get window to clear");
-                }
-                return;
-            }
-
             var data = null;
             try {
                 data = JSON.parse(text);
@@ -153,6 +127,33 @@
             if (data.redirect) {
                 window.location.replace(data.redirect);
             }
+
+        if (app && app.ports && app.ports.shutdown) {
+            console.log("shutting down");
+            app.ports.shutdown.send(null);
+            unloadTest = 0;
+
+            if (window.realm_app_shutdown) {
+                window.realm_app_shutdown();
+            }
+        }
+
+        function loadNow() {
+            // wait for previous app to cleanup
+            console.log("loadNow");
+            if (
+                app
+                && !document.getElementById("appShutdownEmptyElement")
+                && unloadTest < 10
+            ) {
+                window.requestAnimationFrame(loadNow);
+                unloadTest += 1;
+                if (unloadTest === 9) {
+                    console.log("too many attempts to get window to clear");
+                }
+                return;
+            }
+
 
             if (data.url !== document.location.pathname + document.location.search) {
                 history.replaceState(null, null, data.url);
