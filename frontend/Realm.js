@@ -126,6 +126,7 @@
             //Redirect if redirect is present
             if (data.redirect) {
                 window.location.replace(data.redirect);
+                return;
             }
 
         if (app && app.ports && app.ports.shutdown) {
