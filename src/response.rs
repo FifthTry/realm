@@ -51,6 +51,18 @@ impl Response {
         }
     }
 
+    pub fn ok<T>(in_: &crate::base::In, data: &T) -> Result<crate::Response, failure::Error>
+    where
+        T: serde::Serialize,
+    {
+        Ok(Response::Http(in_.ctx.response(
+            serde_json::to_vec_pretty(&json!({
+                "success": true,
+                "result": data,
+            }))?,
+        )?))
+    }
+
     pub fn redirect<T>(in_: &crate::base::In, next: T) -> Result<crate::Response, failure::Error>
     where
         T: Into<String>,

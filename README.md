@@ -62,6 +62,7 @@ window.addEventListener("foo", function(evt) { window.realm_app.ports.foo.send(e
 - Removed `APP_NAME` feature, use custom `index.html` to overwrite script name instead.
 - Added `window.realm_app_init()` and `window.realm_app_shutdown()` hooks, if you want
   to do something after realm app is initialized and is shutting down.
+- Added `In.darkMode`.
 
 ## 0.1.17 - 16 Oct 2019
 

@@ -1,4 +1,4 @@
-port module Realm.Storybook exposing (Story, app)
+module Realm.Storybook exposing (Story, app)
 
 import Array exposing (Array)
 import Browser as B

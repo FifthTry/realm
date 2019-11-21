@@ -58,6 +58,11 @@
         loadPage(JSON.stringify(data), true);
     }
 
+    var darkMode = !!(
+        window.matchMedia
+        && window.matchMedia('(prefers-color-scheme: dark)').matches
+    );
+
     var app = null;
     var testContext = null;
     var unloadTest = 0;
@@ -175,6 +180,7 @@
             flags.height = window.innerHeight;
             flags.iphoneX = iphoneX;
             flags.notch = detectNotch();
+            flags.darkMode = darkMode;
 
             if (!!testContext) {
                 if (testContext.elm !== id) {
@@ -197,7 +203,8 @@
                     "width": window.innerWidth,
                     "height": window.innerHeight,
                     "iphoneX": iphoneX,
-                    "notch": detectNotch()
+                    "notch": detectNotch(),
+                    "darkMode": darkMode
                 };
             }
 

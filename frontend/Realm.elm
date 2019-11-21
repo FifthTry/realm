@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), app, controller, document, getHash, init0, isPass, message, pushHash, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
+module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), app, cmdMap, controller, document, getHash, init0, isPass, message, pushHash, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
 
 import Browser as B
 import Browser.Events as BE
@@ -29,6 +29,7 @@ type alias Model model =
     , device : E.Device
     , height : Int
     , width : Int
+    , darkMode : Bool
     , notch : Notch
     }
 
@@ -64,6 +65,43 @@ type Msg msg
     | NoOp
 
 
+cmdMap : (msgA -> msgB) -> Cmd (Msg msgA) -> Cmd (Msg msgB)
+cmdMap f =
+    Cmd.map
+        (\m ->
+            case m of
+                Msg ma ->
+                    Msg (f ma)
+
+                UrlRequest r ->
+                    UrlRequest r
+
+                UrlChange u ->
+                    UrlChange u
+
+                Shutdown () ->
+                    Shutdown ()
+
+                UpdateHashKV k v ->
+                    UpdateHashKV k v
+
+                OnSubmitResponse d r ->
+                    OnSubmitResponse (d >> f) r
+
+                OnResize i j ->
+                    OnResize i j
+
+                ReloadPage ->
+                    ReloadPage
+
+                ViewPortChanged v ->
+                    ViewPortChanged v
+
+                NoOp ->
+                    NoOp
+        )
+
+
 submit : (Dict String String -> msg) -> ( String, JE.Value ) -> Cmd (Msg msg)
 submit ctr ( url, data ) =
     let
@@ -77,7 +115,9 @@ submit ctr ( url, data ) =
     Http.post
         { url = url2
         , body = Http.jsonBody data
-        , expect = Http.expectJson (RR.try >> OnSubmitResponse ctr) (RR.bresult RR.layoutResponse)
+        , expect =
+            Http.expectJson (RR.try >> OnSubmitResponse ctr)
+                (RR.bresult RR.layoutResponse)
         }
 
 
@@ -88,6 +128,7 @@ type alias In =
     , height : Int
     , width : Int
     , notch : Notch
+    , darkMode : Bool
     }
 
 
@@ -107,18 +148,20 @@ type alias Flags config =
     , height : Int
     , iphoneX : Int
     , notch : Int
+    , darkMode : Bool
     }
 
 
 flags : JD.Decoder config -> JD.Decoder (Flags config)
 flags config =
-    JD.map6 Flags
+    JD.map7 Flags
         (JD.field "title" JD.string)
         (JD.field "config" config)
         (JD.field "width" JD.int)
         (JD.field "height" JD.int)
         (JD.field "iphoneX" JD.int)
         (JD.field "notch" JD.int)
+        (JD.field "darkMode" JD.bool)
 
 
 app : App config model msg -> Program JE.Value (Model model) (Msg msg)
@@ -144,7 +187,7 @@ appInit a vflags url key =
         hash =
             fromHash url
 
-        ( ( title, im ), ( cmd, notch ), ( device, width, height ) ) =
+        ( ( title, im ), ( cmd, notch, darkMode ), ( device, width, height ) ) =
             case JD.decodeValue (flags a.config) vflags of
                 Ok f ->
                     let
@@ -158,19 +201,20 @@ appInit a vflags url key =
                         , height = f.height
                         , width = f.width
                         , notch = intToNotch f.notch
+                        , darkMode = f.darkMode
                         }
                         f.config
                         |> Tuple.mapFirst Ok
                         |> (\( f1, s ) ->
                                 ( ( f.title, f1 )
-                                , ( s, f.notch )
+                                , ( s, f.notch, f.darkMode )
                                 , ( d, f.width, f.height )
                                 )
                            )
 
                 Err e ->
                     ( ( "", Err (PError { value = vflags, jd = e }) )
-                    , ( Cmd.none, 0 )
+                    , ( Cmd.none, 0, False )
                     , ( { class = E.Desktop, orientation = E.Landscape }, 0, 0 )
                     )
     in
@@ -185,6 +229,7 @@ appInit a vflags url key =
       , height = height
       , width = width
       , notch = intToNotch notch
+      , darkMode = darkMode
       }
     , cmd
     )
@@ -210,6 +255,7 @@ appUpdate a msg am =
                         , height = am.height
                         , width = am.width
                         , notch = am.notch
+                        , darkMode = am.darkMode
                         }
                         imsg
                         model
@@ -294,6 +340,7 @@ appUpdate a msg am =
                         , height = am.height
                         , width = am.width
                         , notch = am.notch
+                        , darkMode = am.darkMode
                         }
                         (ctr e)
                         model
@@ -325,6 +372,7 @@ appSubscriptions a am =
                     , height = am.height
                     , width = am.width
                     , notch = am.notch
+                    , darkMode = am.darkMode
                     }
                     model
                 , BE.onResize OnResize
@@ -340,10 +388,14 @@ appDocument a am =
         ( Err e, False ) ->
             case e of
                 PError p ->
-                    { title = "failed to parse", body = [ H.text ("value: " ++ JE.encode 4 p.value) ] }
+                    { title = "failed to parse"
+                    , body = [ H.text ("value: " ++ JE.encode 4 p.value) ]
+                    }
 
                 _ ->
-                    { title = "failed to parse", body = [ H.text ("Network Error: " ++ Debug.toString e) ] }
+                    { title = "failed to parse"
+                    , body = [ H.text ("Network Error: " ++ Debug.toString e) ]
+                    }
 
         ( Ok model, False ) ->
             a.document
@@ -353,6 +405,7 @@ appDocument a am =
                 , height = am.height
                 , width = am.width
                 , notch = am.notch
+                , darkMode = am.darkMode
                 }
                 model
 
@@ -496,6 +549,8 @@ type alias TModel model =
     , width : Int
     , iphoneX : Bool
     , notch : Notch
+
+    -- TODO: add darkMode
     }
 
 
@@ -519,6 +574,7 @@ testInit t vflags _ _ =
                 , height = tflags.height
                 , width = tflags.width
                 , notch = intToNotch tflags.notch
+                , darkMode = False
                 }
                 tflags
                 |> Tuple.mapFirst
@@ -563,6 +619,7 @@ testUpdate t msg m =
                 , height = m.height
                 , width = m.width
                 , notch = m.notch
+                , darkMode = False
                 }
                 imsg
                 model
@@ -589,6 +646,7 @@ testDocument t m =
                 , height = m.height
                 , width = m.width
                 , notch = m.notch
+                , darkMode = False
                 }
                 model
 
@@ -611,6 +669,7 @@ testSubscriptions t m =
                     , height = m.height
                     , width = m.width
                     , notch = m.notch
+                    , darkMode = False
                     }
                     model
                 , BE.onResize OnResize
