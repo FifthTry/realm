@@ -195,6 +195,7 @@ mod tests {
             url: None,
             replace: None,
             redirect: None,
+            rendered: "empty.html".to_string()
         };
         let r = super::Response::Page(page_spec);
         assert_eq!(
