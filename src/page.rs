@@ -1,3 +1,4 @@
+use askama;
 use std::{env, fs};
 
 #[derive(Serialize)]
@@ -8,7 +9,8 @@ pub struct PageSpec {
     pub url: Option<String>,
     pub replace: Option<String>,
     pub redirect: Option<String>,
-    // pub rendered: String,
+    #[serde(skip)]
+    pub rendered: String,
 }
 
 fn escape(s: &str) -> String {
@@ -18,16 +20,22 @@ fn escape(s: &str) -> String {
 }
 
 impl PageSpec {
-    pub fn render(&self, _is_bot: bool) -> Result<Vec<u8>, failure::Error> {
+    pub fn render(&self, is_bot: bool) -> Result<Vec<u8>, failure::Error> {
         let data = escape(serde_json::to_string_pretty(&self)?.as_str());
         let mut html = HTML_PAGE.clone();
 
-        html = html
-            .replace("__realm_title__", &self.title)
-            .replace("__realm_data__", &data);
-        // if is_bot {
-            // .replace("__realm__body__", self.rendered)
-        // }
+        html = html.replace("__realm_title__", &self.title);
+
+        if is_bot {
+            html = html
+                .replace("__realm_body__", &self.rendered)
+                .replace("__realm_data__", "")
+                .replace("<script src='/static/elm.js'></script>", "");
+        } else {
+            html = html
+                .replace("__realm_data__", &data)
+                .replace("__realm_body__", "");
+        }
 
         Ok(html.into())
     }
@@ -47,7 +55,7 @@ impl PageSpec {
     }
 }
 
-pub trait Page: serde::ser::Serialize /* + askama::Template */ {
+pub trait Page: serde::ser::Serialize + askama::Template {
     const ID: &'static str;
     fn with_title(&self, title: &str) -> Result<crate::Response, failure::Error> {
         Ok(crate::Response::Page(PageSpec {
@@ -57,7 +65,7 @@ pub trait Page: serde::ser::Serialize /* + askama::Template */ {
             url: None,
             replace: None,
             redirect: None,
-            // rendered: self.render()?
+            rendered: self.render()?,
         }))
     }
 }
@@ -87,6 +95,7 @@ pub fn default_page() -> String {
                 <style>p {margin: 0}</style>
             </head>
             <body>
+                __realm_body__
                 <div id="main"></div>
                 <script src='/static/elm.js'></script>
             </body>

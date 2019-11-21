@@ -10,6 +10,10 @@ use syn::{
     DeriveInput, ItemFn, ItemStruct, LitStr, Token,
 };
 
+mod utils;
+
+extern crate inflector;
+
 #[proc_macro_attribute]
 pub fn db_test(_metadata: TokenStream, input: TokenStream) -> TokenStream {
     let fn_item: ItemFn = parse_macro_input!(input as ItemFn);
@@ -49,10 +53,16 @@ impl Parse for PathArgs {
     }
 }
 
+
+
+
+
 #[proc_macro_attribute]
 pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     let id = parse_macro_input!(meta as PathArgs).id;
-    // html_path = convert_id_to_html_path(&id);
+
+
+    let html_path = utils::convert_id_to_html_path(&id);
     // if id = "Pages.Foo.BarBaz", html_path should be "foo/bar-baz.html"
     // lower case, convert dot to slash, convert camel case to kabab case
     let input_clone = input.clone();
@@ -63,8 +73,8 @@ pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     // if html_path exists, then include Template stuff, else let them be
     let q = quote! {
          #[derive(Serialize)]
-         // #[derive(Template)]
-         // #[template(path = html_path)]
+         #[derive(Template)]
+         #[template(path = "empty.html")]
          #derive_input
 
          impl realm::Page for #ident {
@@ -73,3 +83,4 @@ pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     };
     q.into()
 }
+

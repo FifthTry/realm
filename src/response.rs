@@ -24,6 +24,18 @@ impl Response {
     }
 
     pub fn render(self, ctx: &crate::Context, mode: Mode, url: String) -> crate::Result {
+
+        let user_agent:Option<String> = ctx
+            .request
+            .headers()
+            .get(http::header::USER_AGENT)
+            .and_then(|v| v.to_str().ok())
+            .map(|v| v.to_string());
+
+        println!("inside render: user_agent -  {:?}", user_agent);
+
+
+
         if let Response::Http(r) = self {
             return Ok(r);
         };
@@ -33,9 +45,10 @@ impl Response {
         match &r {
             Response::Page(spec) => {
                 ctx.header(http::header::CONTENT_TYPE, mode.content_type());
+
                 Ok(ctx.response(match mode {
                     Mode::API => serde_json::to_string_pretty(&spec.config)?.into(),
-                    Mode::HTML => spec.render(ctx.is_crawler())?,
+                    Mode::HTML => spec.render(ctx.is_crawler(user_agent))?,
                     Mode::Layout => serde_json::to_string(&spec)?.into(),
                     Mode::Submit => serde_json::to_string(&json!({
                         "success": true,
@@ -76,6 +89,7 @@ impl Response {
                 url: None,
                 replace: None,
                 redirect: Some(next.into()),
+                rendered: "".to_string(),
             })),
             _ => {
                 in_.ctx.header(header::LOCATION, next.into());
@@ -102,6 +116,7 @@ impl Response {
                 url: None,
                 replace: None,
                 redirect: Some(next.into()),
+                rendered: "".to_string(),
             })),
             _ => {
                 in_.ctx.header(header::LOCATION, next.into());
@@ -180,6 +195,7 @@ mod tests {
             url: None,
             replace: None,
             redirect: None,
+            rendered: "empty.html".to_string()
         };
         let r = super::Response::Page(page_spec);
         assert_eq!(
