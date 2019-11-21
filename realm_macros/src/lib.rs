@@ -71,9 +71,9 @@ pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     let struct_item: ItemStruct = parse_macro_input!(input as ItemStruct);
     let ident = struct_item.ident;
 
+    println!("html path: {:?}", html_path);
     if !Path::new(&html_path).is_file(){
         println!("inside realm_page(): no html file found for this realm page");
-
         html_path = "empty.html".to_string();
     }
     // if html_path exists, then include Template stuff, else let them be
@@ -81,7 +81,7 @@ pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     let q = quote! {
          #[derive(Serialize)]
          #[derive(Template)]
-         #[template(path = html_path)]
+         #[template(path = html_path.as_str())]
          #derive_input
 
          impl realm::Page for #ident {
