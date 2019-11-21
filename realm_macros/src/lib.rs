@@ -10,6 +10,7 @@ use syn::{
     DeriveInput, ItemFn, ItemStruct, LitStr, Token,
 };
 
+use std::path::Path;
 mod utils;
 
 extern crate inflector;
@@ -62,7 +63,7 @@ pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     let id = parse_macro_input!(meta as PathArgs).id;
 
 
-    let html_path = utils::convert_id_to_html_path(&id);
+    let mut html_path = utils::convert_id_to_html_path(&id);
     // if id = "Pages.Foo.BarBaz", html_path should be "foo/bar-baz.html"
     // lower case, convert dot to slash, convert camel case to kabab case
     let input_clone = input.clone();
@@ -70,11 +71,17 @@ pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     let struct_item: ItemStruct = parse_macro_input!(input as ItemStruct);
     let ident = struct_item.ident;
 
+    if !Path::new(&html_path).is_file(){
+        println!("inside realm_page(): no html file found for this realm page");
+
+        html_path = "empty.html".to_string();
+    }
     // if html_path exists, then include Template stuff, else let them be
+
     let q = quote! {
          #[derive(Serialize)]
          #[derive(Template)]
-         #[template(path = "empty.html")]
+         #[template(path = html_path)]
          #derive_input
 
          impl realm::Page for #ident {

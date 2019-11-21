@@ -63,7 +63,7 @@ window.addEventListener("foo", function(evt) { window.realm_app.ports.foo.send(e
 - Added `window.realm_app_init()` and `window.realm_app_shutdown()` hooks, if you want
   to do something after realm app is initialized and is shutting down.
 - Added `In.darkMode`.
-- Added Server-Side Rendering as a feature
+- Added Server-Side Rendering as a feature.
 
 ## 0.1.17 - 16 Oct 2019
 
