@@ -19,13 +19,13 @@ fn escape(s: &str) -> String {
 }
 
 impl PageSpec {
-    pub fn render(&self, is_bot: bool) -> Result<Vec<u8>, failure::Error> {
+    pub fn render(&self, is_crawler: bool) -> Result<Vec<u8>, failure::Error> {
         let data = escape(serde_json::to_string_pretty(&self)?.as_str());
         let mut html = HTML_PAGE.clone();
 
         html = html.replace("__realm_title__", &self.title);
 
-        if is_bot {
+        if is_crawler {
             html = html
                 .replace("__realm_body__", &self.rendered)
                 .replace("__realm_data__", "")

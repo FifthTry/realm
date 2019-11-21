@@ -21,9 +21,18 @@ impl Context {
             .headers()
             .get(http::header::USER_AGENT)
             .and_then(|v| v.to_str().ok())
-            .map(String::from)
         {
-            woothee::is_crawler(&ua)
+            {
+                let ua = ua.to_lowercase();
+                if ua.contains("google")
+                    || ua.contains("bot")
+                    || ua.contains("crawl")
+                    || ua.contains("spider")
+                {
+                    return true;
+                }
+            }
+            woothee::is_crawler(ua)
         } else {
             false
         }
