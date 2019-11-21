@@ -1,4 +1,3 @@
-use askama;
 use std::{env, fs};
 
 #[derive(Serialize)]
@@ -82,7 +81,6 @@ lazy_static! {
 }
 
 pub fn default_page() -> String {
-    // add __realm_body__ right after <body> tag
     r#"<!DOCTYPE html>
         <html>
             <head>

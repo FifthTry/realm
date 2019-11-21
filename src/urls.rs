@@ -19,7 +19,7 @@ pub fn handle(
         ("/storybook/", &http::Method::GET) => crate::storybook::get(in_).map_err(Into::into),
         ("/storybook/poll/", &http::Method::GET) => {
             let hash = input.required("hash")?;
-            crate::watcher::poll(in_.ctx, hash)
+            crate::watcher::poll(in_.ctx, hash).map_err(Into::into)
         }
         ("/test/", &http::Method::GET) => crate::test::get(in_).map_err(Into::into),
         ("/test/reset-db/", &http::Method::GET) => crate::test::reset_db(in_).map_err(Into::into),

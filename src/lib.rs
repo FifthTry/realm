@@ -11,11 +11,6 @@ extern crate diesel;
 #[macro_use]
 extern crate failure;
 
-#[macro_use]
-extern crate askama;
-
-extern crate woothee;
-
 pub mod base;
 mod context;
 pub mod iframe;
@@ -39,6 +34,10 @@ pub use crate::urls::{handle, is_realm_url};
 pub use crate::response::Response;
 pub type Result = std::result::Result<http::Response<Vec<u8>>, failure::Error>;
 pub type Request = http::request::Request<Vec<u8>>;
+
+pub trait Subject: askama::Template {}
+pub trait Text: askama::Template {}
+pub trait HTML: askama::Template {}
 
 #[derive(Fail, Debug)]
 pub enum Error {

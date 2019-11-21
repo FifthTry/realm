@@ -1,27 +1,26 @@
 use inflector;
-pub fn convert_id_to_html_path(id_: &str) -> String{
-    // first seperate the string on .
+
+pub fn convert_id_to_html_path(id_: &str) -> String {
+    // first seperate the string on.
     let id = String::from(id_);
     let mut html_path = String::new();
     let v: Vec<&str> = id.split('.').collect();
-    for sli in v[1..].iter(){
+    for sli in v[1..].iter() {
         let k_sli = inflector::cases::kebabcase::to_kebab_case(sli).to_lowercase();
         html_path.push_str(&k_sli);
     }
     html_path
-
 }
-
 
 #[cfg(test)]
 mod tests {
-    pub fn convert_id_to_html_path(id_: &str) -> String{
+    pub fn convert_id_to_html_path(id_: &str) -> String {
         // first seperate the string on .
         let id = String::from(id_);
         let mut html_path = String::new();
         let v: Vec<&str> = id.split('.').collect();
         let mut v_: Vec<String> = vec![];
-        for sli in v[1..].iter(){
+        for sli in v[1..].iter() {
             let k_sli = inflector::cases::kebabcase::to_kebab_case(sli).to_lowercase();
             v_.push(String::from(k_sli))
             //html_path.push_str("/");
@@ -41,12 +40,8 @@ mod tests {
         let r = "Pages.A.cC";
         let tar_d = "a/c-c.html".to_string();
 
-        println!("tar_s {:?}", tar_r);
         assert_eq!(tar_s, convert_id_to_html_path(p));
         assert_eq!(tar_r, convert_id_to_html_path(q));
         assert_eq!(tar_d, convert_id_to_html_path(r));
-
     }
-
 }
-

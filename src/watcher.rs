@@ -77,7 +77,13 @@ fn setup_watcher() -> Sender<(String, Sender<String>)> {
     s
 }
 
-pub fn poll(ctx: &crate::Context, hash: String) -> Result<crate::Response, failure::Error> {
+pub fn poll(ctx: &crate::Context, hash: String) -> Result<crate::Response, crate::Error> {
+    if !crate::base::is_test() {
+        return Err(crate::Error::PageNotFound {
+            message: "server not running in test mode".to_string(),
+        });
+    }
+
     let (s, r) = crossbeam_channel::bounded(0);
 
     if let Err(e) = WATCHER.send((hash, s)) {

@@ -12,18 +12,21 @@ impl Context {
         }
     }
 
-    pub fn is_crawler(&self, user_agent: Option<String>) -> bool {
+    pub fn is_crawler(&self) -> bool {
         // either useragent is bot: woothee::is_crawler
         // or query params is_bot is set to any value
 
-        if let Some(ua) = user_agent {
+        if let Some(ua) = self
+            .request
+            .headers()
+            .get(http::header::USER_AGENT)
+            .and_then(|v| v.to_str().ok())
+            .map(String::from)
+        {
             woothee::is_crawler(&ua)
-        }
-        else{
+        } else {
             false
         }
-
-
     }
 
     pub fn status(&self, status: http::StatusCode) {

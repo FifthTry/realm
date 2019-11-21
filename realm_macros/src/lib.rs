@@ -4,6 +4,7 @@ extern crate proc_macro2;
 extern crate syn;
 #[macro_use]
 extern crate quote;
+
 use proc_macro::TokenStream;
 use syn::{
     parse::{Parse, ParseStream, Result},
@@ -11,8 +12,6 @@ use syn::{
 };
 
 mod utils;
-
-extern crate inflector;
 
 #[proc_macro_attribute]
 pub fn db_test(_metadata: TokenStream, input: TokenStream) -> TokenStream {
@@ -53,16 +52,11 @@ impl Parse for PathArgs {
     }
 }
 
-
-
-
-
 #[proc_macro_attribute]
 pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     let id = parse_macro_input!(meta as PathArgs).id;
 
-
-    let html_path = utils::convert_id_to_html_path(&id);
+    // let html_path = utils::convert_id_to_html_path(&id);
     // if id = "Pages.Foo.BarBaz", html_path should be "foo/bar-baz.html"
     // lower case, convert dot to slash, convert camel case to kabab case
     let input_clone = input.clone();
@@ -83,4 +77,3 @@ pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     };
     q.into()
 }
-
