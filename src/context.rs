@@ -24,10 +24,19 @@ impl Context {
         {
             {
                 let ua = ua.to_lowercase();
+                // https://github.com/monperrus/crawler-user-agents/blob/master/crawler-user-agents.json
                 if ua.contains("google")
                     || ua.contains("bot")
                     || ua.contains("crawl")
                     || ua.contains("spider")
+                    || ua.contains("bing")
+                    || ua.contains("facebook")
+                    || ua.contains("yahoo")
+                    || ua.contains("baidu")
+                    || ua.contains("python")
+                    || ua.contains("curl")
+                    || ua.contains("wget")
+                    || ua.contains("archive")
                 {
                     return true;
                 }
