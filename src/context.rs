@@ -1,3 +1,4 @@
+use woothee;
 pub struct Context {
     pub request: http::request::Request<Vec<u8>>,
     builder: std::cell::RefCell<http::response::Builder>,
@@ -11,11 +12,18 @@ impl Context {
         }
     }
 
-    pub fn is_crawler(&self) -> bool {
+    pub fn is_crawler(&self, user_agent: Option<String>) -> bool {
         // either useragent is bot: woothee::is_crawler
         // or query params is_bot is set to any value
-        // unimplemented!()
-        true
+
+        if let Some(ua) = user_agent {
+            woothee::is_crawler(&ua)
+        }
+        else{
+            false
+        }
+
+
     }
 
     pub fn status(&self, status: http::StatusCode) {
