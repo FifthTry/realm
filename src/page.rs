@@ -1,4 +1,5 @@
 use std::{env, fs};
+use askama;
 
 #[derive(Serialize)]
 pub struct PageSpec {
@@ -8,7 +9,7 @@ pub struct PageSpec {
     pub url: Option<String>,
     pub replace: Option<String>,
     pub redirect: Option<String>,
-    // pub rendered: String,
+    pub rendered: String,
 }
 
 fn escape(s: &str) -> String {
@@ -18,16 +19,24 @@ fn escape(s: &str) -> String {
 }
 
 impl PageSpec {
-    pub fn render(&self, _is_bot: bool) -> Result<Vec<u8>, failure::Error> {
+    pub fn render(&self, is_bot: bool) -> Result<Vec<u8>, failure::Error> {
         let data = escape(serde_json::to_string_pretty(&self)?.as_str());
         let mut html = HTML_PAGE.clone();
 
-        html = html
+        if is_bot{
+            html = html
+            .replace("__realm_title__", &self.title)
+            .replace("__realm_data__", &data)
+            .replace("__realm_body__", &self.rendered);
+
+        }
+        else{
+            html = html
             .replace("__realm_title__", &self.title)
             .replace("__realm_data__", &data);
-        // if is_bot {
-            // .replace("__realm__body__", self.rendered)
-        // }
+
+        }
+
 
         Ok(html.into())
     }
@@ -47,7 +56,7 @@ impl PageSpec {
     }
 }
 
-pub trait Page: serde::ser::Serialize /* + askama::Template */ {
+pub trait Page: serde::ser::Serialize + askama::Template {
     const ID: &'static str;
     fn with_title(&self, title: &str) -> Result<crate::Response, failure::Error> {
         Ok(crate::Response::Page(PageSpec {
@@ -57,7 +66,7 @@ pub trait Page: serde::ser::Serialize /* + askama::Template */ {
             url: None,
             replace: None,
             redirect: None,
-            // rendered: self.render()?
+            rendered: self.render()?
         }))
     }
 }

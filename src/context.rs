@@ -14,7 +14,8 @@ impl Context {
     pub fn is_crawler(&self) -> bool {
         // either useragent is bot: woothee::is_crawler
         // or query params is_bot is set to any value
-        unimplemented!()
+        // unimplemented!()
+        true
     }
 
     pub fn status(&self, status: http::StatusCode) {
