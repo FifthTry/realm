@@ -8,6 +8,7 @@ pub struct PageSpec {
     pub url: Option<String>,
     pub replace: Option<String>,
     pub redirect: Option<String>,
+    // pub rendered: String,
 }
 
 fn escape(s: &str) -> String {
@@ -17,13 +18,16 @@ fn escape(s: &str) -> String {
 }
 
 impl PageSpec {
-    pub fn render(&self) -> Result<Vec<u8>, failure::Error> {
+    pub fn render(&self, _is_bot: bool) -> Result<Vec<u8>, failure::Error> {
         let data = escape(serde_json::to_string_pretty(&self)?.as_str());
         let mut html = HTML_PAGE.clone();
 
         html = html
             .replace("__realm_title__", &self.title)
             .replace("__realm_data__", &data);
+        // if is_bot {
+            // .replace("__realm__body__", self.rendered)
+        // }
 
         Ok(html.into())
     }
@@ -43,7 +47,7 @@ impl PageSpec {
     }
 }
 
-pub trait Page: serde::ser::Serialize {
+pub trait Page: serde::ser::Serialize /* + askama::Template */ {
     const ID: &'static str;
     fn with_title(&self, title: &str) -> Result<crate::Response, failure::Error> {
         Ok(crate::Response::Page(PageSpec {
@@ -53,6 +57,7 @@ pub trait Page: serde::ser::Serialize {
             url: None,
             replace: None,
             redirect: None,
+            // rendered: self.render()?
         }))
     }
 }
@@ -69,6 +74,7 @@ lazy_static! {
 }
 
 pub fn default_page() -> String {
+    // add __realm_body__ right after <body> tag
     r#"<!DOCTYPE html>
         <html>
             <head>

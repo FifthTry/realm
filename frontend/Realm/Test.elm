@@ -1,4 +1,4 @@
-port module Realm.Test exposing (FormErrorAssertion(..), Step(..), Test, app, only)
+module Realm.Test exposing (FormErrorAssertion(..), Step(..), Test, app, only)
 
 import Array exposing (Array)
 import Browser as B
@@ -214,7 +214,12 @@ resolveA key dec f v =
             JE.null
 
 
-resolveA2 : String -> JD.Decoder a -> (a -> ( String, JE.Value )) -> JE.Value -> ( String, JE.Value )
+resolveA2 :
+    String
+    -> JD.Decoder a
+    -> (a -> ( String, JE.Value ))
+    -> JE.Value
+    -> ( String, JE.Value )
 resolveA2 key dec f v =
     case JD.decodeValue (JD.field key dec) v of
         Ok a ->
@@ -390,7 +395,9 @@ update msg m =
             doStep (idx + 1)
                 False
                 (insertResults
-                    [ R.TestFailed id ("Request failed: " ++ Debug.toString e), R.TestDone ]
+                    [ R.TestFailed id ("Request failed: " ++ Debug.toString e)
+                    , R.TestDone
+                    ]
                     idx
                     m
                 )
@@ -399,7 +406,10 @@ update msg m =
             doStep (idx + 1)
                 False
                 (insertResults
-                    [ R.TestFailed id ("Expected Navigation, found FormErrors: " ++ Debug.toString d), R.TestDone ]
+                    [ R.TestFailed id
+                        ("Expected Navigation, found FormErrors: " ++ Debug.toString d)
+                    , R.TestDone
+                    ]
                     idx
                     m
                 )
@@ -412,7 +422,9 @@ update msg m =
             doStep (idx + 1)
                 False
                 (insertResults
-                    [ R.TestFailed id ("Request failed: " ++ Debug.toString e), R.TestDone ]
+                    [ R.TestFailed id ("Request failed: " ++ Debug.toString e)
+                    , R.TestDone
+                    ]
                     idx
                     m
                 )

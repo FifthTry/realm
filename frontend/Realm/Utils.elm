@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, newTabLink, onEnter, plainLink, rendered, renderedE, result, val, withError, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, newTabLink, message, onEnter, onEsc, plainLink, rendered, renderedE, result, true, val, withError, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -11,6 +11,7 @@ import Html.Parser.Util
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
+import Task
 
 
 mapIth : Int -> (a -> a) -> List a -> List a
@@ -45,6 +46,14 @@ onEnter msg =
         )
 
 
+onEsc : msg -> E.Attribute msg
+onEsc esc =
+    E.htmlAttribute
+        (Html.Events.on "keyup"
+            (JD.succeed esc)
+        )
+
+
 escEnter : msg -> msg -> E.Attribute msg
 escEnter esc enter =
     E.htmlAttribute
@@ -60,7 +69,7 @@ escEnter esc enter =
                                 JD.succeed esc
 
                             _ ->
-                                JD.fail "Not the enter key"
+                                JD.fail "Nor the enter, nor the escape key"
                     )
             )
         )
@@ -251,6 +260,11 @@ withError d k f =
     { f | error = Dict.get k d }
 
 
+message : msg -> Cmd msg
+message x =
+    Task.perform identity (Task.succeed x)
+
+
 type alias Field =
     { value : String
     , error : Maybe String
@@ -379,10 +393,21 @@ result ed sd =
     JD.oneOf [ JD.field "Err" (JD.map Err ed), JD.field "Ok" (JD.map Ok sd) ]
 
 
+true : String -> Bool -> R.TestResult
+true tid v =
+    match tid v True
+
+
+false : String -> Bool -> R.TestResult
+false tid v =
+    match tid v False
+
+
 match : String -> a -> a -> R.TestResult
 match tid exp got =
     if exp /= got then
-        R.TestFailed tid ("Expected: " ++ Debug.toString exp ++ " got: " ++ Debug.toString got)
+        R.TestFailed tid
+            ("Expected: " ++ Debug.toString exp ++ " got: " ++ Debug.toString got)
 
     else
         R.TestPassed tid
