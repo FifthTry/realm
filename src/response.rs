@@ -35,7 +35,7 @@ impl Response {
                 ctx.header(http::header::CONTENT_TYPE, mode.content_type());
                 Ok(ctx.response(match mode {
                     Mode::API => serde_json::to_string_pretty(&spec.config)?.into(),
-                    Mode::HTML => spec.render()?,
+                    Mode::HTML => spec.render(ctx.is_crawler())?,
                     Mode::Layout => serde_json::to_string(&spec)?.into(),
                     Mode::Submit => serde_json::to_string(&json!({
                         "success": true,

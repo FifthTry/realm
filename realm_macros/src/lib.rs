@@ -52,14 +52,19 @@ impl Parse for PathArgs {
 #[proc_macro_attribute]
 pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     let id = parse_macro_input!(meta as PathArgs).id;
+    // html_path = convert_id_to_html_path(&id);
+    // if id = "Pages.Foo.BarBaz", html_path should be "foo/bar-baz.html"
+    // lower case, convert dot to slash, convert camel case to kabab case
     let input_clone = input.clone();
     let derive_input = parse_macro_input!(input_clone as DeriveInput);
     let struct_item: ItemStruct = parse_macro_input!(input as ItemStruct);
     let ident = struct_item.ident;
 
+    // if html_path exists, then include Template stuff, else let them be
     let q = quote! {
-
          #[derive(Serialize)]
+         // #[derive(Template)]
+         // #[template(path = html_path)]
          #derive_input
 
          impl realm::Page for #ident {

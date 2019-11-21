@@ -11,6 +11,12 @@ impl Context {
         }
     }
 
+    pub fn is_crawler(&self) -> bool {
+        // either useragent is bot: woothee::is_crawler
+        // or query params is_bot is set to any value
+        unimplemented!()
+    }
+
     pub fn status(&self, status: http::StatusCode) {
         self.builder.borrow_mut().status(status);
     }
