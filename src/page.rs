@@ -1,5 +1,5 @@
-use std::{env, fs};
 use askama;
+use std::{env, fs};
 
 #[derive(Serialize)]
 pub struct PageSpec {
@@ -9,6 +9,7 @@ pub struct PageSpec {
     pub url: Option<String>,
     pub replace: Option<String>,
     pub redirect: Option<String>,
+    #[serde(skip)]
     pub rendered: String,
 }
 
@@ -23,20 +24,18 @@ impl PageSpec {
         let data = escape(serde_json::to_string_pretty(&self)?.as_str());
         let mut html = HTML_PAGE.clone();
 
-        if is_bot{
+        html = html.replace("__realm_title__", &self.title);
+
+        if is_bot {
             html = html
-            .replace("__realm_title__", &self.title)
-            .replace("__realm_data__", &data)
-            .replace("__realm_body__", &self.rendered);
-
-        }
-        else{
+                .replace("__realm_body__", &self.rendered)
+                .replace("__realm_data__", "")
+                .replace("<script src='/static/elm.js'></script>", "");
+        } else {
             html = html
-            .replace("__realm_title__", &self.title)
-            .replace("__realm_data__", &data);
-
+                .replace("__realm_data__", &data)
+                .replace("__realm_body__", "");
         }
-
 
         Ok(html.into())
     }
@@ -66,7 +65,7 @@ pub trait Page: serde::ser::Serialize + askama::Template {
             url: None,
             replace: None,
             redirect: None,
-            rendered: self.render()?
+            rendered: self.render()?,
         }))
     }
 }
@@ -96,6 +95,7 @@ pub fn default_page() -> String {
                 <style>p {margin: 0}</style>
             </head>
             <body>
+                __realm_body__
                 <div id="main"></div>
                 <script src='/static/elm.js'></script>
             </body>

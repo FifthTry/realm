@@ -76,6 +76,7 @@ impl Response {
                 url: None,
                 replace: None,
                 redirect: Some(next.into()),
+                rendered: "".to_string(),
             })),
             _ => {
                 in_.ctx.header(header::LOCATION, next.into());
@@ -102,6 +103,7 @@ impl Response {
                 url: None,
                 replace: None,
                 redirect: Some(next.into()),
+                rendered: "".to_string(),
             })),
             _ => {
                 in_.ctx.header(header::LOCATION, next.into());

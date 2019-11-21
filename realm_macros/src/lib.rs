@@ -63,8 +63,8 @@ pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     // if html_path exists, then include Template stuff, else let them be
     let q = quote! {
          #[derive(Serialize)]
-         // #[derive(Template)]
-         // #[template(path = html_path)]
+         #[derive(Template)]
+         #[template(path = "empty.html")]
          #derive_input
 
          impl realm::Page for #ident {

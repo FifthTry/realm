@@ -39,7 +39,7 @@ bcrypt = "0.5.0"
 colored = "~1.8.0"
 syntect = "3.2.1"
 antidote = "1.0.0"
-askama =
+askama = "0.8.0"
 
 [dependencies.chrono]
 version = "0.4"
