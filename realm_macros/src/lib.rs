@@ -10,6 +10,10 @@ use syn::{
     DeriveInput, ItemFn, ItemStruct, LitStr, Token,
 };
 
+mod utils;
+
+extern crate inflector;
+
 #[proc_macro_attribute]
 pub fn db_test(_metadata: TokenStream, input: TokenStream) -> TokenStream {
     let fn_item: ItemFn = parse_macro_input!(input as ItemFn);
@@ -50,29 +54,15 @@ impl Parse for PathArgs {
 }
 
 
-pub fn convert_id_to_html_path(id: String) -> String{
-    // first seperate the string on .
-    let id_str = id.as_str();
-    let mut html_path = String::new();
-    for sli in id.split('.').collect()[1..]{
-        let k_sli = convert_to_kebab_case(sli).to_lowercase();
-        html_path.push_str(k_sli);
-    }
-    html_path
 
 
-
-        // break on Capslock and insert - in between
-        // convert to lowercase
-        // append to the string
-}
 
 #[proc_macro_attribute]
 pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     let id = parse_macro_input!(meta as PathArgs).id;
 
 
-    html_path = convert_id_to_html_path(&id);
+    let html_path = utils::convert_id_to_html_path(&id);
     // if id = "Pages.Foo.BarBaz", html_path should be "foo/bar-baz.html"
     // lower case, convert dot to slash, convert camel case to kabab case
     let input_clone = input.clone();

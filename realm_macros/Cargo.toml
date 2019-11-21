@@ -21,3 +21,6 @@ proc-macro2 = "0.4"
 [dependencies.syn]
 version = "0.15.42"
 features = ["full"]
+
+[dependencies.Inflector]
+version = "0.11.4"
