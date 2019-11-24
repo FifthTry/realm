@@ -63,7 +63,23 @@ window.addEventListener("foo", function(evt) { window.realm_app.ports.foo.send(e
 - Added `window.realm_app_init()` and `window.realm_app_shutdown()` hooks, if you want
   to do something after realm app is initialized and is shutting down.
 - Added `In.darkMode`.
-- Added template based server side rendering.
+- Added template based server side rendering. You may want to use:
+```rust
+fn main() {
+    for entry in walkdir::WalkDir::new("templates") {
+        let entry = entry.unwrap();
+        eprintln!("cargo:rerun-if-changed={}", entry.path().display());
+    }
+}
+// with the following in your Cargo.toml
+// [package]
+// build = "build.rs"
+//
+// [build-dependencies]
+// walkdir = "2"
+```
+- Elm: Scroll to top of page on page change
+- Elm: Sending a message after delay of 200ms to let app show a loading dialog
 
 ## 0.1.17 - 16 Oct 2019
 

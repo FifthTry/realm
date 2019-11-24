@@ -8,6 +8,7 @@
         height : window.screen.height * ratio
     };
     var iphoneX = (iOS && screen.width === 1242 && screen.height === 2688)? 1 : 0;
+    var app = null;
 
     var ajax = function (url, data, callback) {
         var x = new (XMLHttpRequest || ActiveXObject)("MSXML2.XMLHTTP.3.0");
@@ -16,8 +17,7 @@
         x.onreadystatechange = function () {
             x.readyState > 3 && callback && callback(x.responseText, x);
         };
-        x.send(JSON.stringify(data)
-        );
+        x.send(JSON.stringify(data));
         return x;
     };
 
@@ -32,6 +32,17 @@
         return current;
     }
 
+    function showLoading(theApp) {
+        window.setTimeout(function () {
+            if (theApp.is_shutting_down) {
+                return;
+            }
+            if (app && app.ports && app.ports.onUnloading) {
+                app.ports.onUnloading.send(null);
+            }
+        }, 200);
+    }
+
     function navigate(url) {
         console.log("navigate", url);
         if (url.indexOf("?") !== -1) {
@@ -39,6 +50,8 @@
         } else {
             url = url + "?realm_mode=layout";
         }
+
+        showLoading(window.realm_app);
         ajax(url, null, function (t) {loadPage(t, false);});
     }
 
@@ -50,6 +63,7 @@
         } else {
             url = url + "?realm_mode=layout";
         }
+        showLoading(window.realm_app);
         ajax(url, data.data, function (t) {loadPage(t, true);});
     }
 
@@ -63,7 +77,6 @@
         && window.matchMedia('(prefers-color-scheme: dark)').matches
     );
 
-    var app = null;
     var testContext = null;
     var unloadTest = 0;
 
@@ -138,7 +151,7 @@
             console.log("shutting down");
             app.ports.shutdown.send(null);
             unloadTest = 0;
-
+            window.realm_app.is_shutting_down = true;
             if (window.realm_app_shutdown) {
                 window.realm_app_shutdown();
             }
@@ -253,6 +266,10 @@
                     }
                 }
             }
+
+            // scroll to top on page change
+            document.body.scrollTop = 0; // For Safari
+            document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
 
             window.realm_app = app;
             if (window.realm_app_init) {

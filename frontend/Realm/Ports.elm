@@ -22,3 +22,5 @@ port changePage : JE.Value -> Cmd msg
 
 
 port viewPortChanged : (JE.Value -> msg) -> Sub msg
+
+port onUnloading : (() -> msg) -> Sub msg
