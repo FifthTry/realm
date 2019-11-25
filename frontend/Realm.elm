@@ -11,7 +11,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Platform
-import Realm.Ports exposing (changePage, shutdown, toIframe, viewPortChanged)
+import Realm.Ports as RP exposing (changePage, shutdown, toIframe, viewPortChanged)
 import Realm.Requests as RR
 import RemoteData as RD
 import Task
@@ -112,13 +112,16 @@ submit ctr ( url, data ) =
             else
                 url ++ "?realm_mode=submit"
     in
-    Http.post
-        { url = url2
-        , body = Http.jsonBody data
-        , expect =
-            Http.expectJson (RR.try >> OnSubmitResponse ctr)
-                (RR.bresult RR.layoutResponse)
-        }
+    Cmd.batch
+        [ Http.post
+            { url = url2
+            , body = Http.jsonBody data
+            , expect =
+                Http.expectJson (RR.try >> OnSubmitResponse ctr)
+                    (RR.bresult RR.layoutResponse)
+            }
+        , RP.setLoading ()
+        ]
 
 
 type alias In =

@@ -37,8 +37,8 @@
             if (theApp.is_shutting_down) {
                 return;
             }
-            if (app && app.ports && app.ports.onUnloading) {
-                app.ports.onUnloading.send(null);
+            if (theApp && theApp.ports && theApp.ports.onUnloading) {
+                theApp.ports.onUnloading.send(null);
             }
         }, 200);
     }
@@ -241,6 +241,9 @@
             app = app.init({flags: flags});
             if (app.ports && app.ports.navigate) {
                 app.ports.navigate.subscribe(navigate);
+            }
+            if (app.ports && app.ports.setLoading) {
+                app.ports.setLoading.subscribe(function() {showLoading(app)});
             }
             if (app.ports && app.ports.submit) {
                 app.ports.submit.subscribe(submit);
