@@ -80,6 +80,8 @@ fn main() {
 ```
 - Elm: Scroll to top of page on page change
 - Elm: Sending a message after delay of 200ms to let app show a loading dialog
+- Elm: BREAKING: removed Realm.Utils.{link, plainLink, newTabLink}, use Element versions
+  instead.
 
 ## 0.1.17 - 16 Oct 2019
 

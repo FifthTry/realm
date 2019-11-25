@@ -265,7 +265,11 @@ appUpdate a msg am =
                         |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
 
         ( UrlRequest (B.Internal url), False ) ->
-            ( am, BN.pushUrl am.key (Url.toString url) )
+            let
+                u =
+                    Url.toString url
+            in
+            ( am, Cmd.batch [ BN.pushUrl am.key u, RP.navigate u ] )
 
         ( UrlRequest (B.External url), False ) ->
             ( am, BN.load url )

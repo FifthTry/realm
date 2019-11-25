@@ -1,9 +1,8 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, link, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, newTabLink, message, onEnter, onEsc, plainLink, rendered, renderedE, result, true, val, withError, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, onEnter, onEsc, rendered, renderedE, result, true, val, withError, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Element as E
-import Element.Events as EE
 import Element.Input as EI
 import Html.Events
 import Html.Parser
@@ -170,36 +169,6 @@ htmlLine attrs (Rendered md) =
 edges : { top : Int, right : Int, bottom : Int, left : Int }
 edges =
     { top = 0, right = 0, bottom = 0, left = 0 }
-
-
-link :
-    String
-    -> List (E.Attribute msg)
-    -> (String -> msg)
-    -> E.Element msg
-    -> E.Element msg
-link url attrs msg label =
-    E.link (EE.onClick (msg url) :: EE.onDoubleClick (msg url) :: attrs)
-        { label = label, url = url }
-
-
-plainLink :
-    String
-    -> List (E.Attribute msg)
-    -> E.Element msg
-    -> E.Element msg
-plainLink url attrs label =
-    E.link attrs
-        { label = label, url = url }
-
-newTabLink :
-    String
-    -> List (E.Attribute msg)
-    -> E.Element msg
-    -> E.Element msg
-newTabLink url attrs label =
-    E.newTabLink attrs
-        { label = label, url = url }
 
 
 maybeE : (a -> JE.Value) -> Maybe a -> JE.Value
