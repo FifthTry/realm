@@ -10,6 +10,9 @@ pub struct PageSpec {
     pub redirect: Option<String>,
     #[serde(skip)]
     pub rendered: String,
+    // add struct OGStruct here
+    // it would have fields title, image, url, type
+    //
 }
 
 fn escape(s: &str) -> String {
@@ -18,12 +21,18 @@ fn escape(s: &str) -> String {
     s.replace('&', "\\u0026")
 }
 
+
+
+
 impl PageSpec {
+    //fn get_og_scripts(&self) -> String{
+    //    I have no idea where to define this function
+    //}
     pub fn render(&self, is_crawler: bool) -> Result<Vec<u8>, failure::Error> {
         let data = escape(serde_json::to_string_pretty(&self)?.as_str());
         let mut html = HTML_PAGE.clone();
 
-        html = html.replace("__realm_title__", &self.title);
+        html = html.replace("__realm_title__", &self.title);// add __og_script__, use get_og_scripts function()
 
         if is_crawler {
             html = html
@@ -91,6 +100,7 @@ pub fn default_page() -> String {
                     __realm_data__
                 </script>
                 <style>p {margin: 0}</style>
+                    __og_script__
             </head>
             <body>
                 __realm_body__
