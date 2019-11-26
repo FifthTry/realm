@@ -14,7 +14,11 @@ impl Context {
 
     pub fn is_crawler(&self) -> bool {
         // either useragent is bot: woothee::is_crawler
-        // or query params is_bot is set to any value
+        // or query params is_crawler is set to any value
+
+        if self.request.uri().to_string().contains("is_crawler=") {
+            return true;
+        }
 
         if let Some(ua) = self
             .request
