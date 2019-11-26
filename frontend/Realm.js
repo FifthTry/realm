@@ -82,6 +82,9 @@
 
     function detectNotch() {
         var _notch = 0;
+        if (!iphoneX) {
+            return _notch;
+        }
 
         if( 'orientation' in window ) {
           // Mobile
