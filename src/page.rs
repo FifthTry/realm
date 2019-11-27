@@ -23,7 +23,7 @@ impl PageSpec {
         let data = escape(serde_json::to_string_pretty(&self)?.as_str());
         let mut html = HTML_PAGE.clone();
 
-        html = html.replace("__realm_title__", &self.title);
+        html = html.replace("__realm_title__", escape(&self.title).as_str());
 
         if is_crawler {
             html = html
