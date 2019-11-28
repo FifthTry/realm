@@ -68,7 +68,15 @@ macro_rules! realm_serve {
                 .map_err(|e| eprintln!("server error: {}", e));
 
             println!("Listening on http://{}", addr);
+            register_newrelic();
             hyper::rt::run(server);
+        }
+        fn register_newrelic() {
+            if *ENABLE_NEW_RELIC {
+                NR_APP.status()
+            } else {
+                println!("{} Newrelic app is not configured", "\u{1F44B}");
+            }
         }
 
         serve()
