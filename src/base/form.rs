@@ -4,13 +4,14 @@ use std::collections::HashMap;
 pub struct FormErrors(HashMap<String, (String, Option<String>)>);
 
 impl FormErrors {
-    #[deprecated(since = "0.1.15", note = "Please use FormErrors::empty() instead")]
+    #[deprecated(since = "0.1.15", note = "Please use FormErrors::default() instead")]
     pub fn new() -> FormErrors {
-        FormErrors::empty()
+        FormErrors::default()
     }
 
+    #[deprecated(since = "0.1.18", note = "Please use FormErrors::default() instead")]
     pub fn empty() -> FormErrors {
-        FormErrors(HashMap::new())
+        FormErrors::default()
     }
 
     pub fn single(key: &str, value: &str, msg: &str) -> FormErrors {
@@ -20,7 +21,7 @@ impl FormErrors {
     }
 
     pub fn single_value(key: &str, value: &str) -> FormErrors {
-        let mut f = FormErrors::empty();
+        let mut f = FormErrors::default();
         f.0.insert(key.to_string(), (value.to_string(), None));
         f
     }
@@ -52,7 +53,7 @@ impl From<FormErrors> for failure::Error {
 
 impl Default for FormErrors {
     fn default() -> FormErrors {
-        FormErrors::empty()
+        FormErrors(HashMap::new())
     }
 }
 

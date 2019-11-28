@@ -77,6 +77,13 @@ pub enum Error {
     },
 }
 
+pub fn error<T>(key: &str, message: &str) -> std::result::Result<T, failure::Error> {
+    let mut e = std::collections::HashMap::new();
+    e.insert(key.into(), message.into());
+
+    Err(Error::FormError { errors: e }.into())
+}
+
 impl From<diesel::result::Error> for Error {
     fn from(error: diesel::result::Error) -> Error {
         Error::DieselError { error }
