@@ -32,6 +32,10 @@ impl<'a> In<'a> {
         }
     }
 
+    pub fn path(&self) -> String{
+        self.ctx.request.uri().path().into()
+    }
+
     pub fn get_header(&self, header: http::header::HeaderName) -> Option<String> {
         self.ctx
             .request
@@ -73,12 +77,15 @@ impl<'a> In<'a> {
         self.ctx.cookie(
             "ud",
             signed_cookies::sign_value(
-                format!("{}|{}|{}", uid, name, sid).as_str(),
+                format!("i|{}|{}|{}", uid, name, sid).as_str(),
                 &cookie_secret(),
             )
             .as_str(),
             COOKIE_AGE,
         );
+    }
+    pub fn set_ud_str(&self, uid: i32, name: String, sid: i32) {
+
     }
 
     pub fn logout(&self) {
