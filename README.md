@@ -80,6 +80,22 @@ fn main() {
 ```
 - Elm: Scroll to top of page on page change
 - Elm: Sending a message after delay of 200ms to let app show a loading dialog
+- Added template based server side rendering. To make this work in your app. Do following changes
+
+    - add `askama = "0.8.0" `in cargo.toml.
+    - import askama in lib.rs as 
+        ```rust
+          #[macro_use]
+          extern crate askama;
+        ```
+    - derive templates for structures in `src/api.rs` and `src/page.rs`
+        ```rust
+              #[derive(Template)]
+              #[template(path = "empty.html")]
+        ```
+    - create a file templates/empty.html in project directory and add populate it( with anything.)
+     
+
 
 ## 0.1.17 - 16 Oct 2019
 
