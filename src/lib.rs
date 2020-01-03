@@ -11,6 +11,22 @@ extern crate diesel;
 #[macro_use]
 extern crate failure;
 
+#[cfg(any(
+    all(
+        feature = "postgre_default",
+        any(feature = "mysql_default", feature = "sqlite_default")
+    ),
+    all(
+        feature = "mysql_default",
+        any(feature = "postgre_default", feature = "sqlite_default")
+    ),
+    all(
+        feature = "sqlite_default",
+        any(feature = "mysql_default", feature = "postgre_default")
+    ),
+))]
+compile_error!("only one of postgre_default, mysql_default or sqlite_default can be activated");
+
 pub mod base;
 mod context;
 pub mod iframe;
@@ -18,7 +34,7 @@ mod mode;
 mod page;
 pub mod request_config;
 mod response;
-mod serve;
+pub mod serve;
 pub mod storybook;
 pub mod test;
 mod urls;

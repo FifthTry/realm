@@ -35,7 +35,7 @@ where
         Ok(a) => Ok(a),
         Err(e) => {
             println!("error : {:?}", e);
-            unimplemented!()
+            todo!()
         }
     }
 }
@@ -60,7 +60,8 @@ where
                     Box::new(THREAD_POOL.spawn_fn(move || handle_sync(req, f).into_future()))
                 }))
             })
-        }).map_err(|e| eprintln!("server error: {}", e));
+        })
+        .map_err(|e| eprintln!("server error: {}", e));
 
     println!("Listening on http://{}", addr);
     hyper::rt::run(server);

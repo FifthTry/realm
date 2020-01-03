@@ -32,7 +32,7 @@ pub fn handle_sync(
         Ok(a) => Ok(a),
         Err(e) => {
             println!("error : {:?}", e);
-            unimplemented!()
+            todo!()
         }
     }
 }
@@ -54,7 +54,8 @@ pub fn serve(f: fn(&crate::Context) -> Result<crate::Response, failure::Error>) 
                     Box::new(THREAD_POOL.spawn_fn(move || handle_sync(req, f).into_future()))
                 }))
             })
-        }).map_err(|e| eprintln!("server error: {}", e));
+        })
+        .map_err(|e| eprintln!("server error: {}", e));
 
     println!("Listening on http://{}", addr);
     hyper::rt::run(server);

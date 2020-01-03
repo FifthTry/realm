@@ -1,6 +1,5 @@
 use crate::mode::Mode;
 use crate::PageSpec;
-use http::StatusCode;
 use serde::ser::{Serialize, SerializeStructVariant, Serializer};
 
 pub enum Response {
@@ -23,12 +22,12 @@ impl Response {
         }
     }
 
-    pub fn render(self, ctx: &crate::Context, mode: Mode, url: String) -> crate::Result {
+    pub fn render(self, ctx: &crate::Context, mode: &Mode, url: &str) -> crate::Result {
         if let Response::Http(r) = self {
             return Ok(r);
         };
 
-        let r = self.with_default_url(url);
+        let r = self.with_default_url(url.to_string());
 
         match &r {
             Response::Page(spec) => {
@@ -52,9 +51,10 @@ impl Response {
         }
     }
 
-    pub fn ok<T>(in_: &crate::base::In, data: &T) -> Result<crate::Response, failure::Error>
+    pub fn ok<T, UD>(in_: &crate::base::In<UD>, data: &T) -> Result<crate::Response, failure::Error>
     where
         T: serde::Serialize,
+        UD: std::string::ToString + std::str::FromStr,
     {
         Ok(Response::Http(in_.ctx.response(
             serde_json::to_vec_pretty(&json!({
@@ -64,9 +64,38 @@ impl Response {
         )?))
     }
 
-    pub fn redirect<T>(in_: &crate::base::In, next: T) -> Result<crate::Response, failure::Error>
+    pub fn err<T, UD>(
+        in_: &crate::base::In<UD>,
+        message: T,
+    ) -> Result<crate::Response, failure::Error>
     where
         T: Into<String>,
+        UD: std::string::ToString + std::str::FromStr,
+    {
+        Ok(Response::Http(in_.ctx.response(
+            serde_json::to_vec_pretty(&json!({
+                "success": false,
+                "error": message.into(),
+            }))?,
+        )?))
+    }
+
+    pub fn plain(
+        ctx: &crate::Context,
+        resp: String,
+        status: http::StatusCode,
+    ) -> Result<crate::Response, failure::Error> {
+        ctx.status(status);
+        Ok(Response::Http(ctx.response(resp.into_bytes())?))
+    }
+
+    pub fn redirect<T, UD>(
+        in_: &crate::base::In<UD>,
+        next: T,
+    ) -> Result<crate::Response, failure::Error>
+    where
+        T: Into<String>,
+        UD: std::string::ToString + std::str::FromStr,
     {
         use http::header;
         match in_.get_mode() {
@@ -81,19 +110,20 @@ impl Response {
             })),
             _ => {
                 in_.ctx.header(header::LOCATION, next.into());
-                in_.ctx.status(StatusCode::TEMPORARY_REDIRECT);
+                in_.ctx.status(http::StatusCode::TEMPORARY_REDIRECT);
                 Ok(Response::Http(in_.ctx.response("".into())?))
             }
         }
     }
 
-    pub fn redirect_with<T>(
-        in_: &crate::base::In,
+    pub fn redirect_with<T, UD>(
+        in_: &crate::base::In<UD>,
         next: T,
-        status: StatusCode,
+        status: http::StatusCode,
     ) -> Result<crate::Response, failure::Error>
     where
         T: Into<String>,
+        UD: std::string::ToString + std::str::FromStr,
     {
         use http::header;
         match in_.get_mode() {

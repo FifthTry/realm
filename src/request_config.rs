@@ -296,6 +296,29 @@ impl RequestConfig {
         })
     }
 
+    pub fn json<T>(&mut self, name: &str) -> Result<T, Error>
+    where
+        T: DeserializeOwned,
+    {
+        let data: &serde_json::Value = &self.data;
+
+        if let Some(v) = data.get(name) {
+            if v.is_null() {
+                return Err(Error::NotFound {
+                    key: name.to_string(),
+                });
+            };
+            return serde_json::from_value(v.to_owned()).map_err(|e| Error::InvalidValue {
+                key: name.to_string(),
+                value: v.to_string(),
+                message: e.to_string(),
+            });
+        }
+
+        Err(Error::NotFound {
+            key: name.to_string(),
+        })
+    }
     #[deprecated(since = "0.1.15", note = "Please use .required() instead")]
     pub fn get<T>(&mut self, name: &str, _is_optional: bool) -> Result<T, crate::Error>
     where
