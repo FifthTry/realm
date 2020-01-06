@@ -33,9 +33,9 @@ impl std::str::FromStr for UD {
         }
         
         Ok(UD {
-            user_id,
+            user_id: parts[0].parse().unwrap(),
             display_name: parts[1].to_string(),
-            session_id,
+            session_id: parts[2].parse().unwrap(),
         })
     }
 }
