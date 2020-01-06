@@ -17,11 +17,33 @@ Rust / Elm base full stack web framework.
 
 [login through terminal]: https://doc.rust-lang.org/cargo/reference/publishing.html
 
-
 # ChangeLog
 
 ## Unreleased
 
+- Added template based server side rendering. You may want to use:
+```rust
+fn main() {
+    for entry in walkdir::WalkDir::new("templates") {
+        let entry = entry.unwrap();
+        eprintln!("cargo:rerun-if-changed={}", entry.path().display());
+    }
+}
+// with the following in your Cargo.toml
+// [package]
+// build = "build.rs"
+//
+// [build-dependencies]
+// walkdir = "2"
+```
+
+- Elm: Scroll to top of page on page change
+- Elm: Sending a message after delay of 200ms to let app show a loading dialog
+- Elm: BREAKING: removed Realm.Utils.{link, plainLink, newTabLink}, use Element versions
+  instead.
+- Generic ud cookie: Applications can define their own struct for `ud` cookie. This change is not compatible with the previous realm versions. Please Refer to `UDMIGRATION.md` guide.
+  
+## 0.1.18 - 21 Nov 2019
 - Fix: `Realm.Test` on error from server, report it and keep tests running.
 - `realm::RequestConfig::required()` etc methods now return `realm::Error(InputError)`
   instead of `realm::request_config::Error`, middleware need only catch single error
@@ -63,25 +85,6 @@ window.addEventListener("foo", function(evt) { window.realm_app.ports.foo.send(e
 - Added `window.realm_app_init()` and `window.realm_app_shutdown()` hooks, if you want
   to do something after realm app is initialized and is shutting down.
 - Added `In.darkMode`.
-- Added template based server side rendering. You may want to use:
-```rust
-fn main() {
-    for entry in walkdir::WalkDir::new("templates") {
-        let entry = entry.unwrap();
-        eprintln!("cargo:rerun-if-changed={}", entry.path().display());
-    }
-}
-// with the following in your Cargo.toml
-// [package]
-// build = "build.rs"
-//
-// [build-dependencies]
-// walkdir = "2"
-```
-- Elm: Scroll to top of page on page change
-- Elm: Sending a message after delay of 200ms to let app show a loading dialog
-- Elm: BREAKING: removed Realm.Utils.{link, plainLink, newTabLink}, use Element versions
-  instead.
 
 ## 0.1.17 - 16 Oct 2019
 
