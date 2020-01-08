@@ -1,6 +1,6 @@
-use crate::base::db::RealmConnection;
 use crate::base::*;
 use chrono::prelude::*;
+use ackorelic::nr_connection::NRConnection;
 
 pub struct In<'a> {
     pub ctx: &'a crate::Context,
@@ -8,13 +8,13 @@ pub struct In<'a> {
     pub head: std::cell::RefCell<http::response::Builder>,
     pub remote_ip: String,
     ud: std::cell::RefCell<Option<(i32, String, i32)>>,
-    pub conn: &'a RealmConnection,
+    pub conn: &'a NRConnection,
     user_id: std::cell::RefCell<Option<i32>>,
     pub now: DateTime<Utc>,
 }
 
 impl<'a> In<'a> {
-    pub fn from(conn: &'a RealmConnection, ctx: &'a crate::Context, remote_ip: &str) -> In<'a> {
+    pub fn from(conn: &'a NRConnection, ctx: &'a crate::Context, remote_ip: &str) -> In<'a> {
         let ud = get_cookie(&ctx.request, "ud").and_then(In::parse_ud_cookie);
         let uid = match ud {
             Some((uid, _, _)) => Some(uid),

@@ -1,3 +1,4 @@
+use ackorelic::nr_connection::NRConnection;
 #[cfg(debug_assertions)]
 use colored::Colorize;
 #[cfg(debug_assertions)]
@@ -32,7 +33,7 @@ pub type RealmConnection = DebugConnection;
 #[cfg(not(debug_assertions))]
 pub type RealmConnection = diesel::PgConnection;
 
-fn _connection_pool(db_url: String) -> r2d2::Pool<r2d2_diesel::ConnectionManager<RealmConnection>> {
+fn _connection_pool(db_url: String) -> r2d2::Pool<r2d2_diesel::ConnectionManager<NRConnection>> {
     let mut db_url = db_url.clone();
     if crate::base::is_test() {
         // add search_path=test (%3D is = sign)
@@ -43,7 +44,7 @@ fn _connection_pool(db_url: String) -> r2d2::Pool<r2d2_diesel::ConnectionManager
         }
     };
 
-    let manager = r2d2_diesel::ConnectionManager::<RealmConnection>::new(db_url);
+    let manager = r2d2_diesel::ConnectionManager::<NRConnection>::new(db_url);
     r2d2::Pool::builder()
         .max_size(10)
         .build(manager)
@@ -51,17 +52,17 @@ fn _connection_pool(db_url: String) -> r2d2::Pool<r2d2_diesel::ConnectionManager
 }
 
 lazy_static! {
-    pub static ref DIESEL_POOLS: antidote::RwLock<HashMap<String, r2d2::Pool<r2d2_diesel::ConnectionManager<RealmConnection>>>> =
+    pub static ref DIESEL_POOLS: antidote::RwLock<HashMap<String, r2d2::Pool<r2d2_diesel::ConnectionManager<NRConnection>>>> =
         antidote::RwLock::new(HashMap::new());
 }
 
-pub fn connection() -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<RealmConnection>> {
+pub fn connection() -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<NRConnection>> {
     connection_with_url(std::env::var("DATABASE_URL").expect("DATABASE_URL not set"))
 }
 
 pub fn connection_with_url(
     db_url: String,
-) -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<RealmConnection>> {
+) -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<NRConnection>> {
     {
         if let Some(pool) = DIESEL_POOLS.read().get(&db_url) {
             return pool.get().unwrap();
@@ -88,18 +89,18 @@ where
     eprintln!("{}: {}", err_str, err);
 }
 
-fn rollback(conn: &RealmConnection) {
+fn rollback(conn: &NRConnection) {
     if let Err(e) = conn.transaction_manager().rollback_transaction(conn) {
         red("connection_not_clean_and_cleanup_failed", e);
     };
 }
 
-pub fn rollback_if_required(conn: &RealmConnection) {
+pub fn rollback_if_required(conn: &NRConnection) {
     if let Err(e) = diesel::sql_query("SELECT 1").execute(conn) {
         red("connection_not_clean", e);
         rollback(conn);
     } else {
-        let t: &dyn diesel::connection::TransactionManager<RealmConnection> =
+        let t: &dyn diesel::connection::TransactionManager<NRConnection> =
             conn.transaction_manager();
         let depth = t.get_transaction_depth();
         if depth != 0 {
@@ -111,7 +112,7 @@ pub fn rollback_if_required(conn: &RealmConnection) {
 
 pub fn db_test<F>(run: F)
 where
-    F: FnOnce(&RealmConnection) -> Result<(), Error>,
+    F: FnOnce(&NRConnection) -> Result<(), Error>,
 {
     let conn = connection();
     conn.test_transaction::<_, failure::Error, _>(|| {

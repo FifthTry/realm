@@ -41,6 +41,7 @@ syntect = "3.2.1"
 antidote = "1.0.0"
 askama = "0.8"
 woothee = "0.10"
+ackorelic = "0.1.9"
 
 [dependencies.chrono]
 version = "0.4"
