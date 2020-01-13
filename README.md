@@ -16,6 +16,7 @@ Rust / Elm base full stack web framework.
 
 
 [login through terminal]: https://doc.rust-lang.org/cargo/reference/publishing.html
+[UDMIGRATION.md]: https://github.com/ackotech/realm/blob/realm2/UDMIGRATION.md
 
 # ChangeLog
 
@@ -41,7 +42,24 @@ fn main() {
 - Elm: Sending a message after delay of 200ms to let app show a loading dialog
 - Elm: BREAKING: removed Realm.Utils.{link, plainLink, newTabLink}, use Element versions
   instead.
-- Generic ud cookie: Applications can define their own struct for `ud` cookie. This change is not compatible with the previous realm versions. Please Refer to `UDMIGRATION.md` guide.
+- Elm: Added method `navigate : String -> Cmd (Msg msg)` in `Realm.elm`.
+- Elm: Added method `mif : Maybe a -> (a -> E.Element msg) -> E.Element msg`.
+- Backtrace added for errors. Panics still needs to be cleaned.
+- Added the following methods in `realm::base::In`:
+  - is_anonymous: Returns true if the `ud` cookie is empty.
+  - is_authenticated: Returns true if the `ud` cookie is not empty.
+  - is_local: Returns true if the `HOST` is localhost, 127.0.0.1 or 127.0.0.2.
+- Added method `error<T>(key: &str, message: &str)`. Returns a `FormError` containing the `key` and `message`.
+- Added method `json<T>(&mut self, name: &str)` in `RequestConfig`. Takes a field name `name` and returns it's value if present in the body of the request.
+- Following Database related methods and properties are moved to `realm::base::pg` and `realm::base::sqlite`:
+  - connection()
+  - connection_with_url()
+  - RealmConnection
+- Generic ud cookie: Applications can define their own struct for `ud` cookie. This change is not compatible with the previous realm versions. Please refer to [UDMIGRATION.md]  guide.
+- Enable one of the following features in `Cargo.toml` to use database:
+  - Postgres: postgres+postgres_default
+  - SQLite: sqlite+sqlite_default
+   
   
 ## 0.1.18 - 21 Nov 2019
 - Fix: `Realm.Test` on error from server, report it and keep tests running.
@@ -132,7 +150,8 @@ window.addEventListener("foo", function(evt) { window.realm_app.ports.foo.send(e
 - Removed unused `realm::base::UserStatus` type.
 - Added `Realm.Utils.html` and `Realm.Utils.htmlLine` helpers to render server generated
   HTML in Elm.
-  - They depend on html-parser, so add it: `elm install hecrj/html-parser` inside
+  - They depend on html-parser, so add it: `elm install hecrj/html-parser` 
+ inside
     'frontend' folder.
 - Added `realm::base::FormError::empty()`, and deprecated `::new()`.
 - Added `realm::base::FormError::single()` to create one off error messages.
