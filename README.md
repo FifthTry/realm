@@ -43,7 +43,7 @@ fn main() {
 - Elm: BREAKING: removed Realm.Utils.{link, plainLink, newTabLink}, use Element versions
   instead.
 - Elm: Added method `navigate : String -> Cmd (Msg msg)` in `Realm.elm`.
-- Elm: Added method `mif : Maybe a -> (a -> E.Element msg) -> E.Element msg`.
+- Elm: Added method `mif : Maybe a -> (a -> E.Element msg) -> E.Element msg` in `Utils.elm`.
 - Backtrace added for errors. Panics still needs to be cleaned.
 - Added the following methods in `realm::base::In`:
   - is_anonymous: Returns true if the `ud` cookie is empty.
