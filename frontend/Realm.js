@@ -21,6 +21,16 @@
         return x;
     };
 
+    function disableScrolling() {
+        var x=window.scrollX;
+        var y=window.scrollY;
+        window.onscroll=function(){window.scrollTo(x, y);};
+    }
+
+    function enableScrolling() {
+        window.onscroll=function(){};
+    }
+
     function getApp(id) {
         var current = Elm;
         var mod_list = id.split(".");
@@ -35,6 +45,9 @@
     function showLoading(theApp) {
         window.setTimeout(function () {
             if (theApp.is_shutting_down) {
+                return;
+            }
+            if (theApp.cancel_loading) {
                 return;
             }
             if (theApp && theApp.ports && theApp.ports.onUnloading) {
@@ -248,6 +261,11 @@
             if (app.ports && app.ports.setLoading) {
                 app.ports.setLoading.subscribe(function() {showLoading(app)});
             }
+            if (app.ports && app.ports.cancelLoading) {
+                app.ports.cancelLoading.subscribe(
+                    function() { app.cancel_loading = true }
+                );
+            }
             if (app.ports && app.ports.submit) {
                 app.ports.submit.subscribe(submit);
             }
@@ -259,6 +277,12 @@
             }
             if (app.ports && app.ports.changePage) {
                 app.ports.changePage.subscribe(changePage);
+            }
+            if (app.ports && app.ports.disableScrolling) {
+                app.ports.disableScrolling.subscribe(disableScrolling);
+            }
+            if (app.ports && app.ports.enableScrolling) {
+                app.ports.enableScrolling.subscribe(enableScrolling);
             }
             if (app.ports.viewPortChanged) {
                 window.addEventListener("resize", viewPortChanged);

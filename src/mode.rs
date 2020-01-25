@@ -3,6 +3,7 @@ pub enum Mode {
     Layout,
     HTML,
     Submit,
+    SSR,
 }
 
 impl Mode {
@@ -22,6 +23,7 @@ impl Mode {
             Some("layout") => return Mode::Layout,
             Some("submit") => return Mode::Submit,
             Some("html") => return Mode::HTML,
+            Some("ssr") => return Mode::SSR,
             _ => {}
         };
 

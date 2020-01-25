@@ -15,12 +15,22 @@ impl From<CiString> for String {
 }
 
 #[cfg(feature = "postgres")]
+pub fn cistring_to_string(s: CiString) -> String {
+    s.0
+}
+
+#[cfg(feature = "postgres")]
 pub fn citext(s: &str) -> CiString {
     CiString(s.into())
 }
 
 #[cfg(feature = "sqlite")]
 pub type CiString = String;
+
+#[cfg(feature = "sqlite")]
+pub fn cistring_to_string(s: CiString) -> String {
+    s
+}
 
 #[cfg(feature = "sqlite")]
 pub fn citext(s: &str) -> &str {

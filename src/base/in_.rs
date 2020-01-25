@@ -88,6 +88,11 @@ where
         self.ud.replace(Some(ud));
     }
 
+    pub fn logout(&self) {
+        self.ud.replace(None);
+        self.ctx.cookie("ud", "", 0);
+    }
+
     pub fn format_cookie(&self, ud: &UD) -> String {
         signed_cookies::sign_value(&ud.to_string(), &cookie_secret())
     }

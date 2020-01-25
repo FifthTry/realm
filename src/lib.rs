@@ -10,6 +10,8 @@ extern crate crossbeam_channel;
 extern crate diesel;
 #[macro_use]
 extern crate failure;
+#[macro_use]
+extern crate log;
 
 #[cfg(any(
     all(
@@ -35,6 +37,7 @@ mod page;
 pub mod request_config;
 mod response;
 pub mod serve;
+pub mod serve_static;
 pub mod storybook;
 pub mod test;
 mod urls;
@@ -44,7 +47,9 @@ pub mod watcher;
 pub use crate::context::Context;
 pub use crate::mode::Mode;
 pub use crate::page::{Page, PageSpec};
+pub use crate::request_config::RequestConfig;
 pub use crate::serve::{http_to_hyper, THREAD_POOL};
+pub use crate::serve_static::serve_static;
 pub use crate::urls::{handle, is_realm_url};
 
 pub use crate::response::Response;

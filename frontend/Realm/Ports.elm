@@ -28,3 +28,12 @@ port onUnloading : (() -> msg) -> Sub msg
 
 
 port setLoading : () -> Cmd msg
+
+
+port cancelLoading : () -> Cmd msg
+
+
+port disableScrolling : () -> Cmd msg
+
+
+port enableScrolling : () -> Cmd msg

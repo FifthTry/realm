@@ -6,6 +6,8 @@ pub fn is_realm_url(p: (&str, &http::Method)) -> bool {
         ("/test/reset-db/", &http::Method::GET) => true,
         ("/test/reset-db/", &http::Method::POST) => true,
         ("/iframe/", &http::Method::GET) => true,
+        ("/favicon.ico", &http::Method::GET) => true,
+        (t, &http::Method::GET) if t.starts_with("/static/") => true,
         _ => false,
     }
 }
@@ -28,6 +30,12 @@ where
         ("/test/reset-db/", &http::Method::GET) => crate::test::reset_db(in_).map_err(Into::into),
         ("/test/reset-db/", &http::Method::POST) => crate::test::reset_db(in_).map_err(Into::into),
         ("/iframe/", &http::Method::GET) => crate::iframe::get(in_).map_err(Into::into),
+        ("/favicon.ico", &http::Method::GET) => {
+            crate::serve_static::serve_static(in_.ctx).map_err(Into::into)
+        }
+        (t, &http::Method::GET) if t.starts_with("/static/") => {
+            crate::serve_static::serve_static(in_.ctx).map_err(Into::into)
+        }
         _ => unreachable!(),
     }
 }

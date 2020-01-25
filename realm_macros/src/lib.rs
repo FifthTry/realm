@@ -56,7 +56,7 @@ impl Parse for PathArgs {
 pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
     let id = parse_macro_input!(meta as PathArgs).id;
 
-    let mut html_path = utils::convert_id_to_html_path(&id);
+    let html_path = utils::convert_id_to_html_path(&id);
     // if id = "Pages.Foo.BarBaz", html_path should be "foo/bar-baz.html"
     // lower case, convert dot to slash, convert camel case to kabab case
     let input_clone = input.clone();
@@ -69,21 +69,34 @@ pub fn realm_page(meta: TokenStream, input: TokenStream) -> TokenStream {
         std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string()),
         html_path
     );
-    if !std::path::Path::new(&path).is_file() {
+    let q = if std::path::Path::new(&path).is_file() {
         if std::env::var("DEBUG_REALM_PAGE").is_ok() {
-            println!("{} not found", path);
+            println!("realm_macros::debug: using {} for {}", path, id);
         }
-        html_path = "empty.html".to_string();
-    }
-    // if html_path exists, then include Template stuff, else let them be
-    let q = quote! {
-         #[derive(Serialize, Template)]
-         #[template(path = #html_path)]
-         #derive_input
+        quote! {
+            #[derive(Serialize, Template)]
+            #[template(path = #path)]
+            #derive_input
 
-         impl realm::Page for #ident {
-            const ID: &'static str = #id;
+            impl realm::Page for #ident {
+                const ID: &'static str = #id;
+            }
+        }
+    } else {
+        let source = format!("<!-- {} -->", html_path);
+        if std::env::var("DEBUG_REALM_PAGE").is_ok() {
+            println!("realm_macros::debug: {} not found for {}", path, id);
+        }
+        quote! {
+            #[derive(Serialize, Template)]
+            #[template(source = #source, ext = "txt")]
+            #derive_input
+
+            impl realm::Page for #ident {
+                const ID: &'static str = #id;
+            }
         }
     };
+
     q.into()
 }

@@ -22,7 +22,7 @@ where
     T: std::fmt::Display,
 {
     #[cfg(debug_assertions)]
-    eprintln!("{}: {}", err_str.red(), err);
+    debug!("{}: {}", err_str.red(), err);
     #[cfg(not(debug_assertions))]
-    eprintln!("{}: {}", err_str, err);
+    debug!("{}: {}", err_str, err);
 }

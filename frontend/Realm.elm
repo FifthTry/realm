@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), app, cmdMap, controller, document, getHash, init0, isPass, message, navigate, pushHash, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
+module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), app, cmdMap, controller, document, getHash, init0, isPass, message, navigate, pushHash, refresh, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
 
 import Browser as B
 import Browser.Events as BE
@@ -61,6 +61,7 @@ type Msg msg
     | OnSubmitResponse (Dict String String -> msg) (RR.ApiData RR.LayoutResponse)
     | OnResize Int Int
     | ReloadPage
+    | Refresh
     | ViewPortChanged JE.Value
     | GoTo String
     | NoOp
@@ -94,6 +95,9 @@ cmdMap f =
 
                 ReloadPage ->
                     ReloadPage
+
+                Refresh ->
+                    Refresh
 
                 ViewPortChanged v ->
                     ViewPortChanged v
@@ -247,6 +251,11 @@ navigate =
     GoTo >> message
 
 
+refresh : Cmd (Msg msg)
+refresh =
+    message Refresh
+
+
 appUpdate :
     App config model msg
     -> Msg msg
@@ -282,6 +291,9 @@ appUpdate a msg am =
 
         ( GoTo url, False ) ->
             ( am, Cmd.batch [ BN.pushUrl am.key url, RP.navigate url ] )
+
+        ( Refresh, False ) ->
+            ( am, RP.navigate (Url.toString am.url) )
 
         ( UrlRequest (B.External url), False ) ->
             ( am, BN.load url )
@@ -364,6 +376,8 @@ appUpdate a msg am =
                         (ctr e)
                         model
                         |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
+                        |> Tuple.mapSecond (\c_ -> Cmd.batch [c_, RP.cancelLoading ()])
+
 
         ( OnSubmitResponse _ (RD.Failure e), False ) ->
             ( { am | model = Err (SubmitError e) }, Cmd.none )

@@ -1,9 +1,10 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, onEnter, onEsc, rendered, renderedE, result, true, val, withError, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, lGet, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, onEnter, onEsc, rendered, renderedE, renderedToString, result, style, text, true, val, withError, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Element as E
 import Element.Input as EI
+import Html.Attributes as HA
 import Html.Events
 import Html.Parser
 import Html.Parser.Util
@@ -11,6 +12,24 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
 import Task
+
+
+style : String -> String -> E.Attribute msg
+style k v =
+    E.htmlAttribute (HA.style k v)
+
+
+lGet : Int -> List a -> Maybe a
+lGet idx lst =
+    case ( idx, lst ) of
+        ( 0, f :: _ ) ->
+            Just f
+
+        ( _, _ :: rst ) ->
+            lGet (idx - 1) rst
+
+        _ ->
+            Nothing
 
 
 mapIth : Int -> (a -> a) -> List a -> List a
@@ -126,6 +145,11 @@ type Rendered
     = Rendered String
 
 
+renderedToString : Rendered -> String
+renderedToString (Rendered r) =
+    r
+
+
 rendered : JD.Decoder Rendered
 rendered =
     JD.map Rendered JD.string
@@ -194,6 +218,11 @@ maybeE fn m =
 maybeS : Maybe String -> JE.Value
 maybeS =
     maybeE JE.string
+
+
+text : List (E.Attribute msg) -> String -> E.Element msg
+text attrs txt =
+    E.el attrs (E.text txt)
 
 
 yesno : Bool -> a -> a -> a

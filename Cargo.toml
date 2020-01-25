@@ -19,6 +19,7 @@ postgres_default = ["diesel/postgres"]
 sqlite_default = ["diesel/sqlite"]
 
 [dependencies]
+mime_guess = "2"
 hyper = "0.12.33"
 futures-cpupool = "0.1.8"
 lazy_static = "1"
@@ -42,8 +43,9 @@ bcrypt = "0.5.0"
 colored = "~1.8.0"
 syntect = "3.2.1"
 antidote = "1.0.0"
-askama = "0.8"
+askama = "0.9"
 woothee = "0.10"
+log = "0.4"
 
 [dependencies.chrono]
 version = "0.4"

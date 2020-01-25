@@ -6,26 +6,12 @@ use crate::base::db::red;
 use diesel::query_builder::QueryBuilder;
 use diesel::{connection::TransactionManager, prelude::*};
 
-fn _connection_pool(db_url: String) -> Result<RealmConnection, diesel::ConnectionError> {
-    #[cfg(feature = "postgres")]
-    let db_url = if crate::base::is_test() {
-        // add search_path=test (%3D is = sign)
-        if db_url.contains('?') {
-            db_url + "&options=-c search_path%3Dtest"
-        } else {
-            db_url + "?options=-c search_path%3Dtest"
-        }
-    };
-
-    RealmConnection::establish(db_url.as_str())
-}
-
 pub fn connection() -> Result<RealmConnection, diesel::ConnectionError> {
     connection_with_url(std::env::var("DATABASE_URL").expect("DATABASE_URL not set"))
 }
 
 pub fn connection_with_url(db_url: String) -> Result<RealmConnection, diesel::ConnectionError> {
-    _connection_pool(db_url)
+    RealmConnection::establish(db_url.as_str())
 }
 
 pub fn db_test<F>(run: F)
@@ -35,7 +21,7 @@ where
     let conn = connection().unwrap();
     conn.test_transaction::<_, failure::Error, _>(|| {
         let r = run(&conn).map_err(|e| {
-            eprintln!("failed: {:?}", &e);
+            warn!("failed: {:?}", &e);
             e
         });
         rollback_if_required(&conn);
@@ -98,13 +84,13 @@ impl diesel::connection::Connection for DebugConnection {
     fn establish(url: &str) -> ConnectionResult<Self> {
         let start = std::time::Instant::now();
         let r = DebugConnection::new(url);
-        eprintln!("EstablishConnection in {}", crate::base::elapsed(start));
+        debug!("EstablishConnection in {}", crate::base::elapsed(start));
         r
     }
     fn execute(&self, query: &str) -> QueryResult<usize> {
         let start = std::time::Instant::now();
         let r = self.conn.execute(query);
-        eprintln!(
+        debug!(
             "ExecuteQuery: {} in {}.",
             colored(query),
             crate::base::elapsed(start)
@@ -125,7 +111,7 @@ impl diesel::connection::Connection for DebugConnection {
         let debug_query = diesel::debug_query(&query).to_string();
         let r = self.conn.query_by_index(query);
 
-        eprintln!(
+        debug!(
             "QueryByIndex: {} in {}.",
             colored(debug_query.as_str()),
             crate::base::elapsed(start)
@@ -146,7 +132,7 @@ impl diesel::connection::Connection for DebugConnection {
             qb.finish()
         };
         let r = self.conn.query_by_name(source);
-        eprintln!(
+        debug!(
             "QueryByName: {} in {}",
             colored(query.as_str()),
             crate::base::elapsed(start)
@@ -166,7 +152,7 @@ impl diesel::connection::Connection for DebugConnection {
             qb.finish()
         };
         let r = self.conn.execute_returning_count(source);
-        eprintln!(
+        debug!(
             "ExecuteReturningCount: {} in {}",
             colored(query.as_str()),
             crate::base::elapsed(start)

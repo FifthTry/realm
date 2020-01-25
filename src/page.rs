@@ -72,7 +72,8 @@ pub trait Page: serde::ser::Serialize + askama::Template {
 lazy_static! {
     pub static ref HTML_PAGE: String = {
         let proj_dir = env::current_dir().expect("Could not find current dir");
-        let path = proj_dir.join("index.html");
+        let path = proj_dir
+            .join(std::env::var("REALM_INDEX").unwrap_or_else(|_| "index.html".to_string()));
         match fs::read_to_string(path) {
             Ok(p) => p,
             Err(_err) => default_page(),
@@ -82,21 +83,21 @@ lazy_static! {
 
 pub fn default_page() -> String {
     r#"<!DOCTYPE html>
-        <html>
-            <head>
-                <meta charset="utf-8" />
-                <title>__realm_title__</title>
-                <meta name="viewport" content="width=device-width" />
-                <script id="data" type="application/json">
-                    __realm_data__
-                </script>
-                <style>p {margin: 0}</style>
-            </head>
-            <body>
-                __realm_body__
-                <div id="main"></div>
-                <script src='/static/elm.js'></script>
-            </body>
-        </html>"#
-        .to_string()
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>__realm_title__</title>
+        <meta name="viewport" content="width=device-width" />
+        <script id="data" type="application/json">
+            __realm_data__
+        </script>
+        <style>p {margin: 0}</style>
+    </head>
+    <body>
+        __realm_body__
+        <div id="main"></div><script src='/static/elm.js'></script>
+    </body>
+</html>
+"#
+    .to_string()
 }

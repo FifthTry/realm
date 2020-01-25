@@ -319,6 +319,7 @@ impl RequestConfig {
             key: name.to_string(),
         })
     }
+
     #[deprecated(since = "0.1.15", note = "Please use .required() instead")]
     pub fn get<T>(&mut self, name: &str, _is_optional: bool) -> Result<T, crate::Error>
     where
