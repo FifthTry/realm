@@ -1,6 +1,6 @@
 # Generic UD cookie Migration
 - Define a struct `UD` in `ud.rs`. This struct contains fields to be included in
- ud 
+ ud
     cookie.
 ```rust
 pub struct UD {
@@ -31,7 +31,7 @@ impl std::str::FromStr for UD {
                 ud
             )));
         }
-        
+
         Ok(UD {
             user_id: parts[0].parse().unwrap(),
             display_name: parts[1].to_string(),
@@ -41,7 +41,7 @@ impl std::str::FromStr for UD {
 }
 ```
 - Define an alias for `In` object in `ud.rs`. Include this `In` object in `prelude`
- or 
+ or
 replace `realm::base::In` with `ud::In`.
 ```rust
 pub type In<'a> = realm::base::In<'a, UD>;

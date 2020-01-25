@@ -59,8 +59,8 @@ fn main() {
 - Enable one of the following features in `Cargo.toml` to use database:
   - Postgres: postgres+postgres_default
   - SQLite: sqlite+sqlite_default
-   
-  
+
+
 ## 0.1.18 - 21 Nov 2019
 - Fix: `Realm.Test` on error from server, report it and keep tests running.
 - `realm::RequestConfig::required()` etc methods now return `realm::Error(InputError)`
@@ -150,7 +150,7 @@ window.addEventListener("foo", function(evt) { window.realm_app.ports.foo.send(e
 - Removed unused `realm::base::UserStatus` type.
 - Added `Realm.Utils.html` and `Realm.Utils.htmlLine` helpers to render server generated
   HTML in Elm.
-  - They depend on html-parser, so add it: `elm install hecrj/html-parser` 
+  - They depend on html-parser, so add it: `elm install hecrj/html-parser`
  inside
     'frontend' folder.
 - Added `realm::base::FormError::empty()`, and deprecated `::new()`.
