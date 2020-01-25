@@ -36,6 +36,7 @@ impl Response {
                 Ok(ctx.response(match mode {
                     Mode::API => serde_json::to_string_pretty(&spec.config)?.into(),
                     Mode::HTML => spec.render(ctx.is_crawler())?,
+                    Mode::HTMLExplicit => spec.render(false)?,
                     Mode::SSR => spec.render(true)?,
                     Mode::Layout => serde_json::to_string_pretty(&spec)?.into(),
                     Mode::Submit => serde_json::to_string_pretty(&json!({

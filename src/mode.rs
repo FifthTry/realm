@@ -2,6 +2,7 @@ pub enum Mode {
     API,
     Layout,
     HTML,
+    HTMLExplicit,
     Submit,
     SSR,
 }
@@ -22,7 +23,7 @@ impl Mode {
             Some("api") => return Mode::API,
             Some("layout") => return Mode::Layout,
             Some("submit") => return Mode::Submit,
-            Some("html") => return Mode::HTML,
+            Some("html") => return Mode::HTMLExplicit,
             Some("ssr") => return Mode::SSR,
             _ => {}
         };

@@ -89,7 +89,7 @@ pub fn default_page() -> String {
         <title>__realm_title__</title>
         <meta name="viewport" content="width=device-width" />
         <script id="data" type="application/json">
-            __realm_data__
+__realm_data__
         </script>
         <style>p {margin: 0}</style>
     </head>

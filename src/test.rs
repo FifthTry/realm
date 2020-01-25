@@ -60,7 +60,7 @@ where
         });
     };
 
-    in_.logout();
+    in_.reset_ud();
 
     Ok(crate::Response::Http(in_.ctx.response("ok\n".into())?))
 }
