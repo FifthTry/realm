@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), app, cmdMap, controller, document, getHash, init0, isPass, message, pushHash, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
+module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), app, cmdMap, controller, document, getHash, init0, isPass, message, navigate, pushHash, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
 
 import Browser as B
 import Browser.Events as BE
@@ -62,6 +62,7 @@ type Msg msg
     | OnResize Int Int
     | ReloadPage
     | ViewPortChanged JE.Value
+    | GoTo String
     | NoOp
 
 
@@ -99,6 +100,9 @@ cmdMap f =
 
                 NoOp ->
                     NoOp
+
+                GoTo v ->
+                    GoTo v
         )
 
 
@@ -238,6 +242,11 @@ appInit a vflags url key =
     )
 
 
+navigate : String -> Cmd (Msg msg)
+navigate =
+    GoTo >> message
+
+
 appUpdate :
     App config model msg
     -> Msg msg
@@ -270,6 +279,9 @@ appUpdate a msg am =
                     Url.toString url
             in
             ( am, Cmd.batch [ BN.pushUrl am.key u, RP.navigate u ] )
+
+        ( GoTo url, False ) ->
+            ( am, Cmd.batch [ BN.pushUrl am.key url, RP.navigate url ] )
 
         ( UrlRequest (B.External url), False ) ->
             ( am, BN.load url )
@@ -396,7 +408,10 @@ appDocument a am =
             case e of
                 PError p ->
                     { title = "failed to parse"
-                    , body = [ H.text ("value: " ++ JE.encode 4 p.value) ]
+                    , body =
+                        [ H.text ("value: " ++ JE.encode 4 p.value)
+                        , H.text ("error: " ++ JD.errorToString p.jd)
+                        ]
                     }
 
                 _ ->

@@ -1,25 +1,32 @@
-use crate::base::db::RealmConnection;
+#[cfg(feature = "postgres_default")]
+use crate::base::pg::RealmConnection;
+#[cfg(feature = "sqlite_default")]
+use crate::base::sqlite::RealmConnection;
 use crate::base::*;
 use chrono::prelude::*;
+use std::cell::Ref;
 
-pub struct In<'a> {
+pub struct In<'a, UD>
+where
+    UD: std::string::ToString + std::str::FromStr,
+{
     pub ctx: &'a crate::Context,
     pub lang: Language, // what is language_tags crate about?
     pub head: std::cell::RefCell<http::response::Builder>,
     pub remote_ip: String,
-    ud: std::cell::RefCell<Option<(i32, String, i32)>>,
+    ud: std::cell::RefCell<Option<UD>>,
+    #[cfg(any(feature = "sqlite_default", feature = "postgres_default"))]
     pub conn: &'a RealmConnection,
-    user_id: std::cell::RefCell<Option<i32>>,
     pub now: DateTime<Utc>,
 }
 
-impl<'a> In<'a> {
-    pub fn from(conn: &'a RealmConnection, ctx: &'a crate::Context, remote_ip: &str) -> In<'a> {
+impl<'a, UD> In<'a, UD>
+where
+    UD: std::string::ToString + std::str::FromStr,
+{
+    #[cfg(any(feature = "sqlite_default", feature = "postgres_default"))]
+    pub fn from(conn: &'a RealmConnection, ctx: &'a crate::Context, remote_ip: &str) -> In<'a, UD> {
         let ud = get_cookie(&ctx.request, "ud").and_then(In::parse_ud_cookie);
-        let uid = match ud {
-            Some((uid, _, _)) => Some(uid),
-            None => None,
-        };
         In {
             ctx,
             lang: Language::default(), // TODO: get this from header
@@ -27,9 +34,22 @@ impl<'a> In<'a> {
             remote_ip: remote_ip.to_string(),
             ud: std::cell::RefCell::new(ud),
             conn,
-            user_id: std::cell::RefCell::new(uid),
             now: Utc::now(),
         }
+    }
+
+    pub fn is_anonymous(&self) -> bool {
+        self.ud().is_none()
+    }
+
+    pub fn is_authenticated(&self) -> bool {
+        self.ud().is_some()
+    }
+
+    pub fn is_local(&self) -> bool {
+        self.get_header(http::header::HOST)
+            .map(|h| h.contains("127.0.0.1") || h.contains("localhost") || h.contains("127.0.0.2"))
+            .unwrap_or(false)
     }
 
     pub fn get_header(&self, header: http::header::HeaderName) -> Option<String> {
@@ -45,14 +65,6 @@ impl<'a> In<'a> {
         crate::Mode::detect(&self.ctx.request)
     }
 
-    pub fn user_id(&self) -> Option<i32> {
-        *self.user_id.borrow()
-    }
-
-    pub fn set_user_id(&self, uid: Option<i32>) {
-        self.user_id.replace(uid);
-    }
-
     pub fn get_cookie(&self, name: &str) -> Option<String> {
         get_cookie(&self.ctx.request, name)
     }
@@ -61,29 +73,23 @@ impl<'a> In<'a> {
         self.get_header(http::header::USER_AGENT)
     }
 
-    pub fn name(&self) -> Option<String> {
-        match *self.ud.borrow() {
-            Some((_, ref name, _)) => Some(name.to_string()),
-            None => None,
-        }
-    }
-
-    pub fn set_ud(&self, uid: i32, name: String, sid: i32) {
-        self.ud.replace(Some((uid, name.clone(), sid)));
-        self.ctx.cookie(
-            "ud",
-            signed_cookies::sign_value(
-                format!("{}|{}|{}", uid, name, sid).as_str(),
-                &cookie_secret(),
-            )
-            .as_str(),
-            COOKIE_AGE,
-        );
-    }
-
-    pub fn logout(&self) {
+    pub fn reset_ud(&self) {
         self.ud.replace(None);
         self.ctx.cookie("ud", "", 0);
+    }
+
+    pub fn ud(&self) -> Ref<Option<UD>> {
+        self.ud.borrow()
+    }
+
+    pub fn set_ud(&self, ud: UD) {
+        self.ctx
+            .cookie("ud", self.format_cookie(&ud).as_str(), COOKIE_AGE);
+        self.ud.replace(Some(ud));
+    }
+
+    pub fn format_cookie(&self, ud: &UD) -> String {
+        signed_cookies::sign_value(&ud.to_string(), &cookie_secret())
     }
 
     pub fn form_error(
@@ -112,7 +118,7 @@ impl<'a> In<'a> {
             .map_err(Into::into)
     }
 
-    pub fn parse_ud_cookie(ud: String) -> Option<(i32, String, i32)> {
+    pub fn parse_ud_cookie(ud: String) -> Option<UD> {
         let ud: String = match signed_cookies::signed_value(
             ud.as_str(),
             i64::from(COOKIE_AGE),
@@ -124,12 +130,7 @@ impl<'a> In<'a> {
                 return None;
             }
         };
-        let parts: Vec<String> = ud.split('|').map(|v| v.to_string()).collect();
-        Some((
-            parts[0].parse().unwrap(),
-            parts[1].to_string(),
-            parts[2].parse().unwrap(),
-        ))
+        ud.parse::<UD>().ok()
     }
 }
 
