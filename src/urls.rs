@@ -10,11 +10,14 @@ pub fn is_realm_url(p: (&str, &http::Method)) -> bool {
     }
 }
 
-pub fn handle(
-    in_: &crate::base::In,
+pub fn handle<UD>(
+    in_: &crate::base::In<UD>,
     p: (&str, &http::Method),
     input: &mut crate::request_config::RequestConfig,
-) -> Result<crate::Response, failure::Error> {
+) -> Result<crate::Response, failure::Error>
+where
+    UD: std::string::ToString + std::str::FromStr,
+{
     match p {
         ("/storybook/", &http::Method::GET) => crate::storybook::get(in_).map_err(Into::into),
         ("/storybook/poll/", &http::Method::GET) => {
@@ -25,6 +28,6 @@ pub fn handle(
         ("/test/reset-db/", &http::Method::GET) => crate::test::reset_db(in_).map_err(Into::into),
         ("/test/reset-db/", &http::Method::POST) => crate::test::reset_db(in_).map_err(Into::into),
         ("/iframe/", &http::Method::GET) => crate::iframe::get(in_).map_err(Into::into),
-        _ => unimplemented!(),
+        _ => unreachable!(),
     }
 }

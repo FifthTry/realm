@@ -57,13 +57,19 @@ impl Default for FormErrors {
     }
 }
 
-pub struct Form<'a> {
-    in_: &'a crate::base::In<'a>,
+pub struct Form<'a, UD>
+where
+    UD: std::string::ToString + std::str::FromStr,
+{
+    in_: &'a crate::base::In<'a, UD>,
     errors: FormErrors,
 }
 
-impl<'a> Form<'a> {
-    pub fn new(in_: &'a crate::base::In<'a>) -> Self {
+impl<'a, UD> Form<'a, UD>
+where
+    UD: std::string::ToString + std::str::FromStr,
+{
+    pub fn new(in_: &'a crate::base::In<'a, UD>) -> Self {
         Form {
             in_,
             errors: FormErrors(HashMap::new()),
@@ -82,7 +88,7 @@ impl<'a> Form<'a> {
     pub fn c1<T, V>(&mut self, name: &str, value: T, validator: V) -> Result<(), failure::Error>
     where
         T: Into<String>,
-        V: FnOnce(&crate::base::In, &str) -> Result<Option<String>, failure::Error>,
+        V: FnOnce(&crate::base::In<UD>, &str) -> Result<Option<String>, failure::Error>,
     {
         if self
             .errors
@@ -111,8 +117,8 @@ impl<'a> Form<'a> {
     ) -> Result<(), failure::Error>
     where
         T: Into<String> + Clone,
-        V1: FnOnce(&crate::base::In, &str) -> Result<Option<String>, failure::Error>,
-        V2: FnOnce(&crate::base::In, &str) -> Result<Option<String>, failure::Error>,
+        V1: FnOnce(&crate::base::In<UD>, &str) -> Result<Option<String>, failure::Error>,
+        V2: FnOnce(&crate::base::In<UD>, &str) -> Result<Option<String>, failure::Error>,
     {
         self.c1(name, value.clone(), val1)?;
         self.c1(name, value, val2)

@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, onEnter, onEsc, rendered, renderedE, result, true, val, withError, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, onEnter, onEsc, rendered, renderedE, result, true, val, withError, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -26,6 +26,16 @@ mapAIth idx f =
 iff : Bool -> E.Element msg -> E.Element msg
 iff c e =
     yesno c e E.none
+
+
+mif : Maybe a -> (a -> E.Element msg) -> E.Element msg
+mif m f =
+    case m of
+        Just a ->
+            f a
+
+        Nothing ->
+            E.none
 
 
 onEnter : msg -> E.Attribute msg

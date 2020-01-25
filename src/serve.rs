@@ -12,6 +12,13 @@ pub fn http_to_hyper(resp: http::Response<Vec<u8>>) -> hyper::Response<hyper::Bo
     hyper::Response::from_parts(parts, hyper::Body::from(body))
 }
 
+pub fn server_error(msg: Vec<u8>) -> hyper::Response<hyper::Body> {
+    let mut resp = hyper::Response::default();
+    *resp.status_mut() = http::StatusCode::INTERNAL_SERVER_ERROR;
+    *resp.body_mut() = hyper::Body::from(msg);
+    resp
+}
+
 #[macro_export]
 macro_rules! realm_serve {
     ($e:expr) => {{
@@ -23,24 +30,50 @@ macro_rules! realm_serve {
         pub fn handle_sync(
             req: realm::Request,
         ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
-            let mode = realm::Mode::detect(&req);
-            let url = req
-                .uri()
-                .path_and_query()
-                .map(|p| p.as_str().to_string())
-                .unwrap_or_else(|| "/".to_string());
-            let url = url.replace("&realm_mode=layout", "");
-            let url = url.replace("?realm_mode=layout", "");
-            let ctx = realm::Context::new(req);
+            let req = std::sync::Mutex::new(req);
+            let res = std::panic::catch_unwind(|| {
+                let req = req.into_inner().unwrap();
+                let mode = realm::Mode::detect(&req);
+                let url = req
+                    .uri()
+                    .path_and_query()
+                    .map(|p| p.as_str().to_string())
+                    .unwrap_or_else(|| "/".to_string());
+                let url = url.replace("&realm_mode=layout", "");
+                let url = url.replace("?realm_mode=layout", "");
+                let ctx = realm::Context::new(req);
 
-            match $e(&ctx)
-                .and_then(|r| r.render(&ctx, mode, url))
-                .map(|r| realm::http_to_hyper(r))
-            {
-                Ok(a) => Ok(a),
-                Err(e) => {
-                    println!("error: {:?}", e);
-                    unimplemented!()
+                let r = match $e(&ctx)
+                    .and_then(|r| r.render(&ctx, &mode, &url))
+                    .map(|r| realm::http_to_hyper(r))
+                {
+                    Ok(a) => Ok(a),
+                    Err(e) => {
+                        println!("error: {:?}", e);
+                        Ok(realm::Response::plain(
+                            &ctx,
+                            format!("error: {:?}", e),
+                            http::StatusCode::INTERNAL_SERVER_ERROR,
+                        )
+                        .and_then(|r| r.render(&ctx, &mode, &url))
+                        .map(|r| realm::http_to_hyper(r))
+                        .unwrap())
+                    }
+                };
+
+                std::sync::Mutex::new(r)
+            });
+
+            match res {
+                Ok(r) => r.into_inner().unwrap(),
+                Err(_) => {
+                    // https://docs.rs/log-panics/2.0.0/src/log_panics/lib.rs.html#50-87
+                    // we are not getting any meaningful message to print here. one way
+                    // to do it would be set a hook as described in link above, and
+                    // since hooks are global, store the panic message in a global
+                    // hashmap (thread id-message), and retrieve the message by sending
+                    // the current thread id.
+                    Ok(realm::serve::server_error("panic".to_string().into_bytes()))
                 }
             }
         }

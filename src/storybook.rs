@@ -1,4 +1,7 @@
-pub fn get(in_: &crate::base::In) -> Result<crate::Response, crate::Error> {
+pub fn get<UD>(in_: &crate::base::In<UD>) -> Result<crate::Response, crate::Error>
+where
+    UD: std::string::ToString + std::str::FromStr,
+{
     if !crate::base::is_test() {
         return Err(crate::Error::PageNotFound {
             message: "server not running in test mode".to_string(),
