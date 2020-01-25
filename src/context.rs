@@ -12,6 +12,10 @@ impl Context {
         }
     }
 
+    pub fn pm(&self) -> (&str, &http::Method) {
+        (self.request.uri().path(), self.request.method())
+    }
+
     pub fn is_crawler(&self) -> bool {
         // either useragent is bot: woothee::is_crawler
         // or query params is_crawler is set to any value
