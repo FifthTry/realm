@@ -35,7 +35,7 @@ def _create_index(prefix: str, static: str):
     )
 
 
-def elm_with(folder: str, target: str = "static"):
+def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
     def spec():
         basename = folder if folder else "elm"
         prefix = folder + "/" if folder else ""
@@ -43,7 +43,7 @@ def elm_with(folder: str, target: str = "static"):
 
         realm_deps: List[str] = glob2(
             "realm/frontend/", r".*\.(elm|js)", recursive=True
-        ) + ["dodo.py"] + glob2("Common", r".*\.elm$", recursive=True)
+        ) + ["dodo.py"] + (extra_elms if extra_elms else [])
 
         yield {
             "actions": [
