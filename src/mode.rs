@@ -39,9 +39,12 @@ impl Mode {
 
         Mode::API
     }
+
     pub fn content_type(&self) -> http::HeaderValue {
         http::HeaderValue::from_static(match self {
             Mode::HTML => "text/html",
+            Mode::HTMLExplicit => "text/html",
+            Mode::SSR => "text/html",
             _ => "application/json; charset=utf-8",
         })
     }
