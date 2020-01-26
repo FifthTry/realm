@@ -16,6 +16,10 @@ impl Context {
         (self.request.uri().path(), self.request.method())
     }
 
+    pub fn input(&self) -> Result<crate::RequestConfig, failure::Error> {
+        crate::RequestConfig::new(&self.request)
+    }
+
     pub fn is_crawler(&self) -> bool {
         // either useragent is bot: woothee::is_crawler
         // or query params is_crawler is set to any value

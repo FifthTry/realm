@@ -255,6 +255,7 @@
             }
 
             app = app.init({flags: flags});
+            enableScrolling();
             if (app.ports && app.ports.navigate) {
                 app.ports.navigate.subscribe(navigate);
             }
