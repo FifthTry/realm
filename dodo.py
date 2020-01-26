@@ -20,18 +20,18 @@ def task_pip():
     }
 
 
-def create_index():
+def _create_index(prefix: str, static: str):
     hasher = hashlib.sha256()
-    content = open(f"static/elm.js", "rb").read()
+    content = open("%selm.js" % (static,), "rb").read()
     hasher.update(content)
     hexdiget = "hashed-" + hasher.hexdigest()[:10]
-    open(f"static/elm.%s.js" % hexdiget, "wb").write(content)
-    gzip.open(f"static/elm.%s.js.gz" % hexdiget, "wb").write(content)
-    open(f"static/elm.%s.js.br" % hexdiget, "wb").write(
+    open("%selm.%s.js" % (static, hexdiget), "wb").write(content)
+    gzip.open("%selm.%s.js.gz" % (static, hexdiget), "wb").write(content)
+    open("%selm.%s.js.br" % (static, hexdiget), "wb").write(
         brotli.compress(content, mode=brotli.MODE_TEXT, quality=11, lgwin=22)
     )
-    open("index.html", "w").write(
-        open("index.template.html").read().replace("__hash__", hexdiget)
+    open("%sindex.html" % (prefix,), "w").write(
+        open("%sindex.template.html" % (prefix,)).read().replace("__hash__", hexdiget)
     )
 
 
@@ -48,7 +48,7 @@ def elm_with(folder: str, target: str = "static"):
         yield {
             "actions": [
                 "find %s | grep elm | grep -v elm.js | xargs -r rm" % (static,),
-                create_index,
+                lambda: _create_index(prefix, static),
             ],
             "file_dep": [
                 "dodo.py",
