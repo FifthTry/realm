@@ -13,7 +13,11 @@ impl Context {
     }
 
     pub fn pm(&self) -> (&str, &http::Method) {
-        (self.request.uri().path(), self.request.method())
+        let method = match self.request.method() {
+            &http::Method::HEAD => &http::Method::GET,
+            m => m,
+        };
+        (self.request.uri().path(), method)
     }
 
     pub fn input(&self) -> Result<crate::RequestConfig, failure::Error> {
