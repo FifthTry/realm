@@ -22,7 +22,12 @@ impl Response {
         }
     }
 
-    pub fn render(self, ctx: &crate::Context, mode: &Mode, url: &str) -> crate::Result {
+    pub fn render(
+        self,
+        ctx: &crate::Context,
+        mode: &Mode,
+        url: &str,
+    ) -> std::result::Result<http::Response<Vec<u8>>, failure::Error> {
         if let Response::Http(r) = self {
             return Ok(r);
         };

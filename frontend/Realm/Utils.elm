@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, lGet, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, onEnter, onEsc, rendered, renderedE, renderedToString, result, style, text, true, val, withError, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, lGet, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, nif, niff, onEnter, onEsc, rendered, renderedE, renderedToString, result, style, text, true, val, withError, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -47,6 +47,11 @@ iff c e =
     yesno c e E.none
 
 
+niff : Bool -> E.Element msg -> E.Element msg
+niff c e =
+    yesno c E.none e
+
+
 mif : Maybe a -> (a -> E.Element msg) -> E.Element msg
 mif m f =
     case m of
@@ -55,6 +60,16 @@ mif m f =
 
         Nothing ->
             E.none
+
+
+nif : Maybe a -> E.Element msg -> E.Element msg
+nif m f =
+    case m of
+        Just _ ->
+            E.none
+
+        Nothing ->
+            f
 
 
 onEnter : msg -> E.Attribute msg

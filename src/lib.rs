@@ -53,7 +53,7 @@ pub use crate::serve_static::serve_static;
 pub use crate::urls::{handle, is_realm_url};
 
 pub use crate::response::Response;
-pub type Result = std::result::Result<http::Response<Vec<u8>>, failure::Error>;
+pub type Result = std::result::Result<crate::response::Response, failure::Error>;
 pub type Request = http::request::Request<Vec<u8>>;
 
 pub trait Subject: askama::Template {}
