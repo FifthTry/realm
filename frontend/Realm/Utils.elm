@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, lGet, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, nif, niff, onEnter, onEsc, rendered, renderedE, renderedToString, result, style, text, true, val, withError, yesno, zip)
+module Realm.Utils exposing (Field, withFocus, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, lGet, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, nif, niff, onEnter, onEsc, rendered, renderedE, renderedToString, result, style, text, title, true, val, withError, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -12,6 +12,11 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
 import Task
+
+
+title : String -> E.Attribute msg
+title =
+    HA.title >> E.htmlAttribute
 
 
 style : String -> String -> E.Attribute msg
@@ -292,6 +297,7 @@ type alias Field =
     { value : String
     , error : Maybe String
     , edited : Bool
+    , focused : Bool
     }
 
 
@@ -300,7 +306,13 @@ emptyField =
     { value = ""
     , edited = False
     , error = Nothing
+    , focused = False
     }
+
+
+withFocus : Field -> Bool -> Field
+withFocus f foc =
+    { f | focused = foc }
 
 
 fi : String -> R.In -> Form -> Field
@@ -309,7 +321,7 @@ fi name in_ f =
         v =
             val name in_ f
     in
-    { value = v, edited = v /= "", error = err name f }
+    { value = v, edited = v /= "", error = err name f, focused = False }
 
 
 fieldError : String -> String -> String -> R.In -> Form -> R.TestResult
