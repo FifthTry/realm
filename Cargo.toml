@@ -47,6 +47,9 @@ askama = "0.9"
 woothee = "0.10"
 log = "0.4"
 
+observer = { path = "../observer/observer" }
+observer_attribute = { path = "../observer/observer_attribute" }
+
 [dependencies.chrono]
 version = "0.4"
 features = ["serde"]

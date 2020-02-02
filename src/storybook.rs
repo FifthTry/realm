@@ -1,8 +1,12 @@
+use observer::prelude::*;
+
+#[observed(with_result, namespace = "realm__storybook")]
 pub fn get<UD>(in_: &crate::base::In<UD>) -> Result<crate::Response, crate::Error>
 where
     UD: std::string::ToString + std::str::FromStr,
 {
     if !crate::base::is_test() {
+        observer::observe_span_log("is_test, returning 404");
         return Err(crate::Error::PageNotFound {
             message: "server not running in test mode".to_string(),
         });

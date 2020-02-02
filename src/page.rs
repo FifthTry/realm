@@ -21,7 +21,7 @@ fn escape(s: &str) -> String {
 impl PageSpec {
     pub fn render(&self, is_crawler: bool) -> Result<Vec<u8>, failure::Error> {
         let data = escape(serde_json::to_string_pretty(&self)?.as_str());
-        let mut html = HTML_PAGE.clone();
+        let mut html = get_page();
 
         html = html.replace("__realm_title__", escape(&self.title).as_str());
 
@@ -69,16 +69,27 @@ pub trait Page: serde::ser::Serialize + askama::Template {
     }
 }
 
+fn get_page() -> String {
+    if cfg!(debug_assertions) {
+        read_index()
+    } else {
+        HTML_PAGE.clone()
+    }
+}
+
+fn read_index() -> String {
+    let proj_dir = env::current_dir().expect("Could not find current dir");
+    let path =
+        proj_dir.join(std::env::var("REALM_INDEX").unwrap_or_else(|_| "index.html".to_string()));
+    println!("reading_index: {:?}", &path);
+    match fs::read_to_string(path) {
+        Ok(p) => p,
+        Err(_err) => default_page(),
+    }
+}
+
 lazy_static! {
-    pub static ref HTML_PAGE: String = {
-        let proj_dir = env::current_dir().expect("Could not find current dir");
-        let path = proj_dir
-            .join(std::env::var("REALM_INDEX").unwrap_or_else(|_| "index.html".to_string()));
-        match fs::read_to_string(path) {
-            Ok(p) => p,
-            Err(_err) => default_page(),
-        }
-    };
+    pub static ref HTML_PAGE: String = { read_index() };
 }
 
 pub fn default_page() -> String {

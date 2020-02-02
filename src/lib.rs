@@ -12,6 +12,8 @@ extern crate diesel;
 extern crate failure;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate observer_attribute;
 
 #[cfg(any(
     all(

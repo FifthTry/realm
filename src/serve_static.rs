@@ -1,8 +1,12 @@
+use observer::prelude::*;
+
+#[observed(with_result, namespace = "realm")]
 pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Error> {
     let start = std::time::Instant::now();
     let path = ctx.request.uri().path();
-
     let mime = mime_guess::from_path(&path).first_or_text_plain();
+
+    observe_field("mime", mime.to_string().as_str());
 
     let path = if path == "/favicon.ico" {
         "/static/favicon.ico"
@@ -15,6 +19,8 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
     } else {
         ""
     };
+
+    observe_field("cache_control", cache_control);
 
     if ctx
         .request
