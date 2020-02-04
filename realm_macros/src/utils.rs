@@ -6,7 +6,7 @@ pub fn convert_id_to_html_path(id_: &str) -> String {
     let mut v_: Vec<String> = vec![];
     for sli in v.iter() {
         let k_sli = inflector::cases::kebabcase::to_kebab_case(sli).to_lowercase();
-        v_.push(String::from(k_sli))
+        v_.push(k_sli)
         //html_path.push_str("/");
     }
     html_path = v_.join("/");

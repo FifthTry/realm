@@ -12,6 +12,10 @@ impl Context {
         }
     }
 
+    pub fn remote_ip(&self) -> String {
+        "127.0.0.1".to_string()
+    }
+
     pub fn pm(&self) -> (&str, &http::Method) {
         let method = match self.request.method() {
             &http::Method::HEAD => &http::Method::GET,

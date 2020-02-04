@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, rtl, ltr, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, lGet, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, nif, niff, onEnter, onEsc, rendered, renderedE, renderedToString, result, style, text, title, true, val, withError, withFocus, yesno, zip)
+module Realm.Utils exposing (Field, none, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, lGet, ltr, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, nif, niff, onEnter, onEsc, rendered, renderedE, renderedToString, result, rtl, style, text, title, true, val, withError, withFocus, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -266,6 +266,12 @@ yesno y a1 a2 =
 
     else
         a2
+
+
+none : E.Attribute msg
+none =
+    HA.attribute "d-none" "none"
+        |> E.htmlAttribute
 
 
 type alias Form =

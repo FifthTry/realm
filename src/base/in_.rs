@@ -13,7 +13,6 @@ where
     pub ctx: &'a crate::Context,
     pub lang: Language, // what is language_tags crate about?
     pub head: std::cell::RefCell<http::response::Builder>,
-    pub remote_ip: String,
     ud: std::cell::RefCell<Option<UD>>,
     #[cfg(any(feature = "sqlite_default", feature = "postgres_default"))]
     pub conn: &'a RealmConnection,
@@ -25,13 +24,12 @@ where
     UD: std::string::ToString + std::str::FromStr,
 {
     #[cfg(any(feature = "sqlite_default", feature = "postgres_default"))]
-    pub fn from(conn: &'a RealmConnection, ctx: &'a crate::Context, remote_ip: &str) -> In<'a, UD> {
+    pub fn from(conn: &'a RealmConnection, ctx: &'a crate::Context) -> In<'a, UD> {
         let ud = get_cookie(&ctx.request, "ud").and_then(In::parse_ud_cookie);
         In {
             ctx,
             lang: Language::default(), // TODO: get this from header
             head: std::cell::RefCell::new(http::response::Builder::new()),
-            remote_ip: remote_ip.to_string(),
             ud: std::cell::RefCell::new(ud),
             conn,
             now: Utc::now(),
