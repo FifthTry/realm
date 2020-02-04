@@ -76,6 +76,7 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
             "actions": [
                 "cd %sfrontend && elm make Test.elm --output=elm-stuff/t.js"
                 % (prefix,),
+                "mkdir -p %s" % (static,),
                 "cat %sfrontend/elm-stuff/t.js realm/frontend/IframeController.js "
                 "   > %stest.js" % (prefix, static),
             ],
@@ -89,6 +90,7 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
             "actions": [
                 "cd %sfrontend && elm make Storybook.elm  --output=elm-stuff/s.js"
                 % (prefix,),
+                "mkdir -p %s" % (static,),
                 "cat %sfrontend/elm-stuff/s.js realm/frontend/IframeController.js "
                 "   > %sstorybook.js" % (prefix, static),
             ],
@@ -105,6 +107,7 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
         yield {
             "actions": [
                 elm_cmd,
+                "mkdir -p %s" % (static,),
                 "cat %sfrontend/elm-stuff/i.js realm/frontend/Realm.js "
                 "   > %siframe.js" % (prefix, static),
             ],
@@ -124,6 +127,7 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
                 elm_cmd,
                 # uglify_cmd,
                 # "echo >> elm-stuff/e.min.js",
+                "mkdir -p %s" % (static,),
                 "cat %sfrontend/elm-stuff/e.js realm/frontend/Realm.js"
                 "   > %selm.js" % (prefix, static),
             ],
