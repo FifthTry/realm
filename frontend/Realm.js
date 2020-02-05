@@ -190,8 +190,13 @@
             }
 
 
-            if (data.url !== document.location.pathname + document.location.search) {
-                history.replaceState(null, null, data.url);
+            if (data.url !== document.location.pathname + document.location.search || !!data.replace) {
+                if (!!data.replace) {
+                    history.replaceState(null, null, data.replace);
+                } else {
+                    history.replaceState(null, null, data.url);
+                }
+
             }
 
             if (isSubmit) {

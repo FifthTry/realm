@@ -14,6 +14,12 @@ impl Response {
             Response::Page(s) => Response::Page(s.with_url(url)),
         }
     }
+    pub fn with_replace(self, url: String) -> Response {
+        match self {
+            Response::Http(r) => Response::Http(r),
+            Response::Page(s) => Response::Page(s.with_replace(url)),
+        }
+    }
 
     pub fn with_default_url(self, url: String) -> Response {
         match self {
