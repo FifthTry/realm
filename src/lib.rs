@@ -62,6 +62,8 @@ pub trait Subject: askama::Template {}
 pub trait Text: askama::Template {}
 pub trait HTML: askama::Template {}
 
+pub trait UserData : std::string::ToString + std::str::FromStr {}
+
 #[derive(Fail, Debug)]
 pub enum Error {
     #[fail(display = "404 Page Not Found: {}", message)]

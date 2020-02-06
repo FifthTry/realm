@@ -67,7 +67,7 @@ impl Response {
     pub fn ok<T, UD>(in_: &crate::base::In<UD>, data: &T) -> Result<crate::Response, failure::Error>
     where
         T: serde::Serialize,
-        UD: std::string::ToString + std::str::FromStr,
+        UD: crate::UserData,
     {
         Ok(Response::Http(in_.ctx.response(
             serde_json::to_vec_pretty(&json!({
@@ -83,7 +83,7 @@ impl Response {
     ) -> Result<crate::Response, failure::Error>
     where
         T: Into<String>,
-        UD: std::string::ToString + std::str::FromStr,
+        UD: crate::UserData,
     {
         Ok(Response::Http(in_.ctx.response(
             serde_json::to_vec_pretty(&json!({
@@ -108,7 +108,7 @@ impl Response {
     ) -> Result<crate::Response, failure::Error>
     where
         T: Into<String>,
-        UD: std::string::ToString + std::str::FromStr,
+        UD: crate::UserData,
     {
         use http::header;
         match in_.get_mode() {
@@ -136,7 +136,7 @@ impl Response {
     ) -> Result<crate::Response, failure::Error>
     where
         T: Into<String>,
-        UD: std::string::ToString + std::str::FromStr,
+        UD: crate::UserData,
     {
         use http::header;
         match in_.get_mode() {

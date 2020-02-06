@@ -1,6 +1,6 @@
 pub fn get<UD>(in_: &crate::base::In<UD>) -> Result<crate::Response, crate::Error>
 where
-    UD: std::string::ToString + std::str::FromStr,
+    UD: crate::UserData,
 {
     if !crate::base::is_test() {
         return Err(crate::Error::PageNotFound {

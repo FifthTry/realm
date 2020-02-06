@@ -59,7 +59,7 @@ impl Default for FormErrors {
 
 pub struct Form<'a, UD>
 where
-    UD: std::string::ToString + std::str::FromStr,
+    UD: crate::UserData,
 {
     in_: &'a crate::base::In<'a, UD>,
     errors: FormErrors,
@@ -67,7 +67,7 @@ where
 
 impl<'a, UD> Form<'a, UD>
 where
-    UD: std::string::ToString + std::str::FromStr,
+    UD: crate::UserData,
 {
     pub fn new(in_: &'a crate::base::In<'a, UD>) -> Self {
         Form {

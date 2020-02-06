@@ -56,7 +56,7 @@
         }, 200);
     }
 
-    function navigate(url) {
+    function navigate(url, isPop) {
         console.log("navigate", url);
         if (url.indexOf("?") !== -1) {
             url = url + "&realm_mode=layout";
@@ -65,7 +65,7 @@
         }
 
         showLoading(window.realm_app);
-        ajax(url, null, function (t) {loadPage(t, false);});
+        ajax(url, null, function (t) {loadPage(t, false, isPop);});
     }
 
     function submit(data) {
@@ -132,7 +132,7 @@
         })
     }
 
-    function loadPage(text, isSubmit) {
+    function loadPage(text, isSubmit, isPop) {
         console.log("loadPage", isSubmit);
             var data = null;
             try {
@@ -175,7 +175,6 @@
 
         function loadNow() {
             // wait for previous app to cleanup
-            console.log("loadNow");
             if (
                 app
                 && !document.getElementById("appShutdownEmptyElement")
@@ -303,9 +302,15 @@
                 }
             }
 
-            // scroll to top on page change
-            document.body.scrollTop = 0; // For Safari
-            document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+            // trying to disable auto scroll behaviour, but its buggy
+            if (!isPop) {
+                // scroll to top on page change
+
+                // For Safari
+                document.body.scrollTop = 0;
+                // For Chrome, Firefox, IE and Opera
+                document.documentElement.scrollTop = 0;
+            }
 
             window.realm_app = app;
             if (window.realm_app_init) {
@@ -319,7 +324,7 @@
     }
 
     window.onpopstate = function () {
-        navigate(document.location.pathname + document.location.search);
+        navigate(document.location.pathname + document.location.search, true);
     };
 
     function handleCmd(cmd) {
@@ -337,15 +342,16 @@
 
             function renderNow() {
                 // wait for previous app to cleanup
-                console.log("renderNow");
                 if (app && document.body.childElementCount !== 0) {
                     window.requestAnimationFrame(renderNow);
                     return;
                 }
 
-                console.log("renderNow2");
                 cmd.width = window.innerWidth;
                 cmd.height = window.innerHeight;
+                cmd.iphoneX = iphoneX;
+                cmd.notch = detectNotch();
+                cmd.darkMode = darkMode;
                 app = getApp(cmd.id).init({flags: cmd});
             }
             renderNow();
@@ -354,7 +360,6 @@
 
     function main() {
         if (document.location.pathname === "/iframe/") {
-            console.log("iframe mode loaded");
             window.handleCmd = handleCmd;
             window.parent.iframeLoaded();
         } else {

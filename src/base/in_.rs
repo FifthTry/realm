@@ -8,7 +8,7 @@ use std::cell::Ref;
 
 pub struct In<'a, UD>
 where
-    UD: std::string::ToString + std::str::FromStr,
+    UD: crate::UserData,
 {
     pub ctx: &'a crate::Context,
     pub lang: Language, // what is language_tags crate about?
@@ -19,9 +19,28 @@ where
     pub now: DateTime<Utc>,
 }
 
+pub struct UD{}
+
+impl std::str::FromStr for UD {
+    type Err = failure::Error;
+    fn from_str(_ud: &str) -> Result<UD> {
+        unimplemented!("not meant to be used")
+    }
+}
+
+impl std::string::ToString for UD {
+    fn to_string(&self) -> String {
+        unimplemented!("not meant to be used")
+    }
+}
+
+impl crate::UserData for UD {}
+
+pub type In0<'a> = In<'a, UD>;
+
 impl<'a, UD> In<'a, UD>
 where
-    UD: std::string::ToString + std::str::FromStr,
+    UD: crate::UserData,
 {
     #[cfg(any(feature = "sqlite_default", feature = "postgres_default"))]
     pub fn from(conn: &'a RealmConnection, ctx: &'a crate::Context) -> In<'a, UD> {

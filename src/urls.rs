@@ -21,7 +21,7 @@ pub fn handle<UD>(
     input: &mut crate::request_config::RequestConfig,
 ) -> Result<crate::Response, failure::Error>
 where
-    UD: std::string::ToString + std::str::FromStr,
+    UD: crate::UserData,
 {
     match p {
         ("/storybook/", &http::Method::GET) => crate::storybook::get(in_).map_err(Into::into),
