@@ -229,10 +229,36 @@ document m =
 
 view : Model -> E.Element Msg
 view m =
-    E.row [ E.width E.fill, E.height E.fill ]
+    let
+        iframeWidth : E.Attribute Msg
+        iframeWidth =
+            if m.device == desktop then
+                E.width E.fill
+
+            else
+                E.width <| E.px 414
+
+        intro : E.Element Msg
+        intro =
+            E.column [ E.centerX, E.centerY ]
+                [ E.paragraph [ EF.center, E.padding 10, EF.light, EF.size 14 ] <|
+                    [ E.text "Welcome to," ]
+                , E.paragraph [ EF.center ] <| [ E.text <| m.title ++ " Storybook" ]
+                , E.paragraph [ EF.center, E.paddingXY 0 40, EF.light, EF.size 14, EF.italic ] <|
+                    [ E.text "Select an item in left menu bar" ]
+                ]
+    in
+    E.row [ E.width E.fill, E.height E.fill, Bg.color (E.rgb 0.9 0.9 0.9) ]
         [ sidebar m
-        , EK.el [ E.height E.fill, iframeWidth m, E.centerX, E.centerY ] <|
-            U.yesno (m.current == Nothing) ( "intro", intro m ) <|
+        , EK.el
+            [ E.height E.fill
+            , iframeWidth
+            , E.centerX
+            , E.centerY
+            , Bg.color (E.rgb 1 1 1)
+            ]
+          <|
+            U.yesno (m.current == Nothing) ( "intro", intro ) <|
                 ( "iframe"
                 , E.html
                     (H.node "iframe"
@@ -256,6 +282,7 @@ sidebar m =
             [ E.height E.fill
             , E.width (E.px 200)
             , EB.widthEach { bottom = 0, left = 0, right = 1, top = 0 }
+            , Bg.color (E.rgb 1 1 1)
             ]
             [ E.paragraph
                 [ E.padding 5
@@ -267,26 +294,6 @@ sidebar m =
                 [ E.text <| m.title ++ " Storybook" ]
             , listOfStories m
             ]
-
-
-iframeWidth : Model -> E.Attribute Msg
-iframeWidth m =
-    if m.device == desktop then
-        E.width E.fill
-
-    else
-        E.width <| E.px 414
-
-
-intro : Model -> E.Element Msg
-intro m =
-    E.column [ E.centerX, E.centerY ]
-        [ E.paragraph [ EF.center, E.padding 10, EF.light, EF.size 14 ] <|
-            [ E.text "Welcome to," ]
-        , E.paragraph [ EF.center ] <| [ E.text <| m.title ++ " Storybook" ]
-        , E.paragraph [ EF.center, E.paddingXY 0 40, EF.light, EF.size 14, EF.italic ] <|
-            [ E.text "Select an item in left menu bar" ]
-        ]
 
 
 storyView : Model -> Int -> Story -> E.Element Msg

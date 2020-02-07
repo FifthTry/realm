@@ -13,7 +13,7 @@ pub mod sql_types;
 mod utils;
 
 pub use form::{Form, FormErrors};
-pub use in_::{In, UD, In0};
+pub use in_::{In, In0, UD};
 pub use sql_types::{citext, CiString};
 pub use utils::elapsed;
 

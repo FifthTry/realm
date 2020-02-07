@@ -62,7 +62,7 @@ pub trait Subject: askama::Template {}
 pub trait Text: askama::Template {}
 pub trait HTML: askama::Template {}
 
-pub trait UserData : std::string::ToString + std::str::FromStr {}
+pub trait UserData: std::string::ToString + std::str::FromStr {}
 
 #[derive(Fail, Debug)]
 pub enum Error {

@@ -19,7 +19,7 @@ where
     pub now: DateTime<Utc>,
 }
 
-pub struct UD{}
+pub struct UD {}
 
 impl std::str::FromStr for UD {
     type Err = failure::Error;
