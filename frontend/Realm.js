@@ -8,7 +8,16 @@
         height : window.screen.height * ratio
     };
     var iphoneX = (iOS && screen.width === 1242 && screen.height === 2688)? 1 : 0;
-    var app = null;
+
+    var darkMode = !!(
+        window.matchMedia
+        && window.matchMedia('(prefers-color-scheme: dark)').matches
+    );
+
+    var testContext = null;
+    var unloadTest = 0;
+
+    window.realm_app = null;
 
     var ajax = function (url, data, callback) {
         var x = new (XMLHttpRequest || ActiveXObject)("MSXML2.XMLHTTP.3.0");
@@ -85,14 +94,6 @@
         loadPage(JSON.stringify(data), true);
     }
 
-    var darkMode = !!(
-        window.matchMedia
-        && window.matchMedia('(prefers-color-scheme: dark)').matches
-    );
-
-    var testContext = null;
-    var unloadTest = 0;
-
     function detectNotch() {
         var _notch = 0;
         if (!iphoneX) {
@@ -125,69 +126,117 @@
     }
 
     function viewPortChanged() {
-        app.ports.viewPortChanged.send({
-            "width": window.innerWidth,
-            "height": window.innerHeight,
-            "notch": detectNotch(),
-        })
+        if (
+            window.realm_app
+            && window.realm_app.ports
+            && window.realm_app.ports.viewPortChanged
+        ) {
+            window.realm_app.ports.viewPortChanged.send({
+                "width": window.innerWidth,
+                "height": window.innerHeight,
+                "notch": detectNotch(),
+            })
+        }
+    }
+
+    function shutdown() {
+        unloadTest = 0;
+
+        if (!window.realm_app) {
+            console.log("shutdown: nothing to shutdown");
+            // nothing to shutdown
+            return
+        }
+
+        if (window.realm_app.ports && window.realm_app.ports.shutdown) {
+            console.log("shutdown: sending shutdown signal");
+            window.realm_app.ports.shutdown.send(null);
+
+            // this is used to show loading dialog
+            window.realm_app.is_shutting_down = true;
+
+            if (window.realm_app_shutdown) {
+                // this is our "hook", a client app can configure this to do something
+                // specific when app is shutting down
+                window.realm_app_shutdown();
+            }
+        } else {
+            console.log("shutdown: no port to send shutdown signal on");
+        }
+    }
+
+    function waitAfterShutdown(cb) {
+        if (!window.realm_app) {
+            // if app is not there, there is no need to wait, there was nothing
+            // to shutdown
+            console.log("waitAfterShutdown: nothing to wait");
+            return false;
+        }
+
+        if (unloadTest > 10) {
+            // time to give up
+            console.log("waitAfterShutdown: too many attempts");
+            return true;
+        }
+
+        // if we are here means the app was there, which we have triggered a shutdown
+        // on, and unloadTest attempts is below 10.
+        //
+        // app is supposed to create an element with the ID: appShutdownEmptyElement
+        // when its shutdown successfully, lets see if its there or not:
+        if (!!document.getElementById("appShutdownEmptyElement")) {
+            console.log("waitAfterShutdown: shutdown successful");
+            // wonderful, we found our element, no need to wait further
+            return false;
+        }
+
+        // the element is still not there :-(, wait more
+        console.log("waitAfterShutdown: enqueueing");
+        window.requestAnimationFrame(cb);
+        unloadTest += 1;
+
+        return true;
     }
 
     function loadPage(text, isSubmit, isPop) {
         console.log("loadPage", isSubmit);
-            var data = null;
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                console.log("failed to parse json");
-                console.log("json: ", text);
-                console.log("error: ", e);
-                if (!!testContext) {
-                    var message = "Server Error: " + e + ", text=" + text;
-                    if (text === "") {
-                        message = "ServerCrashed (empty body)"
-                    }
-                    window.parent.app.ports.fromIframe.send([
-                        {
-                            kind: "BadServer",
-                            message: message,
-                        },
-                        {kind: "TestDone"}
-                    ]);
-                }
-                throw e;
-            }
-            console.log("data", data);
-            //Redirect if redirect is present
-            if (data.redirect) {
-                window.location.replace(data.redirect);
-                return;
-            }
 
-        if (app && app.ports && app.ports.shutdown) {
-            console.log("shutting down");
-            app.ports.shutdown.send(null);
-            unloadTest = 0;
-            window.realm_app.is_shutting_down = true;
-            if (window.realm_app_shutdown) {
-                window.realm_app_shutdown();
+        var data = null;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.log("failed to parse json");
+            console.log("json: ", text);
+            console.log("error: ", e);
+            if (!!testContext) {
+                var message = "Server Error: " + e + ", text=" + text;
+                if (text === "") {
+                    message = "ServerCrashed (empty body)"
+                }
+                window.parent.app.ports.fromIframe.send([
+                    {
+                        kind: "BadServer",
+                        message: message,
+                    },
+                    {kind: "TestDone"}
+                ]);
             }
+            throw e;
         }
+        console.log("data", data);
+        //Redirect if redirect is present
+        if (data.redirect) {
+            window.location.replace(data.redirect);
+            return;
+        }
+
+        shutdown();
 
         function loadNow() {
             // wait for previous app to cleanup
-            if (
-                app
-                && !document.getElementById("appShutdownEmptyElement")
-                && unloadTest < 10
-            ) {
-                window.requestAnimationFrame(loadNow);
-                unloadTest += 1;
-                if (unloadTest === 9) {
-                    console.log("too many attempts to get window to clear");
-                }
+            if (waitAfterShutdown(loadNow)) {
                 return;
             }
-
 
             if (data.url !== document.location.pathname + document.location.search || !!data.replace) {
                 if (!!data.replace) {
@@ -243,7 +292,7 @@
                 };
             }
 
-            app = getApp(id);
+            var app = getApp(id);
             if (!app) {
                 console.log("No app found for ", id);
                 if (!!testContext) {
@@ -289,10 +338,6 @@
             if (app.ports && app.ports.enableScrolling) {
                 app.ports.enableScrolling.subscribe(enableScrolling);
             }
-            if (app.ports.viewPortChanged) {
-                window.addEventListener("resize", viewPortChanged);
-                window.addEventListener("orientationchange", viewPortChanged);
-            }
 
             if (app.ports && window.realm_extra_ports) {
                 for (var portName in app.ports) {
@@ -323,10 +368,6 @@
         loadNow();
     }
 
-    window.onpopstate = function () {
-        navigate(document.location.pathname + document.location.search, true);
-    };
-
     function handleCmd(cmd) {
         console.log("got message from parent", cmd);
         if (cmd.action === "navigate") {
@@ -336,14 +377,11 @@
             testContext = cmd;
             submit(cmd.payload);
         } else if (cmd.action === "render") {
-            if (app && app.ports.shutdown) {
-                app.ports.shutdown.send(null);
-            }
+            shutdown();
 
             function renderNow() {
                 // wait for previous app to cleanup
-                if (app && document.body.childElementCount !== 0) {
-                    window.requestAnimationFrame(renderNow);
+                if (waitAfterShutdown(renderNow)) {
                     return;
                 }
 
@@ -352,8 +390,14 @@
                 cmd.iphoneX = iphoneX;
                 cmd.notch = detectNotch();
                 cmd.darkMode = darkMode;
-                app = getApp(cmd.id).init({flags: cmd});
+                window.realm_app = getApp(cmd.id).init({flags: cmd});
+
+                // why are we not subscribing to ports?
+                if (window.realm_app_init) {
+                    window.realm_app_init(id, flags, window.realm_app);
+                }
             }
+
             renderNow();
         }
     }
@@ -365,6 +409,12 @@
         } else {
             loadPage(document.getElementById("data").text, false);
         }
+
+        window.addEventListener("resize", viewPortChanged);
+        window.addEventListener("orientationchange", viewPortChanged);
+        window.onpopstate = function () {
+            navigate(document.location.pathname + document.location.search, true);
+        };
     }
 
     main();

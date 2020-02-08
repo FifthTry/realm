@@ -31,21 +31,35 @@ var lastCmd = null;
 if (app.ports && app.ports.toIframe) {
     app.ports.toIframe.subscribe(function(cmd) {
         console.log("cmd", cmd);
+        // we unconditionally set this because iframe reloads in case outer page URL
+        // changes (which we change to keep track of story id etc in storybook).
         lastCmd = cmd;
 
         var iframe = window.frames[0];
         if (iframe && iframe.handleCmd) {
+            console.log("sending command to iframe");
             iframe.handleCmd(cmd);
+        } else {
+            console.log("iframe not ready", !!iframe);
         }
     });
 }
 
 function iframeLoaded() {
-    var iframe = window.frames[0];
-    if (!iframe || !lastCmd) {
-        return;
-    }
+    // this function is called by iframe.js after it is loaded in browser: can the
+    // window.iframes[0] still be null? I had added this clause but combined with
+    // !lastCmd so not sure if it was really because both can happen, or because i
+    // was just being defensive.
+
+    // var iframe = window.frames[0];
+    // if (!iframe) {
+    //     return;
+    // }
 
     fixIframeDimensions();
-    iframe.handleCmd(lastCmd);
+    if (lastCmd) {
+        // the following intentionally does not do null check as I want this to crash
+        // if my assumption is invalid.e
+        window.frames[0].handleCmd(lastCmd);
+    }
 }

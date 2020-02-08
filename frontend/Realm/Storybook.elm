@@ -16,12 +16,12 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Process
-import Realm.Ports exposing (toIframe)
+import Realm.Ports as RP
 import Realm.Utils as U exposing (edges)
 import Task
 import Tuple
 import Url exposing (Url)
-import Url.Parser as UP exposing ((</>), (<?>))
+import Url.Parser exposing ((</>), (<?>))
 import Url.Parser.Query as Q
 
 
@@ -75,16 +75,38 @@ desktop =
 init : Config -> () -> Url -> BN.Key -> ( Model, Cmd Msg )
 init config _ url key =
     let
+        toSidebar : Bool
+        toSidebar =
+            (Url.Parser.s "storybook" <?> Q.string "sidebar")
+                |> (\p -> Url.Parser.parse p url)
+                |> Maybe.withDefault Nothing
+                |> Maybe.map (\d -> d == "hide")
+                |> Maybe.withDefault False
+
+        toDevice : E.Device
+        toDevice =
+            (Url.Parser.s "storybook" <?> Q.string "device")
+                |> (\p -> Url.Parser.parse p url)
+                |> Maybe.withDefault Nothing
+                |> Maybe.map (\d -> U.yesno (d == "desktop") desktop mobile)
+                |> Maybe.withDefault desktop
+
+        toCurrent : Maybe Int
+        toCurrent =
+            (Url.Parser.s "storybook" <?> Q.int "current")
+                |> (\p -> Url.Parser.parse p url)
+                |> Maybe.withDefault Nothing
+
         stories =
             flatten config.stories
 
         m =
-            { current = toCurrent url
+            { current = toCurrent
             , title = config.title
-            , device = toDevice url
+            , device = toDevice
             , key = key
             , hash = Nothing
-            , hideSidebar = toSidebar url
+            , hideSidebar = toSidebar
             , stories = stories
             }
     in
@@ -211,6 +233,8 @@ goto idx m =
         |> Maybe.map render
         |> Maybe.map (updateUrl m2)
         |> Maybe.map (Tuple.pair m2)
+        -- following must contain m and not m2 because if Array.get failed we do not
+        -- want to update current
         |> Maybe.withDefault ( m, Cmd.none )
 
 
@@ -240,13 +264,27 @@ view m =
 
         intro : E.Element Msg
         intro =
-            E.column [ E.centerX, E.centerY ]
+            E.column []
                 [ E.paragraph [ EF.center, E.padding 10, EF.light, EF.size 14 ] <|
                     [ E.text "Welcome to," ]
                 , E.paragraph [ EF.center ] <| [ E.text <| m.title ++ " Storybook" ]
                 , E.paragraph [ EF.center, E.paddingXY 0 40, EF.light, EF.size 14, EF.italic ] <|
                     [ E.text "Select an item in left menu bar" ]
                 ]
+
+        shortcuts : E.Element Msg
+        shortcuts =
+            E.column []
+                [ E.text "Useful Keyboard Shortcuts"
+                , E.text "j/k: move up or down"
+                , E.text "d: toggle between mobile and desktop"
+                , E.text "r: reset the view"
+                , E.text "f: toggle full screen mode"
+                ]
+
+        welcome : E.Element Msg
+        welcome =
+            E.column [ E.centerX, E.centerY ] [ intro, shortcuts ]
     in
     E.row [ E.width E.fill, E.height E.fill, Bg.color (E.rgb 0.9 0.9 0.9) ]
         [ sidebar m
@@ -258,7 +296,7 @@ view m =
             , Bg.color (E.rgb 1 1 1)
             ]
           <|
-            U.yesno (m.current == Nothing) ( "intro", intro ) <|
+            U.yesno (m.current == Nothing) ( "welcome", welcome ) <|
                 ( "iframe"
                 , E.html
                     (H.node "iframe"
@@ -393,32 +431,7 @@ render s =
         , ( "config", s.config )
         , ( "title", JE.string s.pageTitle )
         ]
-        |> toIframe
-
-
-toCurrent : Url -> Maybe Int
-toCurrent url =
-    (UP.s "storybook" <?> Q.int "current")
-        |> (\p -> UP.parse p url)
-        |> Maybe.withDefault Nothing
-
-
-toSidebar : Url -> Bool
-toSidebar url =
-    (UP.s "storybook" <?> Q.string "sidebar")
-        |> (\p -> UP.parse p url)
-        |> Maybe.withDefault Nothing
-        |> Maybe.map (\d -> d == "hide")
-        |> Maybe.withDefault False
-
-
-toDevice : Url -> E.Device
-toDevice url =
-    (UP.s "storybook" <?> Q.string "device")
-        |> (\p -> UP.parse p url)
-        |> Maybe.withDefault Nothing
-        |> Maybe.map (\d -> U.yesno (d == "desktop") desktop mobile)
-        |> Maybe.withDefault desktop
+        |> RP.toIframe
 
 
 updateUrl : Model -> Cmd Msg -> Cmd Msg

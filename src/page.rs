@@ -106,7 +106,8 @@ __realm_data__
     </head>
     <body>
         __realm_body__
-        <div id="main"></div><script src='/static/elm.js'></script>
+        <div id="main"></div>
+        <script src='/static/elm.js'></script>
     </body>
 </html>
 "#
