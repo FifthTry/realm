@@ -196,7 +196,7 @@ appInit :
 appInit a vflags url key =
     let
         hash =
-            fromHash url
+            Debug.log "appInit" (fromHash url)
 
         ( ( title, im ), ( cmd, notch, darkMode ), ( device, width, height ) ) =
             case JD.decodeValue (flags a.config) vflags of
@@ -376,8 +376,7 @@ appUpdate a msg am =
                         (ctr e)
                         model
                         |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
-                        |> Tuple.mapSecond (\c_ -> Cmd.batch [c_, RP.cancelLoading ()])
-
+                        |> Tuple.mapSecond (\c_ -> Cmd.batch [ c_, RP.cancelLoading () ])
 
         ( OnSubmitResponse _ (RD.Failure e), False ) ->
             ( { am | model = Err (SubmitError e) }, Cmd.none )
@@ -446,9 +445,7 @@ appDocument a am =
                 model
 
         ( _, True ) ->
-            { title = "shuttingDown"
-            , body = [ H.div [ Html.Attributes.id "appShutdownEmptyElement" ] [] ]
-            }
+            shutdownView
 
 
 updateHash : Model model -> Cmd (Msg msg)
@@ -668,12 +665,22 @@ testUpdate t msg m =
             ( m, Cmd.none )
 
 
+shutdownView : B.Document (Msg msg)
+shutdownView =
+    { title = "shuttingDown"
+    , body = [ H.div [ Html.Attributes.id "appShutdownEmptyElement" ] [] ]
+    }
+
+
 testDocument :
     TestApp config model msg
     -> TModel model
     -> B.Document (Msg msg)
 testDocument t m =
     case ( m.shuttingDown, m.model ) of
+        ( True, _ ) ->
+            shutdownView
+
         ( False, Just model ) ->
             t.document
                 { title = m.title
@@ -687,7 +694,7 @@ testDocument t m =
                 model
 
         _ ->
-            { title = m.title, body = [ H.text m.title ] }
+            { title = m.title, body = [ H.text (Debug.toString m) ] }
 
 
 testSubscriptions :

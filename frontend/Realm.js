@@ -52,6 +52,11 @@
     }
 
     function showLoading(theApp) {
+        if (!theApp) {
+            console.log("showLoading: got null");
+            return;
+        }
+
         window.setTimeout(function () {
             if (theApp.is_shutting_down) {
                 return;
