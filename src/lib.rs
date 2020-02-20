@@ -50,6 +50,7 @@ pub use crate::context::Context;
 pub use crate::mode::Mode;
 pub use crate::page::{Page, PageSpec};
 pub use crate::request_config::RequestConfig;
+pub use crate::response::{json, json_with_context};
 pub use crate::serve::{http_to_hyper, THREAD_POOL};
 pub use crate::serve_static::serve_static;
 pub use crate::urls::{handle, is_realm_url};

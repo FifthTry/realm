@@ -1,4 +1,4 @@
-module Realm.Requests exposing (ApiData, BResult, Error(..), LayoutResponse(..), bresult, layoutResponse, submit, try)
+module Realm.Requests exposing (ApiData, BResult, Error(..), LayoutResponse(..), bresult, layoutResponse, submit, try, try2)
 
 import Dict exposing (Dict)
 import Http

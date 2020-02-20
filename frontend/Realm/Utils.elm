@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, none, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, lGet, ltr, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, nif, niff, onEnter, onEsc, rendered, renderedE, renderedToString, result, rtl, style, text, title, true, val, withError, withFocus, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, false2, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, lGet, ltr, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, nif, niff, none, onEnter, onEsc, rendered, renderedE, renderedToString, result, rtl, style, text, title, true, true2, val, withError, withFocus, yesno, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -453,8 +453,18 @@ true tid v =
     match tid v True
 
 
+true2 : String -> Bool -> JE.Value -> R.TestResult
+true2 tid v _ =
+    match tid v True
+
+
 false : String -> Bool -> R.TestResult
 false tid v =
+    match tid v False
+
+
+false2 : String -> Bool -> JE.Value -> R.TestResult
+false2 tid v _ =
     match tid v False
 
 

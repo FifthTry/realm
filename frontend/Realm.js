@@ -57,17 +57,32 @@
             return;
         }
 
+        console.log("showLoading: setting timer");
         window.setTimeout(function () {
             if (theApp.is_shutting_down) {
+                console.log("showLoading: app shutting down");
                 return;
             }
             if (theApp.cancel_loading) {
+                console.log("showLoading: loading has been cancelled");
                 return;
             }
             if (theApp && theApp.ports && theApp.ports.onUnloading) {
-                theApp.ports.onUnloading.send(null);
+                console.log("showLoading: sending signal to app");
+                theApp.showing_loading = true;
+                theApp.ports.onUnloading.send(true);
             }
-        }, 200);
+        }, 300);
+    }
+
+    function cancelLoading(theApp) {
+        if (!!theApp.showing_loading) {
+            console.log("cancelLoading: after loading");
+            theApp.ports.onUnloading.send(true);
+        } else {
+            console.log("cancelLoading: before loading");
+            theApp.cancel_loading = true;
+        }
     }
 
     function navigate(url, isPop) {
@@ -107,9 +122,9 @@
 
         if( 'orientation' in window ) {
           // Mobile
-          if (window.orientation == 90) {
+          if (window.orientation === 90) {
             _notch = 1;
-          } else if (window.orientation == -90) {
+          } else if (window.orientation === -90) {
             _notch = -1;
           }
         } else if ( 'orientation' in window.screen ) {
@@ -145,6 +160,7 @@
     }
 
     function shutdown() {
+        // Notes: https://fifthtry.com/amitu/realm/shutdown/
         unloadTest = 0;
 
         if (!window.realm_app) {
@@ -321,9 +337,7 @@
                 app.ports.setLoading.subscribe(function() {showLoading(app)});
             }
             if (app.ports && app.ports.cancelLoading) {
-                app.ports.cancelLoading.subscribe(
-                    function() { app.cancel_loading = true }
-                );
+                app.ports.cancelLoading.subscribe(function() {cancelLoading(app)});
             }
             if (app.ports && app.ports.submit) {
                 app.ports.submit.subscribe(submit);

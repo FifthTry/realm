@@ -130,7 +130,6 @@ poll hash =
         }
 
 
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case Debug.log "Storybook.msg" ( msg, m.current ) of
@@ -269,7 +268,9 @@ view m =
                 [ E.paragraph [ EF.center, E.padding 10, EF.light, EF.size 14 ] <|
                     [ E.text "Welcome to," ]
                 , E.paragraph [ EF.center ] <| [ E.text <| m.title ++ " Storybook" ]
-                , E.paragraph [ EF.center, E.paddingXY 0 40, EF.light, EF.size 14, EF.italic ] <|
+                , E.paragraph
+                    [ EF.center, E.paddingXY 0 40, EF.light, EF.size 14, EF.italic ]
+                  <|
                     [ E.text "Select an item in left menu bar" ]
                 ]
 

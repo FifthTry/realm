@@ -1,10 +1,55 @@
 use crate::mode::Mode;
 use crate::PageSpec;
+use observer::prelude::*;
 use serde::ser::{Serialize, SerializeStructVariant, Serializer};
 
 pub enum Response {
     Http(http::response::Response<Vec<u8>>),
     Page(PageSpec),
+}
+
+#[observed(with_result, namespace = "realm__response")]
+pub fn json<T, UD>(in_: &crate::base::In<UD>, data: &T) -> Result<crate::Response, failure::Error>
+where
+    T: serde::Serialize,
+    UD: crate::UserData,
+{
+    Ok(Response::Http(in_.ctx.response(
+        serde_json::to_vec_pretty(&json!({
+            "success": true,
+            "result": data,
+        }))?,
+    )?))
+}
+
+#[observed(with_result, namespace = "realm__response")]
+pub fn json_with_context<T1, T2, UD>(
+    in_: &crate::base::In<UD>,
+    data: &T1,
+    key: &str,
+    value: &T2,
+) -> Result<crate::Response, failure::Error>
+where
+    T1: serde::Serialize,
+    T2: serde::Serialize,
+    UD: crate::UserData,
+{
+    let context = if crate::base::is_test() {
+        json!({
+            "key": key,
+            "value": value
+        })
+    } else {
+        serde_json::Value::Null
+    };
+
+    Ok(Response::Http(in_.ctx.response(
+        serde_json::to_vec_pretty(&json!({
+            "success": true,
+            "result": data,
+            "context": context
+        }))?,
+    )?))
 }
 
 impl Response {
@@ -62,19 +107,6 @@ impl Response {
             }
             Response::Http(_) => unreachable!(),
         }
-    }
-
-    pub fn ok<T, UD>(in_: &crate::base::In<UD>, data: &T) -> Result<crate::Response, failure::Error>
-    where
-        T: serde::Serialize,
-        UD: crate::UserData,
-    {
-        Ok(Response::Http(in_.ctx.response(
-            serde_json::to_vec_pretty(&json!({
-                "success": true,
-                "result": data,
-            }))?,
-        )?))
     }
 
     pub fn err<T, UD>(

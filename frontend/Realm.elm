@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), app, cmdMap, controller, document, getHash, init0, isPass, message, navigate, pushHash, refresh, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
+module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), api, app, cmdMap, controller, data, document, getHash, init0, isPass, message, navigate, pushHash, refresh, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
 
 import Browser as B
 import Browser.Events as BE
@@ -56,9 +56,11 @@ type Msg msg
     = UrlRequest B.UrlRequest
     | Msg msg
     | UrlChange Url
-    | Shutdown ()
+    | Shutdown
     | UpdateHashKV String String
     | OnSubmitResponse (Dict String String -> msg) (RR.ApiData RR.LayoutResponse)
+    | OnApiResponse (Dict String String -> msg) (JD.Decoder msg) (RR.ApiData JE.Value)
+    | OnDataResponse (JD.Decoder msg) (RR.ApiData JE.Value)
     | OnResize Int Int
     | ReloadPage
     | Refresh
@@ -81,14 +83,20 @@ cmdMap f =
                 UrlChange u ->
                     UrlChange u
 
-                Shutdown () ->
-                    Shutdown ()
+                Shutdown ->
+                    Shutdown
 
                 UpdateHashKV k v ->
                     UpdateHashKV k v
 
                 OnSubmitResponse d r ->
                     OnSubmitResponse (d >> f) r
+
+                OnApiResponse e d r ->
+                    OnApiResponse (e >> f) (JD.map f d) r
+
+                OnDataResponse d r ->
+                    OnDataResponse (JD.map f d) r
 
                 OnResize i j ->
                     OnResize i j
@@ -110,8 +118,51 @@ cmdMap f =
         )
 
 
+api :
+    (a -> msg)
+    -> (Dict String String -> msg)
+    -> ( JD.Decoder a, String, Maybe JE.Value )
+    -> Cmd (Msg msg)
+api ok err ( dec, url, mv ) =
+    let
+        e =
+            Http.expectJson (RR.try >> OnApiResponse err (JD.map ok dec))
+                (RR.bresult JD.value)
+
+        cmd =
+            case mv of
+                Just d ->
+                    Http.post { url = url, body = Http.jsonBody d, expect = e }
+
+                Nothing ->
+                    Http.get { url = url, expect = e }
+    in
+    Cmd.batch [ cmd, RP.setLoading () ]
+
+
+data :
+    (a -> msg)
+    -> ( JD.Decoder a, String, Maybe JE.Value )
+    -> Cmd (Msg msg)
+data ok ( dec, url, mv ) =
+    let
+        e =
+            Http.expectJson (RR.try >> OnDataResponse (JD.map ok dec))
+                (RR.bresult JD.value)
+
+        cmd =
+            case mv of
+                Just d ->
+                    Http.post { url = url, body = Http.jsonBody d, expect = e }
+
+                Nothing ->
+                    Http.get { url = url, expect = e }
+    in
+    Cmd.batch [ cmd, RP.setLoading () ]
+
+
 submit : (Dict String String -> msg) -> ( String, JE.Value ) -> Cmd (Msg msg)
-submit ctr ( url, data ) =
+submit err ( url, d ) =
     let
         url2 =
             if String.contains "?" url then
@@ -123,9 +174,9 @@ submit ctr ( url, data ) =
     Cmd.batch
         [ Http.post
             { url = url2
-            , body = Http.jsonBody data
+            , body = Http.jsonBody d
             , expect =
-                Http.expectJson (RR.try >> OnSubmitResponse ctr)
+                Http.expectJson (RR.try >> OnSubmitResponse err)
                     (RR.bresult RR.layoutResponse)
             }
         , RP.setLoading ()
@@ -262,6 +313,28 @@ appUpdate :
     -> Model model
     -> ( Model model, Cmd (Msg msg) )
 appUpdate a msg am =
+    let
+        passErrorToApp =
+            \ctr e ->
+                case am.model of
+                    Err _ ->
+                        ( am, Cmd.none )
+
+                    Ok model ->
+                        a.update
+                            { title = am.title
+                            , hash = am.dict
+                            , device = am.device
+                            , height = am.height
+                            , width = am.width
+                            , notch = am.notch
+                            , darkMode = am.darkMode
+                            }
+                            (ctr e)
+                            model
+                            |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
+                            |> Tuple.mapSecond (\c_ -> Cmd.batch [ c_, RP.cancelLoading () ])
+    in
     case Debug.log "Realm.update" ( msg, am.shuttingDown ) of
         ( Msg imsg, False ) ->
             case am.model of
@@ -346,7 +419,7 @@ appUpdate a msg am =
                 _ ->
                     ( am, Cmd.none )
 
-        ( Shutdown _, False ) ->
+        ( Shutdown, False ) ->
             ( { am | shuttingDown = True }, Cmd.none )
 
         ( ReloadPage, _ ) ->
@@ -355,34 +428,42 @@ appUpdate a msg am =
         ( OnResize w h, _ ) ->
             ( { am | width = w, height = h }, Cmd.none )
 
+        ( OnApiResponse _ d (RD.Success v), False ) ->
+            case JD.decodeValue d v of
+                Ok m ->
+                    ( am, Cmd.batch [ message (Msg m), RP.cancelLoading () ] )
+
+                Err e ->
+                    ( { am | model = Err (PError { value = v, jd = e }) }, Cmd.none )
+
+        ( OnApiResponse err _ (RD.Failure (RR.FieldErrors e)), False ) ->
+            passErrorToApp err e
+
+        ( OnApiResponse _ _ (RD.Failure e), False ) ->
+            ( { am | model = Err (SubmitError e) }, Cmd.none )
+
+        ( OnDataResponse d (RD.Success v), False ) ->
+            case JD.decodeValue d v of
+                Ok m ->
+                    ( am, Cmd.batch [ message (Msg m), RP.cancelLoading () ] )
+
+                Err e ->
+                    ( { am | model = Err (PError { value = v, jd = e }) }, Cmd.none )
+
+        ( OnDataResponse _ (RD.Failure e), False ) ->
+            ( { am | model = Err (SubmitError e) }, Cmd.none )
+
         ( OnSubmitResponse _ (RD.Success (RR.Navigate n)), False ) ->
             ( am, changePage n )
 
-        ( OnSubmitResponse ctr (RD.Success (RR.FErrors e)), False ) ->
-            case am.model of
-                Err _ ->
-                    ( am, Cmd.none )
-
-                Ok model ->
-                    a.update
-                        { title = am.title
-                        , hash = am.dict
-                        , device = am.device
-                        , height = am.height
-                        , width = am.width
-                        , notch = am.notch
-                        , darkMode = am.darkMode
-                        }
-                        (ctr e)
-                        model
-                        |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
-                        |> Tuple.mapSecond (\c_ -> Cmd.batch [ c_, RP.cancelLoading () ])
+        ( OnSubmitResponse err (RD.Success (RR.FErrors e)), False ) ->
+            passErrorToApp err e
 
         ( OnSubmitResponse _ (RD.Failure e), False ) ->
             ( { am | model = Err (SubmitError e) }, Cmd.none )
 
         _ ->
-            ( am, Cmd.none )
+            Debug.log "Realm.update: ignoring" ( am, Cmd.none )
 
 
 message : msg -> Cmd msg
@@ -395,7 +476,7 @@ appSubscriptions a am =
     case ( am.model, am.shuttingDown ) of
         ( Ok model, False ) ->
             Sub.batch
-                [ shutdown Shutdown
+                [ shutdown (always Shutdown)
                 , viewPortChanged ViewPortChanged
                 , a.subscriptions
                     { title = am.title
@@ -450,20 +531,17 @@ appDocument a am =
 
 updateHash : Model model -> Cmd (Msg msg)
 updateHash m =
+    let
+        url =
+            m.url
+    in
     BN.replaceUrl m.key <|
         Url.toString <|
             if Dict.isEmpty m.dict then
-                let
-                    url =
-                        m.url
-                in
                 { url | fragment = Nothing }
 
             else
                 let
-                    url =
-                        m.url
-
                     hash =
                         m.dict
                             |> Dict.toList
@@ -658,7 +736,7 @@ testUpdate t msg m =
                 model
                 |> Tuple.mapFirst (\m2 -> { m | model = Just m2 })
 
-        ( _, Shutdown () ) ->
+        ( _, Shutdown ) ->
             ( { m | shuttingDown = True }, Cmd.none )
 
         _ ->
@@ -716,7 +794,7 @@ testSubscriptions t m =
                     }
                     model
                 , BE.onResize OnResize
-                , shutdown Shutdown
+                , shutdown (always Shutdown)
                 ]
 
         _ ->

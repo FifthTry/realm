@@ -1,4 +1,4 @@
-module Realm.Test exposing (FormErrorAssertion(..), Step(..), Test, app, only)
+module Realm.Test exposing (FormErrorAssertion(..), Step(..), Test, api, apiError, apiFalse, apiS, apiTrue, app, only)
 
 import Array exposing (Array)
 import Browser as B
@@ -16,7 +16,7 @@ import Json.Encode as JE
 import Realm as R
 import Realm.Ports exposing (fromIframe, toIframe)
 import Realm.Requests as RR
-import Realm.Utils exposing (edges, yesno)
+import Realm.Utils as RU exposing (edges, yesno)
 import RemoteData as RD
 
 
@@ -43,6 +43,66 @@ type Step
     | SubmitForm String String ( String, JE.Value )
     | FormError String (List FormErrorAssertion) ( String, JE.Value )
     | FormErrorS ( String, String ) (List FormErrorAssertion) (String -> ( String, JE.Value ))
+    | ApiError String (List FormErrorAssertion) ( String, Maybe JE.Value )
+    | Api String (JE.Value -> JE.Value -> List R.TestResult) ( String, Maybe JE.Value )
+    | ApiS ( String, String ) (JE.Value -> JE.Value -> List R.TestResult) (String -> ( String, Maybe JE.Value ))
+
+
+apiError :
+    String
+    -> List FormErrorAssertion
+    -> ( JD.Decoder a, String, Maybe JE.Value )
+    -> Step
+apiError id assertions ( _, s, mv ) =
+    ApiError id assertions ( s, mv )
+
+
+api :
+    String
+    -> List (a -> JE.Value -> R.TestResult)
+    -> ( JD.Decoder a, String, Maybe JE.Value )
+    -> Step
+api id assertions ( dec, s, mv ) =
+    let
+        runner : JE.Value -> JE.Value -> List R.TestResult
+        runner av ctx =
+            case JD.decodeValue dec av of
+                Ok a ->
+                    List.map (\f -> f a ctx) assertions ++ [ R.TestDone ]
+
+                Err e ->
+                    [ R.TestFailed id (Debug.toString e), R.TestDone ]
+    in
+    Api id runner ( s, mv )
+
+
+apiS :
+    ( String, String )
+    -> List (a -> JE.Value -> R.TestResult)
+    -> ( JD.Decoder a, String -> ( String, Maybe JE.Value ) )
+    -> Step
+apiS ( id, key ) assertions ( dec, fn ) =
+    let
+        runner : JE.Value -> JE.Value -> List R.TestResult
+        runner av ctx =
+            case JD.decodeValue dec av of
+                Ok a ->
+                    List.map (\f -> f a ctx) assertions ++ [ R.TestDone ]
+
+                Err e ->
+                    [ R.TestFailed id (Debug.toString e), R.TestDone ]
+    in
+    ApiS ( id, key ) runner fn
+
+
+apiTrue : String -> ( JD.Decoder Bool, String, Maybe JE.Value ) -> Step
+apiTrue id params =
+    api id [ RU.true2 "got-true" ] params
+
+
+apiFalse : String -> ( JD.Decoder Bool, String, Maybe JE.Value ) -> Step
+apiFalse id params =
+    api id [ RU.false2 "got-false" ] params
 
 
 type FormErrorAssertion
@@ -78,6 +138,8 @@ type Msg
     | ResetDone
     | OnKey String
     | OnSubmitResponse FormThing (RR.ApiData RR.LayoutResponse)
+    | ApiErrorResponse String (List FormErrorAssertion) (RR.ApiData JE.Value)
+    | ApiSuccessResponse String (JE.Value -> JE.Value -> List R.TestResult) (RR.ApiData JE.Value)
 
 
 type FormThing
@@ -118,6 +180,59 @@ submit2 thing ( url, data ) =
             Http.expectJson (RR.try >> OnSubmitResponse thing)
                 (RR.bresult RR.layoutResponse)
         }
+
+
+apiErrorRequest :
+    String
+    -> List FormErrorAssertion
+    -> ( String, Maybe JE.Value )
+    -> Cmd Msg
+apiErrorRequest id assertions ( url, mv ) =
+    let
+        expect =
+            Http.expectJson (RR.try >> ApiErrorResponse id assertions)
+                (RR.bresult JD.value)
+    in
+    case mv of
+        Just data ->
+            Http.post { url = url, body = Http.jsonBody data, expect = expect }
+
+        Nothing ->
+            Http.get { url = url, expect = expect }
+
+
+apiSuccessRequest :
+    String
+    -> (JE.Value -> JE.Value -> List R.TestResult)
+    -> ( String, Maybe JE.Value )
+    -> Cmd Msg
+apiSuccessRequest id runner ( url, mv ) =
+    let
+        expect =
+            Http.expectJson (RR.try >> ApiSuccessResponse id runner)
+                (RR.bresult JD.value)
+    in
+    case mv of
+        Just data ->
+            Http.post { url = url, body = Http.jsonBody data, expect = expect }
+
+        Nothing ->
+            Http.get { url = url, expect = expect }
+
+
+resolveA3 :
+    String
+    -> JD.Decoder a
+    -> (a -> ( String, Maybe JE.Value ))
+    -> JE.Value
+    -> Maybe ( String, Maybe JE.Value )
+resolveA3 key dec f v =
+    case JD.decodeValue (JD.field key dec) v of
+        Ok a ->
+            Just (f a)
+
+        Err _ ->
+            Nothing
 
 
 doStep : Int -> Bool -> Model -> ( Model, Cmd Msg )
@@ -161,6 +276,20 @@ doStep idx postReset m =
                             submit2 (FormErrorTest id assertions)
                                 (resolveA2 key JD.string f (JE.object m.context))
 
+                        ApiError id assertions payload ->
+                            apiErrorRequest id assertions payload
+
+                        Api id runner payload ->
+                            apiSuccessRequest id runner payload
+
+                        ApiS ( id, key ) runner f ->
+                            case resolveA3 key JD.string f (JE.object m.context) of
+                                Just v ->
+                                    apiSuccessRequest id runner v
+
+                                Nothing ->
+                                    Debug.todo "not handled"
+
                 ( cmd2, ctx2, current ) =
                     -- reset db and context when test changes
                     if tr.id /= lastId && not postReset then
@@ -200,7 +329,7 @@ resolve key dec f v =
             f a
 
         Err _ ->
-            "TODO: fix this"
+            Debug.todo "TODO: fix this"
 
 
 resolveA : String -> JD.Decoder a -> (a -> JE.Value) -> JE.Value -> JE.Value
@@ -210,7 +339,7 @@ resolveA key dec f v =
             f a
 
         Err _ ->
-            -- "TODO: fix this"
+            -- TODO: fix this
             JE.null
 
 
@@ -226,12 +355,25 @@ resolveA2 key dec f v =
             f a
 
         Err _ ->
-            -- "TODO: fix this"
+            -- TODO: fix this
             ( "", JE.null )
 
 
 insertResults : List R.TestResult -> Int -> Model -> Model
 insertResults results idx m =
+    let
+        pluckContext : R.TestResult -> List ( String, JE.Value ) -> List ( String, JE.Value )
+        pluckContext r l =
+            case r of
+                R.UpdateContext c ->
+                    l ++ c
+
+                _ ->
+                    l
+
+        m2 =
+            { m | context = m.context ++ List.foldl pluckContext m.context results }
+    in
     m.tests
         |> Array.get idx
         |> Maybe.map
@@ -239,7 +381,7 @@ insertResults results idx m =
                 { tr | results = tr.results ++ results }
             )
         |> Maybe.map (\r -> Array.set idx r m.tests)
-        |> Maybe.map (\tests -> { m | tests = tests })
+        |> Maybe.map (\tests -> { m2 | tests = tests })
         |> Maybe.withDefault m
 
 
@@ -270,11 +412,11 @@ checkAssertions assertions d =
                                 R.TestFailed "ExactError" <|
                                     "Expected "
                                         ++ key
-                                        ++ " error to be "
+                                        ++ " error to be >"
                                         ++ val
-                                        ++ ", found:"
-                                        ++ val
-                                        ++ "."
+                                        ++ "<, found:>"
+                                        ++ got
+                                        ++ "<."
 
                         Nothing ->
                             R.TestFailed "ExactError" <|
@@ -359,8 +501,7 @@ update msg m =
                     ( m, Cmd.none )
 
         ( FromChild _, Nothing ) ->
-            -- impossible
-            ( m, Cmd.none )
+            Debug.todo "impossible"
 
         ( ResetDone, Nothing ) ->
             doStep 0 True m
@@ -373,6 +514,45 @@ update msg m =
 
         ( OnKey _, _ ) ->
             ( m, Cmd.none )
+
+        ( ApiErrorResponse id _ (RD.Success v), Just idx ) ->
+            doStep (idx + 1)
+                False
+                (insertResults
+                    [ R.TestFailed id
+                        ("Expected errors, found success: " ++ JE.encode 4 v)
+                    , R.TestDone
+                    ]
+                    idx
+                    m
+                )
+
+        ( ApiErrorResponse _ assertions (RD.Failure (RR.FieldErrors d)), Just idx ) ->
+            let
+                results =
+                    checkAssertions assertions d
+            in
+            doStep (idx + 1) False (insertResults results idx m)
+
+        ( ApiErrorResponse _ _ _, _ ) ->
+            Debug.todo "ApiErrorResponse: not yet implemented"
+
+        ( ApiSuccessResponse _ runner (RD.Success v), Just i ) ->
+            doStep (i + 1) False (insertResults (runner v (JE.object m.context)) i m)
+
+        ( ApiSuccessResponse id _ (RD.Failure e), Just idx ) ->
+            doStep (idx + 1)
+                False
+                (insertResults
+                    [ R.TestFailed id ("Request failed: " ++ Debug.toString e)
+                    , R.TestDone
+                    ]
+                    idx
+                    m
+                )
+
+        ( ApiSuccessResponse _ _ _, _ ) ->
+            Debug.todo "ApiSuccessResponse: not yet implemented"
 
         ( OnSubmitResponse (FormErrorTest _ assertions) (RD.Success (RR.FErrors d)), Just idx ) ->
             let
@@ -430,8 +610,7 @@ update msg m =
                 )
 
         ( OnSubmitResponse _ _, _ ) ->
-            -- shouldn't happen
-            ( m, Cmd.none )
+            Debug.todo "OnSubmitResponse: must not happen"
 
 
 document : Model -> B.Document Msg
@@ -521,6 +700,15 @@ stepTitle s =
 
         FormErrorS ( id, _ ) _ _ ->
             "FormError:" ++ id
+
+        ApiError id _ _ ->
+            "ApiError:" ++ id
+
+        Api id _ _ ->
+            "Api:" ++ id
+
+        ApiS ( id, _ ) _ _ ->
+            "ApiS:" ++ id
 
 
 resultView : Model -> R.TestResult -> E.Element Msg
