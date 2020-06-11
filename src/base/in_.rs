@@ -34,7 +34,19 @@ impl std::string::ToString for UD {
     }
 }
 
-impl crate::UserData for UD {}
+impl crate::UserData for UD {
+    fn user_id(&self) -> String {
+        unimplemented!("not meant to be used")
+    }
+
+    fn session_id(&self) -> String {
+        unimplemented!("not meant to be used")
+    }
+
+    fn has_perm(&self, _perm: &str) -> Result<bool> {
+        unimplemented!("not meant to be used")
+    }
+}
 
 pub type In0<'a> = In<'a, UD>;
 
@@ -44,7 +56,12 @@ where
 {
     #[cfg(any(feature = "sqlite_default", feature = "postgres_default"))]
     pub fn from(conn: &'a RealmConnection, ctx: &'a crate::Context) -> In<'a, UD> {
-        let ud = get_cookie(&ctx.request, "ud").and_then(In::parse_ud_cookie);
+        let ud = if ctx.mode.is_pure() {
+            observer::log("not reading ud cookie in pure mode");
+            None
+        } else {
+            get_cookie(&ctx.request, "ud").and_then(In::parse_ud_cookie)
+        };
         In {
             ctx,
             lang: Language::default(), // TODO: get this from header
@@ -53,6 +70,11 @@ where
             conn,
             now: Utc::now(),
         }
+    }
+
+    pub fn is_dev(&self) -> bool {
+        // TODO: a signed cookie and a http handler to activate dev mode (how to detect superuser?)
+        crate::base::is_test()
     }
 
     pub fn is_anonymous(&self) -> bool {
@@ -109,45 +131,40 @@ where
         signed_cookies::sign_value(&ud.to_string(), &cookie_secret())
     }
 
-    pub fn form_error(
-        &self,
-        errors: &std::collections::HashMap<String, String>,
-    ) -> std::result::Result<crate::Response, failure::Error> {
-        let mode = self.get_mode();
-        self.ctx
-            .header(http::header::CONTENT_TYPE, mode.content_type());
-        let data = match mode {
-            crate::Mode::Submit => json!({
-                "success": true,
-                "result": {
-                    "kind": "errors",
-                    "data": errors,
-                }
-            }),
-            _ => json!({
-                "success": false,
-                "errors": errors,
-            }),
-        };
-        self.ctx
-            .response(serde_json::to_string_pretty(&data)?.into())
-            .map(crate::Response::Http)
-            .map_err(Into::into)
+    pub fn form_error(&self, errors: &std::collections::HashMap<String, String>) -> crate::Result {
+        match self.get_mode() {
+            crate::Mode::Submit => crate::json(&json!({"kind": "errors", "data": errors})),
+            _ => crate::err(errors),
+        }
     }
 
+    #[observed(namespace = "realm__in")]
     pub fn parse_ud_cookie(ud: String) -> Option<UD> {
-        let ud: String = match signed_cookies::signed_value(
+        let ud: String = match signed_cookies::signed_value::<String>(
             ud.as_str(),
             i64::from(COOKIE_AGE),
             &cookie_secret(),
         ) {
             Ok(ud) => ud,
             Err(e) => {
-                eprintln!("failed to read cookie: c={} err={:?}", ud, e);
+                observer::log("signature failed");
+                observer::observe_string("ud", ud.as_str()); // TODO
+                observer::observe_string("error", e.to_string().as_str()); // TODO
                 return None;
             }
         };
-        ud.parse::<UD>().ok()
+        match ud.parse::<UD>() {
+            Ok(u) => {
+                observer::observe_string("ud", ud.as_str()); // TODO
+                Some(u)
+            }
+            Err(_e) => {
+                observer::log("parse failed");
+                observer::observe_string("ud", ud.as_str()); // TODO
+                                                             // TODO: log e: for now it doesn't implement ToString
+                None
+            }
+        }
     }
 }
 

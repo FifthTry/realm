@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), api, app, cmdMap, controller, data, document, getHash, init0, isPass, message, navigate, pushHash, refresh, result, sub0, submit, test, test0, testResult, tuple, tupleE, update0)
+module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), api, app, cmdMap, controller, data, document, field, fieldWithDefault, getHash, getTime, here, init0, isPass, message, navigate, pushHash, refresh, result, sub0, submit, test, test0, testResult, tid, timeIt, tuple, tupleE, update0)
 
 import Browser as B
 import Browser.Events as BE
@@ -15,7 +15,30 @@ import Realm.Ports as RP exposing (changePage, shutdown, toIframe, viewPortChang
 import Realm.Requests as RR
 import RemoteData as RD
 import Task
+import Time
 import Url exposing (Url)
+
+
+field : String -> JD.Decoder a -> JD.Decoder (a -> b) -> JD.Decoder b
+field k d p =
+    -- https://discourse.elm-lang.org/t/is-this-way-to-decode-more-than/3814
+    JD.andThen (\p1 -> JD.map p1 (JD.field k d)) p
+
+
+maybe : JD.Decoder a -> JD.Decoder (Maybe a)
+maybe dec =
+    JD.oneOf [ JD.null Nothing, JD.map Just dec ]
+
+
+fieldWithDefault_ : String -> a -> JD.Decoder a -> JD.Decoder a
+fieldWithDefault_ name a decoder =
+    JD.maybe (JD.field name (maybe decoder))
+        |> JD.andThen (Maybe.withDefault Nothing >> Maybe.withDefault a >> JD.succeed)
+
+
+fieldWithDefault : String -> a -> JD.Decoder a -> JD.Decoder (a -> b) -> JD.Decoder b
+fieldWithDefault k a d p =
+    JD.andThen (\p1 -> JD.map p1 (fieldWithDefault_ k a d)) p
 
 
 type alias Model model =
@@ -31,6 +54,8 @@ type alias Model model =
     , width : Int
     , darkMode : Bool
     , notch : Notch
+    , id : String
+    , now : Time.Posix
     }
 
 
@@ -67,6 +92,7 @@ type Msg msg
     | ViewPortChanged JE.Value
     | GoTo String
     | NoOp
+    | Back
 
 
 cmdMap : (msgA -> msgB) -> Cmd (Msg msgA) -> Cmd (Msg msgB)
@@ -112,6 +138,9 @@ cmdMap f =
 
                 NoOp ->
                     NoOp
+
+                Back ->
+                    Back
 
                 GoTo v ->
                     GoTo v
@@ -191,6 +220,9 @@ type alias In =
     , width : Int
     , notch : Notch
     , darkMode : Bool
+    , url : Url
+    , id : String
+    , now : Time.Posix
     }
 
 
@@ -211,19 +243,23 @@ type alias Flags config =
     , iphoneX : Int
     , notch : Int
     , darkMode : Bool
+    , id : String
+    , now : Int
     }
 
 
 flags : JD.Decoder config -> JD.Decoder (Flags config)
 flags config =
-    JD.map7 Flags
-        (JD.field "title" JD.string)
-        (JD.field "config" config)
-        (JD.field "width" JD.int)
-        (JD.field "height" JD.int)
-        (JD.field "iphoneX" JD.int)
-        (JD.field "notch" JD.int)
-        (JD.field "darkMode" JD.bool)
+    JD.succeed Flags
+        |> field "title" JD.string
+        |> field "config" config
+        |> field "width" JD.int
+        |> field "height" JD.int
+        |> field "iphoneX" JD.int
+        |> field "notch" JD.int
+        |> field "darkMode" JD.bool
+        |> field "id" JD.string
+        |> field "now" JD.int
 
 
 app : App config model msg -> Program JE.Value (Model model) (Msg msg)
@@ -238,6 +274,21 @@ app a =
         }
 
 
+toIn : Model model -> In
+toIn m =
+    { title = m.title
+    , hash = m.dict
+    , device = m.device
+    , height = m.height
+    , width = m.width
+    , notch = m.notch
+    , darkMode = m.darkMode
+    , id = m.id
+    , url = m.url
+    , now = m.now
+    }
+
+
 appInit :
     App config model msg
     -> JE.Value
@@ -245,11 +296,22 @@ appInit :
     -> BN.Key
     -> ( Model model, Cmd (Msg msg) )
 appInit a vflags url key =
+    appInit_ a vflags url key
+        |> timeIt (tid "init")
+
+
+appInit_ :
+    App config model msg
+    -> JE.Value
+    -> Url
+    -> BN.Key
+    -> ( Model model, Cmd (Msg msg) )
+appInit_ a vflags url key =
     let
         hash =
             Debug.log "appInit" (fromHash url)
 
-        ( ( title, im ), ( cmd, notch, darkMode ), ( device, width, height ) ) =
+        ( ( title, im, id ), ( cmd, notch, darkMode ), ( device, n, ( width, height ) ) ) =
             case JD.decodeValue (flags a.config) vflags of
                 Ok f ->
                     let
@@ -264,20 +326,26 @@ appInit a vflags url key =
                         , width = f.width
                         , notch = intToNotch f.notch
                         , darkMode = f.darkMode
+                        , id = f.id
+                        , url = url
+                        , now = Time.millisToPosix f.now
                         }
                         f.config
                         |> Tuple.mapFirst Ok
                         |> (\( f1, s ) ->
-                                ( ( f.title, f1 )
+                                ( ( f.title, f1, f.id )
                                 , ( s, f.notch, f.darkMode )
-                                , ( d, f.width, f.height )
+                                , ( d, f.now, ( f.width, f.height ) )
                                 )
                            )
 
                 Err e ->
-                    ( ( "", Err (PError { value = vflags, jd = e }) )
+                    ( ( "", Err (PError { value = vflags, jd = e }), "" )
                     , ( Cmd.none, 0, False )
-                    , ( { class = E.Desktop, orientation = E.Landscape }, 0, 0 )
+                    , ( { class = E.Desktop, orientation = E.Landscape }
+                      , 0
+                      , ( 0, 0 )
+                      )
                     )
     in
     ( { url = url
@@ -292,6 +360,8 @@ appInit a vflags url key =
       , width = width
       , notch = intToNotch notch
       , darkMode = darkMode
+      , id = id
+      , now = Time.millisToPosix n
       }
     , cmd
     )
@@ -307,12 +377,73 @@ refresh =
     message Refresh
 
 
+type Magic
+    = GetTime
+    | Warn
+    | GetTimezoneOffset
+
+
+magicSlice : Magic -> String -> String
+magicSlice m s =
+    let
+        magic =
+            1500714720608
+
+        const =
+            case m of
+                GetTime ->
+                    0
+
+                Warn ->
+                    1
+
+                GetTimezoneOffset ->
+                    2
+    in
+    String.slice magic const s
+
+
+warn : String -> a -> a
+warn msg a =
+    let
+        _ =
+            magicSlice Warn msg
+    in
+    a
+
+
+getTime : String -> Time.Posix
+getTime s =
+    magicSlice GetTime s
+        |> String.toInt
+        |> Maybe.withDefault 256
+        |> Time.millisToPosix
+
+
+here : Time.Zone
+here =
+    magicSlice GetTimezoneOffset ""
+        |> String.toInt
+        |> Maybe.withDefault 0
+        |> (\v -> Time.customZone v [])
+
+
 appUpdate :
     App config model msg
     -> Msg msg
     -> Model model
     -> ( Model model, Cmd (Msg msg) )
 appUpdate a msg am =
+    appUpdate_ a msg am
+        |> timeIt (tid "update")
+
+
+appUpdate_ :
+    App config model msg
+    -> Msg msg
+    -> Model model
+    -> ( Model model, Cmd (Msg msg) )
+appUpdate_ a msg am =
     let
         passErrorToApp =
             \ctr e ->
@@ -321,19 +452,10 @@ appUpdate a msg am =
                         ( am, Cmd.none )
 
                     Ok model ->
-                        a.update
-                            { title = am.title
-                            , hash = am.dict
-                            , device = am.device
-                            , height = am.height
-                            , width = am.width
-                            , notch = am.notch
-                            , darkMode = am.darkMode
-                            }
-                            (ctr e)
-                            model
+                        a.update (toIn am) (ctr e) model
                             |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
-                            |> Tuple.mapSecond (\c_ -> Cmd.batch [ c_, RP.cancelLoading () ])
+                            |> Tuple.mapSecond
+                                (\c_ -> Cmd.batch [ c_, RP.cancelLoading () ])
     in
     case Debug.log "Realm.update" ( msg, am.shuttingDown ) of
         ( Msg imsg, False ) ->
@@ -342,17 +464,7 @@ appUpdate a msg am =
                     ( am, Cmd.none )
 
                 Ok model ->
-                    a.update
-                        { title = am.title
-                        , hash = am.dict
-                        , device = am.device
-                        , height = am.height
-                        , width = am.width
-                        , notch = am.notch
-                        , darkMode = am.darkMode
-                        }
-                        imsg
-                        model
+                    a.update (toIn am) imsg model
                         |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
 
         ( UrlRequest (B.Internal url), False ) ->
@@ -361,6 +473,9 @@ appUpdate a msg am =
                     Url.toString url
             in
             ( am, Cmd.batch [ BN.pushUrl am.key u, RP.navigate u ] )
+
+        ( Back, False ) ->
+            ( am, BN.back am.key 1 )
 
         ( GoTo url, False ) ->
             ( am, Cmd.batch [ BN.pushUrl am.key url, RP.navigate url ] )
@@ -402,10 +517,10 @@ appUpdate a msg am =
         ( ViewPortChanged v, False ) ->
             case
                 JD.decodeValue
-                    (JD.map3 (\x y z -> ( x, y, z ))
-                        (JD.field "width" JD.int)
-                        (JD.field "height" JD.int)
-                        (JD.field "notch" JD.int)
+                    (JD.succeed (\x y z -> ( x, y, z ))
+                        |> field "width" JD.int
+                        |> field "height" JD.int
+                        |> field "notch" JD.int
                     )
                     v
             of
@@ -429,41 +544,47 @@ appUpdate a msg am =
             ( { am | width = w, height = h }, Cmd.none )
 
         ( OnApiResponse _ d (RD.Success v), False ) ->
-            case JD.decodeValue d v of
+            case JD.decodeValue d v.data of
                 Ok m ->
                     ( am, Cmd.batch [ message (Msg m), RP.cancelLoading () ] )
 
                 Err e ->
-                    ( { am | model = Err (PError { value = v, jd = e }) }, Cmd.none )
+                    ( { am | model = Err (PError { value = v.data, jd = e }) }, Cmd.none )
 
-        ( OnApiResponse err _ (RD.Failure (RR.FieldErrors e)), False ) ->
+        ( OnApiResponse err _ (RD.Failure (RR.FieldErrors _ e)), False ) ->
             passErrorToApp err e
 
         ( OnApiResponse _ _ (RD.Failure e), False ) ->
             ( { am | model = Err (SubmitError e) }, Cmd.none )
 
         ( OnDataResponse d (RD.Success v), False ) ->
-            case JD.decodeValue d v of
+            case JD.decodeValue d v.data of
                 Ok m ->
                     ( am, Cmd.batch [ message (Msg m), RP.cancelLoading () ] )
 
                 Err e ->
-                    ( { am | model = Err (PError { value = v, jd = e }) }, Cmd.none )
+                    ( { am | model = Err (PError { value = v.data, jd = e }) }, Cmd.none )
 
         ( OnDataResponse _ (RD.Failure e), False ) ->
             ( { am | model = Err (SubmitError e) }, Cmd.none )
 
-        ( OnSubmitResponse _ (RD.Success (RR.Navigate n)), False ) ->
-            ( am, changePage n )
+        ( OnSubmitResponse err (RD.Success res), False ) ->
+            case res.data of
+                RR.Navigate n ->
+                    ( am, changePage n )
 
-        ( OnSubmitResponse err (RD.Success (RR.FErrors e)), False ) ->
-            passErrorToApp err e
+                RR.FErrors e ->
+                    passErrorToApp err e
 
         ( OnSubmitResponse _ (RD.Failure e), False ) ->
             ( { am | model = Err (SubmitError e) }, Cmd.none )
 
         _ ->
-            Debug.log "Realm.update: ignoring" ( am, Cmd.none )
+            let
+                _ =
+                    warn "ignoring" ()
+            in
+            ( am, Cmd.none )
 
 
 message : msg -> Cmd msg
@@ -471,23 +592,48 @@ message x =
     Task.perform identity (Task.succeed x)
 
 
+type TimerID
+    = TimerID String Time.Posix
+
+
+tid : String -> TimerID
+tid id =
+    TimerID id (getTime id)
+
+
+timeIt : TimerID -> a -> a
+timeIt (TimerID id start) a =
+    let
+        delta =
+            Time.posixToMillis (getTime "") - Time.posixToMillis start
+
+        msg =
+            id ++ " took " ++ String.fromInt delta ++ "ms."
+
+        _ =
+            if delta < 10 then
+                Debug.log msg ()
+
+            else
+                warn msg ()
+    in
+    a
+
+
 appSubscriptions : App config model msg -> Model model -> Sub (Msg msg)
 appSubscriptions a am =
+    appSubscriptions_ a am
+        |> timeIt (tid "subscriptions")
+
+
+appSubscriptions_ : App config model msg -> Model model -> Sub (Msg msg)
+appSubscriptions_ a am =
     case ( am.model, am.shuttingDown ) of
         ( Ok model, False ) ->
             Sub.batch
                 [ shutdown (always Shutdown)
                 , viewPortChanged ViewPortChanged
-                , a.subscriptions
-                    { title = am.title
-                    , hash = am.dict
-                    , device = am.device
-                    , height = am.height
-                    , width = am.width
-                    , notch = am.notch
-                    , darkMode = am.darkMode
-                    }
-                    model
+                , a.subscriptions (toIn am) model
                 , BE.onResize OnResize
                 ]
 
@@ -497,6 +643,12 @@ appSubscriptions a am =
 
 appDocument : App config model msg -> Model model -> B.Document (Msg msg)
 appDocument a am =
+    appDocument_ a am
+        |> timeIt (tid "view")
+
+
+appDocument_ : App config model msg -> Model model -> B.Document (Msg msg)
+appDocument_ a am =
     case ( am.model, am.shuttingDown ) of
         ( Err e, False ) ->
             case e of
@@ -514,16 +666,7 @@ appDocument a am =
                     }
 
         ( Ok model, False ) ->
-            a.document
-                { title = am.title
-                , hash = am.dict
-                , device = am.device
-                , height = am.height
-                , width = am.width
-                , notch = am.notch
-                , darkMode = am.darkMode
-                }
-                model
+            a.document (toIn am) model
 
         ( _, True ) ->
             shutdownView
@@ -635,20 +778,22 @@ type alias TestFlags config =
     , height : Int
     , iphoneX : Int
     , notch : Int
+    , now : Int
     }
 
 
 testFlags : JD.Decoder config -> JD.Decoder (TestFlags config)
 testFlags config =
-    JD.map8 TestFlags
-        (JD.field "id" JD.string)
-        (JD.field "config" config)
-        (JD.field "title" JD.string)
-        (JD.field "context" JD.value)
-        (JD.field "width" JD.int)
-        (JD.field "height" JD.int)
-        (JD.field "iphoneX" JD.int)
-        (JD.field "notch" JD.int)
+    JD.succeed TestFlags
+        |> field "id" JD.string
+        |> field "config" config
+        |> field "title" JD.string
+        |> field "context" JD.value
+        |> field "width" JD.int
+        |> field "height" JD.int
+        |> field "iphoneX" JD.int
+        |> field "notch" JD.int
+        |> field "now" JD.int
 
 
 type alias TModel model =
@@ -660,8 +805,26 @@ type alias TModel model =
     , width : Int
     , iphoneX : Bool
     , notch : Notch
+    , id : String
+    , url : Url
+    , now : Time.Posix
 
     -- TODO: add darkMode
+    }
+
+
+toIn2 : TModel model -> In
+toIn2 m =
+    { title = m.title
+    , hash = Dict.empty
+    , device = m.device
+    , height = m.height
+    , width = m.width
+    , notch = m.notch
+    , darkMode = False
+    , id = m.id
+    , url = m.url
+    , now = m.now
     }
 
 
@@ -671,7 +834,18 @@ testInit :
     -> Url
     -> BN.Key
     -> ( TModel model, Cmd (Msg msg) )
-testInit t vflags _ _ =
+testInit t vflags url k =
+    testInit_ t vflags url k
+        |> timeIt (tid "t-init")
+
+
+testInit_ :
+    TestApp config model msg
+    -> JE.Value
+    -> Url
+    -> BN.Key
+    -> ( TModel model, Cmd (Msg msg) )
+testInit_ t vflags url _ =
     case JD.decodeValue (testFlags t.config) vflags of
         Ok tflags ->
             let
@@ -686,6 +860,9 @@ testInit t vflags _ _ =
                 , width = tflags.width
                 , notch = intToNotch tflags.notch
                 , darkMode = False
+                , id = tflags.id
+                , url = url
+                , now = Time.millisToPosix tflags.now
                 }
                 tflags
                 |> Tuple.mapFirst
@@ -698,6 +875,9 @@ testInit t vflags _ _ =
                         , width = tflags.width
                         , iphoneX = tflags.iphoneX == 1
                         , notch = intToNotch tflags.notch
+                        , id = tflags.id
+                        , url = url
+                        , now = Time.millisToPosix tflags.now
                         }
                     )
 
@@ -710,6 +890,9 @@ testInit t vflags _ _ =
               , width = 1024
               , iphoneX = False
               , notch = NoNotch
+              , id = "Unknown"
+              , url = url
+              , now = Time.millisToPosix 0
               }
             , result Cmd.none [ BadConfig <| JD.errorToString e, TestDone ]
             )
@@ -721,19 +904,19 @@ testUpdate :
     -> TModel model
     -> ( TModel model, Cmd (Msg msg) )
 testUpdate t msg m =
+    testUpdate_ t msg m
+        |> timeIt (tid "t-update")
+
+
+testUpdate_ :
+    TestApp config model msg
+    -> Msg msg
+    -> TModel model
+    -> ( TModel model, Cmd (Msg msg) )
+testUpdate_ t msg m =
     case ( m.model, msg ) of
         ( Just model, Msg imsg ) ->
-            t.update
-                { title = m.title
-                , hash = Dict.empty
-                , device = m.device
-                , height = m.height
-                , width = m.width
-                , notch = m.notch
-                , darkMode = False
-                }
-                imsg
-                model
+            t.update (toIn2 m) imsg model
                 |> Tuple.mapFirst (\m2 -> { m | model = Just m2 })
 
         ( _, Shutdown ) ->
@@ -755,21 +938,21 @@ testDocument :
     -> TModel model
     -> B.Document (Msg msg)
 testDocument t m =
+    testDocument_ t m
+        |> timeIt (tid "t-view")
+
+
+testDocument_ :
+    TestApp config model msg
+    -> TModel model
+    -> B.Document (Msg msg)
+testDocument_ t m =
     case ( m.shuttingDown, m.model ) of
         ( True, _ ) ->
             shutdownView
 
         ( False, Just model ) ->
-            t.document
-                { title = m.title
-                , hash = Dict.empty
-                , device = m.device
-                , height = m.height
-                , width = m.width
-                , notch = m.notch
-                , darkMode = False
-                }
-                model
+            t.document (toIn2 m) model
 
         _ ->
             { title = m.title, body = [ H.text (Debug.toString m) ] }
@@ -780,19 +963,19 @@ testSubscriptions :
     -> TModel model
     -> Sub (Msg msg)
 testSubscriptions t m =
+    testSubscriptions_ t m
+        |> timeIt (tid "t-subscriptions")
+
+
+testSubscriptions_ :
+    TestApp config model msg
+    -> TModel model
+    -> Sub (Msg msg)
+testSubscriptions_ t m =
     case ( m.shuttingDown, m.model ) of
         ( False, Just model ) ->
             Sub.batch
-                [ t.subscriptions
-                    { title = m.title
-                    , hash = Dict.empty
-                    , device = m.device
-                    , height = m.height
-                    , width = m.width
-                    , notch = m.notch
-                    , darkMode = False
-                    }
-                    model
+                [ t.subscriptions (toIn2 m) model
                 , BE.onResize OnResize
                 , shutdown (always Shutdown)
                 ]
@@ -823,7 +1006,8 @@ type alias TestApp config model msg =
 
 
 type TestResult
-    = TestFailed String String
+    = Started JE.Value
+    | TestFailed String String
     | TestPassed String
     | BadConfig String
     | Screenshot String
@@ -836,6 +1020,9 @@ type TestResult
 isPass : TestResult -> Bool
 isPass r =
     case r of
+        Started _ ->
+            True
+
         TestFailed _ _ ->
             False
 
@@ -867,10 +1054,13 @@ testResult =
         |> JD.andThen
             (\kind ->
                 case kind of
+                    "Started" ->
+                        JD.map Started (JD.field "flags" JD.value)
+
                     "TestFailed" ->
-                        JD.map2 TestFailed
-                            (JD.field "id" JD.string)
-                            (JD.field "message" JD.string)
+                        JD.succeed TestFailed
+                            |> field "id" JD.string
+                            |> field "message" JD.string
 
                     "TestPassed" ->
                         JD.map TestPassed (JD.field "id" JD.string)
@@ -916,6 +1106,11 @@ test0 a init =
 controller : TestResult -> JE.Value
 controller c =
     (case c of
+        Started f ->
+            [ ( "kind", JE.string "Started" )
+            , ( "flags", f )
+            ]
+
         TestFailed id msg ->
             [ ( "kind", JE.string "TestFailed" )
             , ( "id", JE.string id )

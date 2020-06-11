@@ -1,9 +1,10 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), button, contains, edges, emptyField, err, escEnter, false, false2, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldsNoError, form, formE, html, htmlLine, htmlWith, iff, lGet, ltr, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, nif, niff, none, onEnter, onEsc, rendered, renderedE, renderedToString, result, rtl, style, text, title, true, true2, val, withError, withFocus, yesno, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), aif, aifn, button, contains, deleteIth, edges, emptyField, err, escEnter, false, false2, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldWithDefault, fieldsNoError, fmaybe, form, formE, html, htmlLine, htmlWith, id, iff, iframe, isJust, jo, lGet, ltr, mString, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, nif, niff, none, onClick, onDoubleClick, onEnter, onEsc, onFocus, onSpecialS, rendered, renderedE, renderedToString, result, rtl, slugify, style, subIfJust, subIfNothing, text, title, true, true2, val, withError, withFocus, yesno, yesno1, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Element as E
 import Element.Input as EI
+import Html
 import Html.Attributes as HA
 import Html.Events
 import Html.Parser
@@ -11,7 +12,23 @@ import Html.Parser.Util
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
+import Slug
 import Task
+
+
+id : String -> E.Attribute msg
+id =
+    HA.id >> E.htmlAttribute
+
+
+jo : List ( String, JE.Value ) -> Maybe JE.Value
+jo =
+    JE.object >> Just
+
+
+iframe : String -> List (Html.Attribute msg) -> E.Element msg
+iframe src attrs =
+    E.html <| Html.node "iframe" (HA.src src :: attrs) []
 
 
 title : String -> E.Attribute msg
@@ -37,6 +54,11 @@ lGet idx lst =
             Nothing
 
 
+deleteIth : Int -> List a -> List a
+deleteIth index lst =
+    List.take index lst ++ List.drop (index + 1) lst
+
+
 mapIth : Int -> (a -> a) -> List a -> List a
 mapIth idx f =
     List.indexedMap (\i a -> yesno (i == idx) (f a) a)
@@ -45,6 +67,11 @@ mapIth idx f =
 mapAIth : Int -> (a -> a) -> Array a -> Array a
 mapAIth idx f =
     Array.indexedMap (\i a -> yesno (i == idx) (f a) a)
+
+
+isJust : Maybe a -> Bool
+isJust n =
+    Maybe.map (always True) n |> Maybe.withDefault False
 
 
 iff : Bool -> E.Element msg -> E.Element msg
@@ -94,11 +121,85 @@ onEnter msg =
         )
 
 
+onSpecialS : msg -> E.Attribute msg
+onSpecialS msg =
+    E.htmlAttribute
+        (Html.Events.custom
+            "keydown"
+            (JD.map2 Tuple.pair
+                (JD.field "key" JD.string)
+                (JD.field "metaKey" JD.bool
+                    |> JD.andThen
+                        (\v ->
+                            if v then
+                                JD.succeed True
+
+                            else
+                                JD.field "ctrlKey" JD.bool
+                        )
+                )
+                |> JD.andThen
+                    (\( key, special ) ->
+                        case
+                            Debug.log "Book.save" ( key, special )
+                        of
+                            ( "s", True ) ->
+                                JD.succeed { message = msg, stopPropagation = True, preventDefault = True }
+
+                            _ ->
+                                JD.fail "error while clicking"
+                    )
+            )
+        )
+
+
 onEsc : msg -> E.Attribute msg
 onEsc esc =
     E.htmlAttribute
         (Html.Events.on "keyup"
             (JD.succeed esc)
+        )
+
+
+onClick : msg -> E.Attribute msg
+onClick msg =
+    E.htmlAttribute
+        (Html.Events.custom
+            "click"
+            (JD.succeed
+                { message = msg
+                , stopPropagation = True
+                , preventDefault = True
+                }
+            )
+        )
+
+
+onDoubleClick : msg -> E.Attribute msg
+onDoubleClick msg =
+    E.htmlAttribute
+        (Html.Events.custom
+            "dblclick"
+            (JD.succeed
+                { message = msg
+                , stopPropagation = True
+                , preventDefault = True
+                }
+            )
+        )
+
+
+onFocus : msg -> E.Attribute msg
+onFocus msg =
+    E.htmlAttribute
+        (Html.Events.custom
+            "focus"
+            (JD.succeed
+                { message = msg
+                , stopPropagation = True
+                , preventDefault = True
+                }
+            )
         )
 
 
@@ -140,6 +241,14 @@ onSpaceOrEnter msg =
         )
 
 
+slugify : String -> String
+slugify s =
+    s
+        |> Slug.generate
+        |> Maybe.map Slug.toString
+        |> Maybe.withDefault s
+
+
 button :
     List (E.Attribute msg)
     ->
@@ -159,6 +268,23 @@ button attrs args =
 maybe : JD.Decoder a -> JD.Decoder (Maybe a)
 maybe dec =
     JD.oneOf [ JD.null Nothing, JD.map Just dec ]
+
+
+mString : String -> JD.Decoder (Maybe String -> a) -> JD.Decoder a
+mString key =
+    R.field key (maybe JD.string)
+
+
+fmaybe : String -> JD.Decoder a -> JD.Decoder (Maybe a)
+fmaybe name decoder =
+    JD.maybe (JD.field name (maybe decoder))
+        |> JD.andThen (\v -> JD.succeed (Maybe.withDefault Nothing v))
+
+
+fieldWithDefault : String -> a -> JD.Decoder a -> JD.Decoder a
+fieldWithDefault name a decoder =
+    JD.maybe (JD.field name (maybe decoder))
+        |> JD.andThen (Maybe.withDefault Nothing >> Maybe.withDefault a >> JD.succeed)
 
 
 rtl : E.Attribute msg
@@ -268,10 +394,52 @@ yesno y a1 a2 =
         a2
 
 
+subIfJust : Maybe a -> Sub msg -> Sub msg
+subIfJust ma s =
+    ma |> Maybe.map (always s) |> Maybe.withDefault Sub.none
+
+
+subIfNothing : Maybe a -> Sub msg -> Sub msg
+subIfNothing ma s =
+    case ma of
+        Just _ ->
+            Sub.none
+
+        Nothing ->
+            s
+
+
+yesno1 : Bool -> ( a, a ) -> a
+yesno1 y ( a1, a2 ) =
+    if y then
+        a1
+
+    else
+        a2
+
+
 none : E.Attribute msg
 none =
     HA.attribute "d-none" "none"
         |> E.htmlAttribute
+
+
+aif : Bool -> E.Attribute msg -> E.Attribute msg
+aif b a =
+    if b then
+        a
+
+    else
+        none
+
+
+aifn : Bool -> E.Attribute msg -> E.Attribute msg
+aifn b a =
+    if b then
+        none
+
+    else
+        a
 
 
 type alias Form =
@@ -450,22 +618,22 @@ result ed sd =
 
 true : String -> Bool -> R.TestResult
 true tid v =
-    match tid v True
+    match tid True v
 
 
 true2 : String -> Bool -> JE.Value -> R.TestResult
 true2 tid v _ =
-    match tid v True
+    match tid True v
 
 
 false : String -> Bool -> R.TestResult
 false tid v =
-    match tid v False
+    match tid False v
 
 
 false2 : String -> Bool -> JE.Value -> R.TestResult
 false2 tid v _ =
-    match tid v False
+    match tid False v
 
 
 match : String -> a -> a -> R.TestResult

@@ -1,14 +1,53 @@
-use woothee;
 pub struct Context {
     pub request: http::request::Request<Vec<u8>>,
+    pub mode: crate::Mode,
+    pub query: std::collections::HashMap<String, String>,
     builder: std::cell::RefCell<http::response::Builder>,
 }
 
+pub fn is_crawler(req: &http::request::Request<Vec<u8>>) -> bool {
+    if req.uri().to_string().contains("is_crawler=") {
+        return true;
+    }
+
+    if let Some(ua) = req
+        .headers()
+        .get(http::header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+    {
+        {
+            let ua = ua.to_lowercase();
+            // https://github.com/monperrus/crawler-user-agents/blob/master/crawler-user-agents.json
+            if ua.contains("google")
+                || ua.contains("bot")
+                || ua.contains("crawl")
+                || ua.contains("spider")
+                || ua.contains("bing")
+                || ua.contains("facebook")
+                || ua.contains("yahoo")
+                || ua.contains("baidu")
+                || ua.contains("python")
+                || ua.contains("curl")
+                || ua.contains("wget")
+                || ua.contains("archive")
+            {
+                return true;
+            }
+        }
+        woothee::is_crawler(ua)
+    } else {
+        false
+    }
+}
 impl Context {
-    pub fn new(request: http::request::Request<Vec<u8>>) -> Self {
+    pub fn new(request: http::request::Request<Vec<u8>>, mode: crate::Mode) -> Self {
+        let url = url::Url::parse(&format!("http://foo.com{}", request.uri()).as_str()).unwrap();
+        let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
         Context {
             request,
+            mode,
             builder: std::cell::RefCell::new(http::response::Builder::new()),
+            query,
         }
     }
 
@@ -32,39 +71,7 @@ impl Context {
         // either useragent is bot: woothee::is_crawler
         // or query params is_crawler is set to any value
 
-        if self.request.uri().to_string().contains("is_crawler=") {
-            return true;
-        }
-
-        if let Some(ua) = self
-            .request
-            .headers()
-            .get(http::header::USER_AGENT)
-            .and_then(|v| v.to_str().ok())
-        {
-            {
-                let ua = ua.to_lowercase();
-                // https://github.com/monperrus/crawler-user-agents/blob/master/crawler-user-agents.json
-                if ua.contains("google")
-                    || ua.contains("bot")
-                    || ua.contains("crawl")
-                    || ua.contains("spider")
-                    || ua.contains("bing")
-                    || ua.contains("facebook")
-                    || ua.contains("yahoo")
-                    || ua.contains("baidu")
-                    || ua.contains("python")
-                    || ua.contains("curl")
-                    || ua.contains("wget")
-                    || ua.contains("archive")
-                {
-                    return true;
-                }
-            }
-            woothee::is_crawler(ua)
-        } else {
-            false
-        }
+        is_crawler(&self.request)
     }
 
     pub fn status(&self, status: http::StatusCode) {

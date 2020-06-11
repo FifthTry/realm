@@ -9,7 +9,7 @@ pub struct RequestConfig {
     pub path: String,
 }
 
-#[derive(Fail, Debug)]
+#[derive(Fail, Debug, Serialize)]
 pub enum Error {
     #[fail(display = "Expected input parameter not found: {}", key)]
     NotFound { key: String },
@@ -32,7 +32,7 @@ pub fn sub_string(s: &str, start: usize, len: Option<usize>) -> String {
 
 fn first_rest(s: &str) -> (Option<String>, String) {
     let mut parts = s.split('/');
-    match parts.nth(0) {
+    match parts.next() {
         Some(v) => (Some(v.to_string()), sub_string(s, v.len() + 1, None)),
         None => (None, s.to_owned()),
     }
@@ -65,6 +65,27 @@ impl RequestConfig {
             Ok(t) => Ok(Some(t)),
             Err(Error::NotFound { .. }) => Ok(None),
             Err(e) => Err(e.into()),
+        }
+    }
+
+    pub fn optional2<T1, T2>(
+        &mut self,
+        n1: &str,
+        n2: &str,
+    ) -> Result<(Option<T1>, Option<T2>), crate::Error>
+    where
+        T1: FromStr + DeserializeOwned,
+        <T1 as FromStr>::Err: Debug,
+        T2: FromStr + DeserializeOwned,
+        <T2 as FromStr>::Err: Debug,
+    {
+        match (self.required_(n1), self.required_(n2)) {
+            (Ok(t1), Ok(t2)) => Ok((Some(t1), Some(t2))),
+            (Ok(t1), Err(Error::NotFound { .. })) => Ok((Some(t1), None)),
+            (Err(Error::NotFound { .. }), Ok(t2)) => Ok((None, Some(t2))),
+            (Err(Error::NotFound { .. }), Err(Error::NotFound { .. })) => Ok((None, None)),
+            (Err(e), _) => Err(e.into()),
+            (_, Err(e)) => Err(e.into()),
         }
     }
 

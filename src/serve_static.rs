@@ -1,5 +1,3 @@
-use observer::prelude::*;
-
 #[observed(with_result, namespace = "realm")]
 pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Error> {
     let start = std::time::Instant::now();
@@ -43,6 +41,7 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
                     .header("Cache-Control", cache_control)
                     .header("Content-Encoding", "br")
                     .header("Content-Type", mime.to_string())
+                    .header("Service-Worker-Allowed", "/")
                     .status(http::StatusCode::OK)
                     .body(content)?,
             ));
@@ -69,6 +68,7 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
                     .header("Cache-Control", cache_control)
                     .header("Content-Encoding", "gzip")
                     .header("Content-Type", mime.to_string())
+                    .header("Service-Worker-Allowed", "/")
                     .status(http::StatusCode::OK)
                     .body(content)?,
             ));
@@ -87,6 +87,7 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
                 http::Response::builder()
                     .header("Cache-Control", cache_control)
                     .header("Content-Type", mime.to_string())
+                    .header("Service-Worker-Allowed", "/")
                     .status(http::StatusCode::OK)
                     .body(content)?,
             ))
@@ -102,8 +103,66 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
     }
 }
 
+lazy_static! {
+    pub static ref ELM: Vec<u8> = { read_static("elm", "") };
+    pub static ref ELM_GZ: Vec<u8> = { read_static("elm", ".gz") };
+    pub static ref ELM_BR: Vec<u8> = { read_static("elm", ".br") };
+    pub static ref SW: Vec<u8> = { read_static("sw", "") };
+}
+
+fn read_static(prefix: &str, suffix: &str) -> Vec<u8> {
+    let proj_dir = std::env::current_dir().expect("Could not find current dir");
+    let path = proj_dir.join(format!(
+        "static/{}.{}.js{}",
+        prefix,
+        crate::page::read_current(),
+        suffix
+    ));
+    std::fs::read(path.as_path()).unwrap_or_else(|_| panic!("failed to read: {:?}", path))
+}
+
+fn get_static(prefix: &str, suffix: &str) -> Vec<u8> {
+    if cfg!(debug_assertions) {
+        read_static(prefix, suffix)
+    } else {
+        match (prefix, suffix) {
+            ("elm", "") => ELM.clone(),
+            ("elm", ".gz") => ELM_GZ.clone(),
+            ("elm", ".br") => ELM_BR.clone(),
+            ("sw", "") => SW.clone(),
+            _ => unreachable!(),
+        }
+    }
+}
+
 pub fn static_content(src: &str) -> Result<Vec<u8>, failure::Error> {
     use std::io::Read;
+
+    if src.starts_with("/static/elm.hashed-") {
+        if !src.contains(crate::page::CURRENT.as_str()) {
+            observer::log("fetched latest elm when old was requested");
+        }
+
+        return Ok(if src.ends_with(".js") {
+            get_static("elm", "")
+        } else if src.ends_with(".js.gz") {
+            get_static("elm", ".gz")
+        } else {
+            get_static("elm", ".br")
+        });
+    }
+
+    if src.starts_with("/static/sw.hashed-") {
+        if !src.contains(crate::page::CURRENT.as_str()) {
+            observer::log("fetched latest sw when old was requested");
+        }
+
+        return Ok(if src.ends_with(".js") {
+            get_static("sw", "")
+        } else {
+            return Err(failure::err_msg("not found"));
+        });
+    }
 
     let path = std::fs::canonicalize(".".to_string() + src)?;
     if !path.starts_with(std::env::current_dir()?) {

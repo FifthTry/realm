@@ -62,7 +62,7 @@ where
     UD: crate::UserData,
 {
     in_: &'a crate::base::In<'a, UD>,
-    errors: FormErrors,
+    pub errors: FormErrors,
 }
 
 impl<'a, UD> Form<'a, UD>

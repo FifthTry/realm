@@ -9,6 +9,7 @@ lazy_static! {
         { syntect::highlighting::ThemeSet::load_defaults() };
 }
 
+#[cfg(feature = "sqlite")]
 #[cfg(debug_assertions)]
 pub fn colored(sql: &str) -> String {
     let syntax = SS.find_syntax_by_extension("sql").unwrap();

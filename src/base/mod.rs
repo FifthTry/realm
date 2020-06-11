@@ -14,7 +14,7 @@ mod utils;
 
 pub use form::{Form, FormErrors};
 pub use in_::{In, In0, UD};
-pub use sql_types::{citext, CiString};
+pub use sql_types::{cistring_to_string, citext, CiString};
 pub use utils::elapsed;
 
 pub type Request = http::Request<Vec<u8>>;
@@ -45,6 +45,7 @@ pub fn is_test() -> bool {
     std::env::args().any(|e| e == "--test")
 }
 
+#[observed(namespace = "realm", with_result)]
 pub fn hash_password(password: &str) -> Result<String> {
     bcrypt::hash(
         password,
@@ -58,6 +59,7 @@ pub fn hash_password(password: &str) -> Result<String> {
     .map_err(|e| e.into())
 }
 
+#[observed(namespace = "realm", with_result)]
 pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
     bcrypt::verify(password, hash).map_err(|e| e.into())
 }

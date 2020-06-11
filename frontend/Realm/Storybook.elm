@@ -17,7 +17,7 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Process
 import Realm.Ports as RP
-import Realm.Utils as U exposing (edges)
+import Realm.Utils as RU exposing (edges)
 import Task
 import Tuple
 import Url exposing (Url)
@@ -88,7 +88,7 @@ init config _ url key =
             (Url.Parser.s "storybook" <?> Q.string "device")
                 |> (\p -> Url.Parser.parse p url)
                 |> Maybe.withDefault Nothing
-                |> Maybe.map (\d -> U.yesno (d == "desktop") desktop mobile)
+                |> Maybe.map (\d -> RU.yesno (d == "desktop") desktop mobile)
                 |> Maybe.withDefault desktop
 
         toCurrent : Maybe Int
@@ -112,7 +112,7 @@ init config _ url key =
     in
     ( m
     , Cmd.batch
-        [ poll "empty"
+        [ Cmd.none -- TODO: bring this back: poll "empty"
         , m.current
             |> Maybe.andThen (\idx -> Array.get idx stories)
             |> Maybe.map Tuple.second
@@ -160,8 +160,8 @@ update msg m =
         ( SetDevice d, Just idx ) ->
             update (Navigate idx) { m | device = d }
 
-        ( SetDevice _, Nothing ) ->
-            ( m, Cmd.none )
+        ( SetDevice d, Nothing ) ->
+            ( { m | device = d }, Cmd.none )
 
         ( GotHash (Ok hash), _ ) ->
             if m.hash == Nothing then
@@ -289,7 +289,7 @@ view m =
             E.column [ E.centerX, E.centerY ] [ intro, shortcuts ]
     in
     E.row [ E.width E.fill, E.height E.fill, Bg.color (E.rgb 0.9 0.9 0.9) ]
-        [ sidebar m
+        [ RU.yesno m.hideSidebar E.none (sidebar m)
         , EK.el
             [ E.height E.fill
             , iframeWidth
@@ -298,7 +298,7 @@ view m =
             , Bg.color (E.rgb 1 1 1)
             ]
           <|
-            U.yesno (m.current == Nothing) ( "welcome", welcome ) <|
+            RU.yesno (m.current == Nothing) ( "welcome", welcome ) <|
                 ( "iframe"
                 , E.html
                     (H.node "iframe"
@@ -314,59 +314,43 @@ view m =
 
 sidebar : Model -> E.Element Msg
 sidebar m =
-    if m.hideSidebar then
-        E.none
-
-    else
-        E.column
-            [ E.height E.fill
-            , E.width (E.px 200)
-            , EB.widthEach { bottom = 0, left = 0, right = 1, top = 0 }
-            , Bg.color (E.rgb 1 1 1)
-            ]
-            [ E.paragraph
-                [ E.padding 5
-                , EB.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
-                , E.pointer
-                , EE.onClick Reset
-                ]
-              <|
+    E.textColumn
+        [ E.height E.fill
+        , E.width (E.px 200)
+        , EB.widthEach { edges | right = 1 }
+        , Bg.color (E.rgb 1 1 1)
+        ]
+        [ E.row
+            [ E.width E.fill, EB.widthEach { edges | bottom = 1 } ]
+            [ E.paragraph [ E.padding 5, E.pointer, EE.onClick Reset ]
                 [ E.text <| m.title ++ " Storybook" ]
-            , listOfStories m
+            , RU.yesno (m.device == mobile) "📱" "🖥"
+                |> RU.text
+                    [ EF.size 16
+                    , E.paddingEach { edges | right = 3 }
+                    , E.pointer
+                    , RU.yesno (m.device == mobile) desktop mobile
+                        |> SetDevice
+                        |> EE.onClick
+                    ]
             ]
+        , listOfStories m
+        ]
 
 
 storyView : Model -> Int -> Story -> E.Element Msg
 storyView m idx s =
-    if Just idx == m.current then
-        E.textColumn [ E.width E.fill ]
-            [ E.paragraph
-                [ EE.onClick (Navigate idx)
-                , E.paddingXY 5 3
-                , EF.light
-                , EF.regular
-                , Bg.color <| E.rgb 0.93 0.93 0.93
-                ]
-                [ E.text <| "- " ++ s.title ]
-            , E.paragraph [ E.pointer ]
-                [ E.el
-                    [ E.paddingEach { edges | right = 10, left = 10 }
-                    , EE.onClick (SetDevice mobile)
-                    ]
-                  <|
-                    E.text <|
-                        "mobile"
-                            ++ U.yesno (m.device == mobile) "*" ""
-                , E.el [ EE.onClick (SetDevice desktop) ] <|
-                    E.text <|
-                        "desktop"
-                            ++ U.yesno (m.device == desktop) "*" ""
-                ]
-            ]
-
-    else
-        E.paragraph [ EE.onClick (Navigate idx), E.pointer, E.paddingXY 5 3, EF.light ]
-            [ E.text <| "- " ++ s.title ]
+    E.paragraph
+        [ EE.onClick (Navigate idx)
+        , E.pointer
+        , E.paddingXY 5 3
+        , EF.light
+        , E.alpha (RU.yesno (Just idx == m.current) 1 0.7)
+        , RU.aif (Just idx == m.current) (Bg.color <| E.rgb 0.93 0.93 0.93)
+        , E.width E.fill
+        , EF.size 15
+        ]
+        [ E.text <| "- " ++ s.title ]
 
 
 storyHead : String -> E.Element Msg
@@ -429,9 +413,13 @@ render : Story -> Cmd msg
 render s =
     JE.object
         [ ( "action", JE.string "render" )
-        , ( "id", JE.string s.elmId )
-        , ( "config", s.config )
-        , ( "title", JE.string s.pageTitle )
+        , ( "data"
+          , JE.object
+                [ ( "id", JE.string s.elmId )
+                , ( "config", s.config )
+                , ( "title", JE.string s.pageTitle )
+                ]
+          )
         ]
         |> RP.toIframe
 
@@ -441,7 +429,7 @@ updateUrl m c =
     let
         u =
             "/storybook/?device="
-                ++ U.yesno (m.device == desktop) "desktop" "mobile"
+                ++ RU.yesno (m.device == desktop) "desktop" "mobile"
                 ++ (case m.current of
                         Just idx ->
                             "&current=" ++ String.fromInt idx
@@ -449,6 +437,6 @@ updateUrl m c =
                         Nothing ->
                             ""
                    )
-                ++ U.yesno m.hideSidebar "&sidebar=hide" "&sidebar=show"
+                ++ RU.yesno m.hideSidebar "&sidebar=hide" "&sidebar=show"
     in
     Cmd.batch [ c, BN.pushUrl m.key u ]
