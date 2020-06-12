@@ -1,5 +1,3 @@
-use observer::prelude::*;
-
 pub fn is_realm_url(p: (&str, &http::Method)) -> bool {
     match p {
         ("/storybook/", &http::Method::GET) => true,

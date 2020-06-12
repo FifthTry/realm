@@ -1,10 +1,11 @@
+#[derive(PartialEq)]
 pub enum Mode {
     API,
-    Layout,
+    ISED,
     HTML,
-    HTMLExplicit,
     Submit,
     SSR,
+    Pure,
 }
 
 impl Mode {
@@ -21,9 +22,10 @@ impl Mode {
         // overwrite parameter: mode, if realm_mode named query parameter is set, it is used
         match q.get("realm_mode").map(String::as_str) {
             Some("api") => return Mode::API,
-            Some("layout") => return Mode::Layout,
+            Some("pure") => return Mode::Pure,
+            Some("ised") => return Mode::ISED,
             Some("submit") => return Mode::Submit,
-            Some("html") => return Mode::HTMLExplicit,
+            Some("html") => return Mode::HTML,
             Some("ssr") => return Mode::SSR,
             _ => {}
         };
@@ -34,7 +36,11 @@ impl Mode {
         };
 
         if req.method() == http::Method::GET {
-            return Mode::HTML;
+            return if crate::context::is_crawler(req) {
+                Mode::SSR
+            } else {
+                Mode::HTML
+            };
         };
 
         Mode::API
@@ -43,9 +49,15 @@ impl Mode {
     pub fn content_type(&self) -> http::HeaderValue {
         http::HeaderValue::from_static(match self {
             Mode::HTML => "text/html",
-            Mode::HTMLExplicit => "text/html",
             Mode::SSR => "text/html",
             _ => "application/json; charset=utf-8",
         })
+    }
+
+    pub fn is_pure(&self) -> bool {
+        std::env::var("REALM_PURE")
+            .map(|v| !v.trim().is_empty())
+            .unwrap_or(false)
+            && (self == &Mode::Pure || self == &Mode::HTML || self == &Mode::SSR)
     }
 }

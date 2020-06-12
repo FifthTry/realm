@@ -1,7 +1,10 @@
 lazy_static! {
     pub static ref THREAD_POOL: futures_cpupool::CpuPool = {
         let mut builder = futures_cpupool::Builder::new();
-        builder.pool_size(40);
+        builder.pool_size(std::env::var("REALM_THREAD_POOL_SIZE")
+                .unwrap_or_else(|_|"40".to_string())
+                .parse()
+                .unwrap());
         builder.stack_size(16 * 1024 * 1024); // 16mb, default is 8mb
         builder.create()
     };
@@ -33,18 +36,25 @@ macro_rules! realm_serve {
             let req = std::sync::Mutex::new(req);
             let res = std::panic::catch_unwind(|| {
                 let req = req.into_inner().unwrap();
-                let mode = realm::Mode::detect(&req);
                 let url = req
                     .uri()
                     .path_and_query()
                     .map(|p| p.as_str().to_string())
                     .unwrap_or_else(|| "/".to_string());
-                let url = url.replace("&realm_mode=layout", "");
-                let url = url.replace("?realm_mode=layout", "");
-                let ctx = realm::Context::new(req);
+                let url = url.replace("&realm_mode=ised", "");
+                let url = url.replace("&realm_mode=pure", "");
+                // TODO: these two statements are safe only if realm_mode is
+                //       always the last parameter, which it is so far, but we
+                //       need more robust mechanism.
+                let url = url.replace("?realm_mode=ised", "");
+                let url = url.replace("?realm_mode=pure", "");
+                let ctx = {
+                    let mode = realm::Mode::detect(&req);
+                    realm::Context::new(req, mode)
+                };
 
                 let r = match $e(&ctx)
-                    .and_then(|r| r.render(&ctx, &mode, &url))
+                    .and_then(|r| r.render(&ctx, &url))
                     .map(|r| realm::http_to_hyper(r))
                 {
                     Ok(a) => Ok(a),
@@ -55,12 +65,13 @@ macro_rules! realm_serve {
                             format!("error: {:?}", e),
                             http::StatusCode::INTERNAL_SERVER_ERROR,
                         )
-                        .and_then(|r| r.render(&ctx, &mode, &url))
+                        .and_then(|r| r.render(&ctx, &url))
                         .map(|r| realm::http_to_hyper(r))
                         .unwrap())
                     }
                 };
 
+                // TODO: handle different components of activity
                 std::sync::Mutex::new(r)
             });
 

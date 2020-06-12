@@ -31,6 +31,7 @@ extern crate observer_attribute;
 ))]
 compile_error!("only one of postgre_default, mysql_default or sqlite_default can be activated");
 
+pub mod activity;
 pub mod base;
 mod context;
 pub mod iframe;
@@ -50,10 +51,12 @@ pub use crate::context::Context;
 pub use crate::mode::Mode;
 pub use crate::page::{Page, PageSpec};
 pub use crate::request_config::RequestConfig;
-pub use crate::response::{json, json_with_context};
+pub use crate::response::{err, json, json_ok, json_with_context};
 pub use crate::serve::{http_to_hyper, THREAD_POOL};
 pub use crate::serve_static::serve_static;
 pub use crate::urls::{handle, is_realm_url};
+
+pub use crate::activity::Activity;
 
 pub use crate::response::Response;
 pub type Result = std::result::Result<crate::response::Response, failure::Error>;
@@ -63,7 +66,62 @@ pub trait Subject: askama::Template {}
 pub trait Text: askama::Template {}
 pub trait HTML: askama::Template {}
 
-pub trait UserData: std::string::ToString + std::str::FromStr {}
+// TODO: add a constraint to FromStr::Err implements Debug
+pub trait UserData: std::string::ToString + std::str::FromStr {
+    fn user_id(&self) -> String;
+    fn session_id(&self) -> String;
+    fn has_perm(&self, perm: &str) -> std::result::Result<bool, failure::Error>;
+}
+
+pub fn end_context<UD, NF>(in_: &crate::base::In<UD>, resp: Result, not_found: NF) -> Result
+where
+    UD: crate::UserData,
+    NF: FnOnce(&crate::base::In<UD>, &str) -> Result,
+{
+    #[cfg(feature = "postgres")]
+    crate::base::pg::rollback_if_required(&in_.conn);
+
+    let resp = match resp {
+        Ok(r) => Ok(r),
+        Err(e) => {
+            match e.downcast_ref::<crate::Error>() {
+                Some(crate::Error::PageNotFound { message }) => {
+                    observer::log("PageNotFound");
+                    observer::observe_string("error", message.as_str()); // TODO
+                    not_found(&in_, message.as_str())
+                }
+                Some(crate::Error::InputError { error }) => {
+                    let e = error.to_string();
+                    observer::log("InputError");
+                    observer::observe_json("error", serde_json::to_value(&e)?); // TODO
+                    not_found(&in_, e.as_str())
+                }
+                Some(crate::Error::FormError { errors }) => {
+                    observer::log("FormError");
+                    observer::observe_json("form_error", serde_json::to_value(&errors)?); // TODO
+                    in_.form_error(&errors)
+                }
+                _ => Err(e),
+            }
+        }
+    };
+
+    let v = observer::end_context().expect("create_context() not called");
+
+    match resp {
+        Ok(crate::Response::Page(page)) if in_.is_dev() => {
+            page.with_trace(v).map(crate::Response::Page)
+        }
+        Ok(crate::Response::JSON { data, context, .. }) if in_.is_dev() => {
+            Ok(crate::Response::JSON {
+                data,
+                context,
+                trace: Some(serde_json::to_value(v)?),
+            })
+        }
+        resp => resp,
+    }
+}
 
 #[derive(Fail, Debug)]
 pub enum Error {

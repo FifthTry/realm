@@ -3,7 +3,7 @@ pub fn elapsed(e: std::time::Instant) -> String {
     let nanos = e.subsec_nanos();
     let fraction = match nanos {
         t if nanos < 1000 => format!("{}ns", t),
-        t if nanos < 1_000_000 => format!("{:.*}us", 3, f64::from(t) / 1000.0),
+        t if nanos < 1_000_000 => format!("{:.*}µs", 3, f64::from(t) / 1000.0),
         t => format!("{:.*}ms", 3, f64::from(t) / 1_000_000.0),
     };
     let secs = e.as_secs();

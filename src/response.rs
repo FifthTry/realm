@@ -1,38 +1,43 @@
 use crate::mode::Mode;
 use crate::PageSpec;
-use observer::prelude::*;
-use serde::ser::{Serialize, SerializeStructVariant, Serializer};
 
+#[allow(clippy::large_enum_variant)]
 pub enum Response {
     Http(http::response::Response<Vec<u8>>),
+    JSON {
+        data: Result<serde_json::Value, serde_json::Value>,
+        context: Option<serde_json::Value>,
+        trace: Option<serde_json::Value>,
+    },
     Page(PageSpec),
 }
 
 #[observed(with_result, namespace = "realm__response")]
-pub fn json<T, UD>(in_: &crate::base::In<UD>, data: &T) -> Result<crate::Response, failure::Error>
+pub fn json<T>(data: &T) -> crate::Result
 where
     T: serde::Serialize,
-    UD: crate::UserData,
 {
-    Ok(Response::Http(in_.ctx.response(
-        serde_json::to_vec_pretty(&json!({
-            "success": true,
-            "result": data,
-        }))?,
-    )?))
+    Ok(Response::JSON {
+        data: Ok(serde_json::to_value(data)?),
+        context: None,
+        trace: None,
+    })
 }
 
 #[observed(with_result, namespace = "realm__response")]
-pub fn json_with_context<T1, T2, UD>(
-    in_: &crate::base::In<UD>,
-    data: &T1,
-    key: &str,
-    value: &T2,
-) -> Result<crate::Response, failure::Error>
+pub fn json_ok() -> crate::Result {
+    Ok(Response::JSON {
+        data: Ok(serde_json::to_value("ok")?),
+        context: None,
+        trace: None,
+    })
+}
+
+#[observed(with_result, namespace = "realm__response")]
+pub fn json_with_context<T1, T2>(data: &T1, key: &str, value: &T2) -> crate::Result
 where
     T1: serde::Serialize,
     T2: serde::Serialize,
-    UD: crate::UserData,
 {
     let context = if crate::base::is_test() {
         json!({
@@ -43,108 +48,126 @@ where
         serde_json::Value::Null
     };
 
-    Ok(Response::Http(in_.ctx.response(
-        serde_json::to_vec_pretty(&json!({
-            "success": true,
-            "result": data,
-            "context": context
-        }))?,
-    )?))
+    Ok(Response::JSON {
+        data: Ok(serde_json::to_value(data)?),
+        context: Some(context),
+        trace: None,
+    })
+}
+
+pub fn err<T>(data: T) -> crate::Result
+where
+    T: serde::Serialize,
+{
+    Ok(Response::JSON {
+        data: Err(serde_json::to_value(data)?),
+        context: None,
+        trace: None,
+    })
 }
 
 impl Response {
     pub fn with_url(self, url: String) -> Response {
         match self {
-            Response::Http(r) => Response::Http(r),
             Response::Page(s) => Response::Page(s.with_url(url)),
+            _ => self,
         }
     }
     pub fn with_replace(self, url: String) -> Response {
         match self {
-            Response::Http(r) => Response::Http(r),
             Response::Page(s) => Response::Page(s.with_replace(url)),
+            _ => self,
         }
     }
 
     pub fn with_default_url(self, url: String) -> Response {
         match self {
-            Response::Http(r) => Response::Http(r),
             Response::Page(s) => Response::Page(s.with_default_url(url)),
+            _ => self,
         }
     }
 
     pub fn render(
         self,
         ctx: &crate::Context,
-        mode: &Mode,
         url: &str,
     ) -> std::result::Result<http::Response<Vec<u8>>, failure::Error> {
-        if let Response::Http(r) = self {
-            return Ok(r);
+        let mut spec = match self.with_default_url(url.to_string()) {
+            Response::Page(spec) => spec,
+            Response::Http(r) => {
+                return Ok(r);
+            }
+            Response::JSON {
+                data,
+                context,
+                trace,
+            } => {
+                return Ok(ctx.response(serde_json::to_vec_pretty(&match data {
+                    Ok(data) => json!({
+                        "success": true,
+                        "result": data,
+                        "context": context,
+                        "trace": trace,
+                    }),
+                    Err(msg) => json!({
+                        "success": false,
+                        "error": msg,
+                        "context": context,
+                        "trace": trace,
+                    }),
+                })?)?)
+            }
         };
 
-        let r = self.with_default_url(url.to_string());
+        ctx.header(http::header::CONTENT_TYPE, ctx.mode.content_type());
+        spec.pure_mode = std::env::var("REALM_PURE")
+            .map(|v| v.trim().to_string())
+            .unwrap_or_else(|_| "".to_string());
+        spec.pure = ctx.mode.is_pure();
 
-        match &r {
-            Response::Page(spec) => {
-                ctx.header(http::header::CONTENT_TYPE, mode.content_type());
-
-                Ok(ctx.response(match mode {
-                    Mode::API => serde_json::to_string_pretty(&spec.config)?.into(),
-                    Mode::HTML => spec.render(ctx.is_crawler())?,
-                    Mode::HTMLExplicit => spec.render(false)?,
-                    Mode::SSR => spec.render(true)?,
-                    Mode::Layout => serde_json::to_string_pretty(&spec)?.into(),
-                    Mode::Submit => serde_json::to_string_pretty(&json!({
-                        "success": true,
-                        "result": {
-                            "kind": "navigate",
-                            "data": spec,
-                        }
-                    }))?
-                    .into(),
-                })?)
-            }
-            Response::Http(_) => unreachable!(),
+        if spec.pure
+            && std::env::var("REALM_EDGE")
+                .map(|v| v == "cf")
+                .unwrap_or(false)
+        {
+            println!("sending immutable header");
+            ctx.header(
+                http::header::CACHE_CONTROL,
+                "immutable, public, max-age=3600000000",
+            );
         }
+
+        Ok(ctx.response(match ctx.mode {
+            Mode::API => serde_json::to_string_pretty(&spec.config)?.into(),
+            Mode::HTML => spec.render(false)?,
+            Mode::SSR => spec.render(true)?,
+            Mode::ISED | Mode::Pure => {
+                serde_json::to_string_pretty(&spec.json_with_template()?)?.into()
+            }
+            Mode::Submit => serde_json::to_string_pretty(&json!({
+                "success": true,
+                "result": {
+                    "kind": "navigate",
+                    "data": spec.json_with_template()?,
+                }
+            }))?
+            .into(),
+        })?)
     }
 
-    pub fn err<T, UD>(
-        in_: &crate::base::In<UD>,
-        message: T,
-    ) -> Result<crate::Response, failure::Error>
-    where
-        T: Into<String>,
-        UD: crate::UserData,
-    {
-        Ok(Response::Http(in_.ctx.response(
-            serde_json::to_vec_pretty(&json!({
-                "success": false,
-                "error": message.into(),
-            }))?,
-        )?))
-    }
-
-    pub fn plain(
-        ctx: &crate::Context,
-        resp: String,
-        status: http::StatusCode,
-    ) -> Result<crate::Response, failure::Error> {
+    pub fn plain(ctx: &crate::Context, resp: String, status: http::StatusCode) -> crate::Result {
         ctx.status(status);
         Ok(Response::Http(ctx.response(resp.into_bytes())?))
     }
 
-    pub fn redirect<T, UD>(
-        in_: &crate::base::In<UD>,
-        next: T,
-    ) -> Result<crate::Response, failure::Error>
+    pub fn redirect<T, UD>(in_: &crate::base::In<UD>, next: T) -> crate::Result
     where
         T: Into<String>,
         UD: crate::UserData,
     {
         use http::header;
         match in_.get_mode() {
-            Mode::Layout => Ok(Response::Page(PageSpec {
+            Mode::ISED => Ok(Response::Page(PageSpec {
                 id: "".to_owned(),
                 config: json!({}),
                 title: "".to_owned(),
@@ -152,6 +175,12 @@ impl Response {
                 replace: None,
                 redirect: Some(next.into()),
                 rendered: "".to_string(),
+                cache: None,
+                pure: false,
+                pure_mode: "".into(),
+                hash: crate::page::CURRENT.clone(),
+                trace: None,
+                activity: None,
             })),
             _ => {
                 in_.ctx.header(header::LOCATION, next.into());
@@ -165,14 +194,14 @@ impl Response {
         in_: &crate::base::In<UD>,
         next: T,
         status: http::StatusCode,
-    ) -> Result<crate::Response, failure::Error>
+    ) -> crate::Result
     where
         T: Into<String>,
         UD: crate::UserData,
     {
         use http::header;
         match in_.get_mode() {
-            Mode::Layout => Ok(Response::Page(PageSpec {
+            Mode::ISED => Ok(Response::Page(PageSpec {
                 id: "".to_owned(),
                 config: json!({}),
                 title: "".to_owned(),
@@ -180,34 +209,17 @@ impl Response {
                 replace: None,
                 redirect: Some(next.into()),
                 rendered: "".to_string(),
+                cache: None,
+                pure: false,
+                pure_mode: "".into(),
+                hash: crate::page::CURRENT.clone(),
+                trace: None,
+                activity: None,
             })),
             _ => {
                 in_.ctx.header(header::LOCATION, next.into());
                 in_.ctx.status(status);
                 Ok(Response::Http(in_.ctx.response("".into())?))
-            }
-        }
-    }
-}
-
-impl Serialize for Response {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match *self {
-            Response::Http(ref s) => {
-                let mut resp = serializer.serialize_struct_variant("Response", 0, "Http", 0)?;
-                resp.serialize_field("status", &s.status().as_u16())?;
-                // TODO: headers
-                let body = std::str::from_utf8(s.body())
-                    .map(|v| v.to_string())
-                    .unwrap_or_else(|_| format!("{:?}", s.body()));
-                resp.serialize_field("body", &body)?;
-                resp.end()
-            }
-            Response::Page(ref p) => {
-                serializer.serialize_newtype_variant("Response", 1, "PageSpec", p)
             }
         }
     }
@@ -259,6 +271,8 @@ mod tests {
             replace: None,
             redirect: None,
             rendered: "empty.html".to_string(),
+            trace: None,
+            activity: None,
         };
         let r = super::Response::Page(page_spec);
         assert_eq!(

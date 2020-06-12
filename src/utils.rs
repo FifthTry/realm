@@ -138,7 +138,7 @@ impl<T> Default for List<T> {
 
 fn first_rest(s: &str) -> (Option<String>, String) {
     let mut parts = s.split('/');
-    match parts.nth(0) {
+    match parts.next() {
         Some(v) => (Some(v.to_string()), sub_string(s, v.len() + 1, None)),
         None => (None, s.to_owned()),
     }

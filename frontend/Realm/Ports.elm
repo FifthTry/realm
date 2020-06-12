@@ -1,9 +1,9 @@
-port module Realm.Ports exposing (..)
+port module Realm.Ports exposing (cancelLoading, changePage, copyToClipboard, disableScrolling, enableScrolling, fromIframe, navigate, onScroll, onUnloading, setLoading, shutdown, toIframe, viewPortChanged)
 
 import Json.Encode as JE
 
 
-port submit : JE.Value -> Cmd msg
+port copyToClipboard : String -> Cmd msg
 
 
 port navigate : String -> Cmd msg
@@ -22,6 +22,14 @@ port changePage : JE.Value -> Cmd msg
 
 
 port viewPortChanged : (JE.Value -> msg) -> Sub msg
+
+
+port onScroll_ : (() -> msg) -> Sub msg
+
+
+onScroll : msg -> Sub msg
+onScroll =
+    always >> onScroll_
 
 
 port onUnloading : (Bool -> msg) -> Sub msg
