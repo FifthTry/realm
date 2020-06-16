@@ -58,6 +58,15 @@
         "code",
         "ideas"
       ]
+    },
+    {
+      "login": "vaibhavagnihotri",
+      "name": "Vaibhav Agnihotri",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/45937146?v=4",
+      "profile": "https://github.com/vaibhavagnihotri",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
