@@ -1,6 +1,6 @@
 Rust / Elm base full stack web framework.
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 # Publish Crate
@@ -205,6 +205,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   <tr>
     <td align="center"><a href="https://www.acko.com"><img src="https://avatars3.githubusercontent.com/u/58662?v=4" width="100px;" alt=""/><br /><sub><b>Amit Upadhyay</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=amitu" title="Code">💻</a> <a href="https://github.com/ackotech/realm/commits?author=amitu" title="Documentation">📖</a> <a href="#ideas-amitu" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-amitu" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-amitu" title="Maintenance">🚧</a> <a href="#tutorial-amitu" title="Tutorials">✅</a></td>
     <td align="center"><a href="http://www.nilinswap.com"><img src="https://avatars3.githubusercontent.com/u/23527036?v=4" width="100px;" alt=""/><br /><sub><b>SWAPNIL SHARMA</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=nilinswap" title="Code">💻</a> <a href="#ideas-nilinswap" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/akashacko"><img src="https://avatars3.githubusercontent.com/u/50700776?v=4" width="100px;" alt=""/><br /><sub><b>Akash Agarwal</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=akashacko" title="Code">💻</a> <a href="#ideas-akashacko" title="Ideas, Planning, & Feedback">🤔</a></td>
   </tr>
 </table>
 
