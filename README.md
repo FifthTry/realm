@@ -1,4 +1,7 @@
 Rust / Elm base full stack web framework.
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 # Publish Crate
 
@@ -190,3 +193,22 @@ if e.downcast_ref::<realm::Error>().is_some()
 ## 0.1.14 - 10 Sept 2019
 
 - `realm::Response` now implements `serde::Serialize`.
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tr>
+    <td align="center"><a href="https://www.acko.com"><img src="https://avatars3.githubusercontent.com/u/58662?v=4" width="100px;" alt=""/><br /><sub><b>Amit Upadhyay</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=amitu" title="Code">💻</a> <a href="https://github.com/ackotech/realm/commits?author=amitu" title="Documentation">📖</a> <a href="#ideas-amitu" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-amitu" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-amitu" title="Maintenance">🚧</a> <a href="#tutorial-amitu" title="Tutorials">✅</a></td>
+  </tr>
+</table>
+
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
