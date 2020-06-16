@@ -67,6 +67,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "pranitbauva1997",
+      "name": "Pranit Bauva",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/2959938?v=4",
+      "profile": "http://bauva.com",
+      "contributions": [
+        "code",
+        "maintenance"
+      ]
     }
   ],
   "contributorsPerLine": 7,
