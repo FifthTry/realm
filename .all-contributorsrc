@@ -18,6 +18,16 @@
         "maintenance",
         "tutorial"
       ]
+    },
+    {
+      "login": "nilinswap",
+      "name": "SWAPNIL SHARMA",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/23527036?v=4",
+      "profile": "http://www.nilinswap.com",
+      "contributions": [
+        "code",
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 7,
