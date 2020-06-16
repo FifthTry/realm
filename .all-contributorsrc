@@ -1,0 +1,29 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "amitu",
+      "name": "Amit Upadhyay",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/58662?v=4",
+      "profile": "https://www.acko.com",
+      "contributions": [
+        "code",
+        "doc",
+        "ideas",
+        "infra",
+        "maintenance",
+        "tutorial"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "realm",
+  "projectOwner": "ackotech",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
