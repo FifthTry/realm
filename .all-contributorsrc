@@ -145,6 +145,16 @@
       "contributions": [
         "ideas"
       ]
+    },
+    {
+      "login": "Sonali-Goyal",
+      "name": "Sonali Goyal",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/5408597?v=4",
+      "profile": "http://web.iiit.ac.in/~sonali.goyal/",
+      "contributions": [
+        "code",
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 7,
