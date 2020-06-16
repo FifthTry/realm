@@ -1,6 +1,6 @@
 Rust / Elm base full stack web framework.
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-6-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-7-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 # Publish Crate
@@ -209,6 +209,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://github.com/AbrarNitk"><img src="https://avatars3.githubusercontent.com/u/17473503?v=4" width="100px;" alt=""/><br /><sub><b>Abrar Khan</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=AbrarNitk" title="Code">💻</a> <a href="#ideas-AbrarNitk" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://github.com/asitacko"><img src="https://avatars2.githubusercontent.com/u/40354686?v=4" width="100px;" alt=""/><br /><sub><b>Asit Kumar Singh</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=asitacko" title="Code">💻</a> <a href="#ideas-asitacko" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://github.com/vaibhavagnihotri"><img src="https://avatars1.githubusercontent.com/u/45937146?v=4" width="100px;" alt=""/><br /><sub><b>Vaibhav Agnihotri</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=vaibhavagnihotri" title="Code">💻</a></td>
+    <td align="center"><a href="http://bauva.com"><img src="https://avatars0.githubusercontent.com/u/2959938?v=4" width="100px;" alt=""/><br /><sub><b>Pranit Bauva</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=pranitbauva1997" title="Code">💻</a> <a href="#maintenance-pranitbauva1997" title="Maintenance">🚧</a></td>
   </tr>
 </table>
 
