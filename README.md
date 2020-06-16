@@ -1,6 +1,6 @@
 Rust / Elm base full stack web framework.
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-12-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-13-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 # Publish Crate
@@ -217,6 +217,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://github.com/saleemjaffer"><img src="https://avatars0.githubusercontent.com/u/19221716?v=4" width="100px;" alt=""/><br /><sub><b>Saleem Jaffer</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=saleemjaffer" title="Code">💻</a> <a href="#ideas-saleemjaffer" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://github.com/wilspi"><img src="https://avatars3.githubusercontent.com/u/7404121?v=4" width="100px;" alt=""/><br /><sub><b>Sourabh Deokar</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=wilspi" title="Code">💻</a> <a href="#ideas-wilspi" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://github.com/sourabh-garg"><img src="https://avatars0.githubusercontent.com/u/16796064?v=4" width="100px;" alt=""/><br /><sub><b>Sourabh garg</b></sub></a><br /><a href="#ideas-sourabh-garg" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/Arpita-Jaiswal"><img src="https://avatars3.githubusercontent.com/u/26044181?v=4" width="100px;" alt=""/><br /><sub><b>Arpita Jaiswal</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=Arpita-Jaiswal" title="Code">💻</a></td>
   </tr>
 </table>
 
