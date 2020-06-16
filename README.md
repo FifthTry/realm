@@ -1,6 +1,6 @@
 Rust / Elm base full stack web framework.
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-8-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-9-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 # Publish Crate
@@ -213,6 +213,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/jatinderjit"><img src="https://avatars3.githubusercontent.com/u/4403052?v=4" width="100px;" alt=""/><br /><sub><b>Jatinderjit Singh</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=jatinderjit" title="Code">💻</a> <a href="#ideas-jatinderjit" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/gaganjakhotiya"><img src="https://avatars3.githubusercontent.com/u/13931744?v=4" width="100px;" alt=""/><br /><sub><b>Gagan Jakhotiya</b></sub></a><br /><a href="https://github.com/ackotech/realm/commits?author=gaganjakhotiya" title="Code">💻</a> <a href="#ideas-gaganjakhotiya" title="Ideas, Planning, & Feedback">🤔</a></td>
   </tr>
 </table>
 
