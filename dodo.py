@@ -23,11 +23,6 @@ def task_pip():
 
 def _create_index(prefix: str, static: str):
     hexdiget = open("%scurrent.txt" % (static,), "rt").read()
-    content = open("%selm.%s.js" % (static, hexdiget), "rb").read()
-    gzip.open("%selm.%s.js.gz" % (static, hexdiget), "wb").write(content)
-    open("%selm.%s.js.br" % (static, hexdiget), "wb").write(
-        brotli.compress(content, mode=brotli.MODE_TEXT, quality=11, lgwin=22)
-    )
     open("%sindex.html" % (prefix,), "w").write(
         open("%sindex.template.html" % (prefix,)).read().replace("__hash__", hexdiget)
     )
@@ -64,11 +59,20 @@ def _merge_files_update_latest(e: str, r: str, static: str):
     sw_fd.write(b'var realm_hash = "%s";\n' % (bytes(new, encoding="utf-8"),))
     sw_fd.write(sw)
 
+    content = (
+        b'window.realm_hash = "%s";\n' % (bytes(new, encoding="utf-8"),)
+        + open("realm/frontend/pre.js", "rb").read()
+        + e
+        + r
+    )
+
     fd = open("%selm.%s.js" % (static, new), "wb")
-    fd.write(b'window.realm_hash = "%s";\n' % (bytes(new, encoding="utf-8"),))
-    fd.write(open("realm/frontend/pre.js", "rb").read())
-    fd.write(e)
-    fd.write(r)
+    fd.write(content)
+
+    gzip.open("%selm.%s.js.gz" % (static, new), "wb").write(content)
+    open("%selm.%s.js.br" % (static, new), "wb").write(
+        brotli.compress(content, mode=brotli.MODE_TEXT, quality=11, lgwin=22)
+    )
 
 
 def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
@@ -77,9 +81,11 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
         prefix = folder + "/" if folder else ""
         static = target if target.endswith("/") else (target + "/")
 
-        realm_deps: List[str] = glob2(
-            "realm/frontend/", r".*\.(elm|js)", recursive=True
-        ) + ["dodo.py"] + (extra_elms if extra_elms else [])
+        realm_deps: List[str] = (
+            glob2("realm/frontend/", r".*\.(elm|js)", recursive=True)
+            + ["dodo.py"]
+            + (extra_elms if extra_elms else [])
+        )
 
         yield {
             "actions": [lambda: _create_index(prefix, static)],
@@ -114,7 +120,8 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
                 "   realm/frontend/pre.js "
                 "   %sfrontend/elm-stuff/t.js "
                 "   realm/frontend/IframeController.js "
-                "   > %stest.js" % (prefix, static),
+                "   > %stest.js"
+                % (prefix, static),
             ],
             "file_dep": proj_elms + realm_deps,
             "targets": ["%stest.js" % (static,)],
@@ -131,7 +138,8 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
                 "   realm/frontend/pre.js "
                 "   %sfrontend/elm-stuff/s.js "
                 "   realm/frontend/IframeController.js "
-                "   > %sstorybook.js" % (prefix, static),
+                "   > %sstorybook.js"
+                % (prefix, static),
             ],
             "file_dep": proj_elms + realm_deps,
             "targets": ["%sstorybook.js" % (static,)],
@@ -151,7 +159,8 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
                 "   realm/frontend/pre.js "
                 "   %sfrontend/elm-stuff/i.js "
                 "   realm/frontend/Realm.js "
-                "   > %siframe.js" % (prefix, static),
+                "   > %siframe.js"
+                % (prefix, static),
             ],
             "file_dep": proj_elms + realm_deps,
             "targets": ["%siframe.js" % (static,)],
@@ -169,7 +178,7 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
                 elm_cmd,
                 # uglify_cmd,
                 "mkdir -p %s" % (static,),
-                "sh scripts/delete_old_builds.sh",
+                "sh realm/delete_old_builds.sh",
                 lambda: _merge_files_update_latest(
                     "%sfrontend/elm-stuff/e.js" % (prefix,),
                     "realm/frontend/Realm.js",

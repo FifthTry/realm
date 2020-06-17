@@ -1,5 +1,3 @@
-use diesel::prelude::*;
-
 pub fn get<UD>(in_: &crate::base::In<UD>) -> Result<crate::Response, crate::Error>
 where
     UD: crate::UserData,
@@ -32,13 +30,16 @@ pub fn reset_db<UD>(in_: &crate::base::In<UD>) -> Result<crate::Response, crate:
 where
     UD: crate::UserData,
 {
+    #[cfg(feature = "postgres")]
+    use diesel::prelude::*;
+
     if !crate::base::is_test() {
         return Err(crate::Error::PageNotFound {
             message: "server not running in test mode".to_string(),
         });
     }
 
-    #[cfg(any(feature = "sqlite_default", feature = "postgres_default"))]
+    #[cfg(feature = "postgres")]
     diesel::sql_query("DROP SCHEMA IF EXISTS test CASCADE;").execute(in_.conn)?;
 
     let output = std::process::Command::new("psql")

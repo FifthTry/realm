@@ -104,10 +104,10 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
 }
 
 lazy_static! {
-    pub static ref ELM: Vec<u8> = { read_static("elm", "") };
-    pub static ref ELM_GZ: Vec<u8> = { read_static("elm", ".gz") };
-    pub static ref ELM_BR: Vec<u8> = { read_static("elm", ".br") };
-    pub static ref SW: Vec<u8> = { read_static("sw", "") };
+    pub static ref ELM: Vec<u8> = read_static("elm", "");
+    pub static ref ELM_GZ: Vec<u8> = read_static("elm", ".gz");
+    pub static ref ELM_BR: Vec<u8> = read_static("elm", ".br");
+    pub static ref SW: Vec<u8> = read_static("sw", "");
 }
 
 fn read_static(prefix: &str, suffix: &str) -> Vec<u8> {

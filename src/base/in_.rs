@@ -24,13 +24,13 @@ pub struct UD {}
 impl std::str::FromStr for UD {
     type Err = failure::Error;
     fn from_str(_ud: &str) -> Result<UD> {
-        unimplemented!("not meant to be used")
+        Ok(UD {})
     }
 }
 
 impl std::string::ToString for UD {
     fn to_string(&self) -> String {
-        unimplemented!("not meant to be used")
+        "".to_string()
     }
 }
 

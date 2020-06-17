@@ -209,8 +209,8 @@ pub(crate) fn read_current() -> String {
 }
 
 lazy_static! {
-    pub static ref HTML_PAGE: String = { read_index() };
-    pub static ref CURRENT: String = { read_current() };
+    pub static ref HTML_PAGE: String = read_index();
+    pub static ref CURRENT: String = read_current();
 }
 
 pub fn default_page() -> String {

@@ -1,0 +1,57 @@
+{
+  "realm__serve_static": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {
+      "mime": "string",
+      "cache_control": "string"
+    }
+  },
+  "realm__in__parse_ud_cookie": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {
+      "ud": "string"
+    }
+  },
+  "realm__storybook__get": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {}
+  },
+  "realm__response__json_ok": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {}
+  },
+  "realm__response__json": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {}
+  },
+  "realm__response__json_with_context": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {}
+  },
+  "realm__pg__connection": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {}
+  },
+  "realm__handle": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {}
+  },
+  "realm__hash_password": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {}
+  },
+  "realm__verify_password": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {}
+  }
+}

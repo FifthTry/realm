@@ -1,6 +1,6 @@
 [package]
 name = "realm"
-version = "0.1.18"
+version = "0.1.21"
 authors = ["Amit Upadhyay <amitu@acko.com>"]
 description = "Rust / Elm base full stack web framework."
 license = "MIT"
@@ -47,8 +47,8 @@ askama = "0.9"
 woothee = "0.11"
 log = "0.4"
 
-observer = { path = "../observer/observer" }
-observer_attribute = { path = "../observer/observer_attribute" }
+observer = "0.2.3"
+observer_attribute = "0.1.8"
 
 [dependencies.chrono]
 version = "0.4"

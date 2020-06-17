@@ -1,6 +1,6 @@
 [package]
 name = "realm_macros"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Amit Upadhyay <upadhyay@gmail.com>", "Abrar Khan <abrar.nitk@gmail.com>"]
 edition = "2018"
 description = "Macros for fifthtry and realm."
