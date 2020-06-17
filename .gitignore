@@ -10,3 +10,4 @@ regenerated/
 scripts/output.txt
 UNKNOWN.egg-info/
 realm_cli.egg-info/
+target-nix
