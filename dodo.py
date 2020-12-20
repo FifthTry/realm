@@ -10,12 +10,18 @@ IGNORED: List[str] = ["node_modules", "elm-stuff", "builds", "tests"]
 
 
 def task_pip():
-    return {
-        "actions": [
+    actions = [
             "pip-compile --output-file=requirements.txt requirements.in",
             "pip-sync",
             "sed -i -e '/macfsevents/d' requirements.txt",
-        ],
+        ]
+    
+    import platform
+    if platform.system() == 'Darwin':
+        actions.append("sed -i '/pyinotify/,$d' requirements.txt")
+        
+    return {
+        "actions": actions,
         "file_dep": ["requirements.in", "dodo.py"],
         "targets": ["requirements.txt"],
     }
