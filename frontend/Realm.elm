@@ -1,4 +1,4 @@
-module Realm exposing (App, In, Msg(..), Notch(..), TestFlags, TestResult(..), api, app, cmdMap, controller, data, document, field, fieldWithDefault, getHash, getTime, here, init0, isPass, message, navigate, pushHash, refresh, result, sub0, submit, test, test0, testResult, tid, timeIt, tuple, tupleE, update0)
+module Realm exposing (App, Element, In, Msg(..), Notch(..), TestFlags, TestResult(..), api, app, cmdMap, collectionFPS, consoleGroupEnd, consoleGroupStart, controller, crash, data, document, field, fieldWithDefault, getHash, getTime, here, init0, isPass, isTopLevel, log, maybe, message, navigate, pushHash, referer, refresh, result, sub0, submit, test, test0, testResult, tid, timeIt, toString, tuple, tupleE, update0, warn)
 
 import Browser as B
 import Browser.Events as BE
@@ -17,6 +17,10 @@ import RemoteData as RD
 import Task
 import Time
 import Url exposing (Url)
+
+
+type alias Element msg =
+    E.Element msg
 
 
 field : String -> JD.Decoder a -> JD.Decoder (a -> b) -> JD.Decoder b
@@ -56,6 +60,10 @@ type alias Model model =
     , notch : Notch
     , id : String
     , now : Time.Posix
+    , frameCounter : Int
+    , fps : Maybe Int
+    , trackFPS : Bool
+    , dev : Bool
     }
 
 
@@ -83,7 +91,7 @@ type Msg msg
     | UrlChange Url
     | Shutdown
     | UpdateHashKV String String
-    | OnSubmitResponse (Dict String String -> msg) (RR.ApiData RR.LayoutResponse)
+    | OnSubmitResponse String (Dict String String -> msg) (RR.ApiData RR.LayoutResponse)
     | OnApiResponse (Dict String String -> msg) (JD.Decoder msg) (RR.ApiData JE.Value)
     | OnDataResponse (JD.Decoder msg) (RR.ApiData JE.Value)
     | OnResize Int Int
@@ -93,6 +101,9 @@ type Msg msg
     | GoTo String
     | NoOp
     | Back
+    | OnFrame
+    | OnSecond
+    | TrackFPS Bool
 
 
 cmdMap : (msgA -> msgB) -> Cmd (Msg msgA) -> Cmd (Msg msgB)
@@ -102,6 +113,15 @@ cmdMap f =
             case m of
                 Msg ma ->
                     Msg (f ma)
+
+                TrackFPS v ->
+                    TrackFPS v
+
+                OnFrame ->
+                    OnFrame
+
+                OnSecond ->
+                    OnSecond
 
                 UrlRequest r ->
                     UrlRequest r
@@ -115,8 +135,8 @@ cmdMap f =
                 UpdateHashKV k v ->
                     UpdateHashKV k v
 
-                OnSubmitResponse d r ->
-                    OnSubmitResponse (d >> f) r
+                OnSubmitResponse u d r ->
+                    OnSubmitResponse u (d >> f) r
 
                 OnApiResponse e d r ->
                     OnApiResponse (e >> f) (JD.map f d) r
@@ -205,7 +225,7 @@ submit err ( url, d ) =
             { url = url2
             , body = Http.jsonBody d
             , expect =
-                Http.expectJson (RR.try >> OnSubmitResponse err)
+                Http.expectJson (RR.try >> OnSubmitResponse url2 err)
                     (RR.bresult RR.layoutResponse)
             }
         , RP.setLoading ()
@@ -223,6 +243,8 @@ type alias In =
     , url : Url
     , id : String
     , now : Time.Posix
+    , fps : Maybe Int
+    , dev : Bool
     }
 
 
@@ -245,6 +267,7 @@ type alias Flags config =
     , darkMode : Bool
     , id : String
     , now : Int
+    , dev : Bool
     }
 
 
@@ -260,6 +283,7 @@ flags config =
         |> field "darkMode" JD.bool
         |> field "id" JD.string
         |> field "now" JD.int
+        |> fieldWithDefault "dev" False JD.bool
 
 
 app : App config model msg -> Program JE.Value (Model model) (Msg msg)
@@ -286,6 +310,8 @@ toIn m =
     , id = m.id
     , url = m.url
     , now = m.now
+    , fps = m.fps
+    , dev = m.dev
     }
 
 
@@ -296,8 +322,9 @@ appInit :
     -> BN.Key
     -> ( Model model, Cmd (Msg msg) )
 appInit a vflags url key =
-    appInit_ a vflags url key
+    appInit_ a vflags url (consoleGroupStart "appInit" key)
         |> timeIt (tid "init")
+        |> consoleGroupEnd
 
 
 appInit_ :
@@ -309,9 +336,9 @@ appInit_ :
 appInit_ a vflags url key =
     let
         hash =
-            Debug.log "appInit" (fromHash url)
+            fromHash url
 
-        ( ( title, im, id ), ( cmd, notch, darkMode ), ( device, n, ( width, height ) ) ) =
+        ( ( title, im, id ), ( cmd, notch, darkMode ), ( device, n, ( width, height, dev ) ) ) =
             case JD.decodeValue (flags a.config) vflags of
                 Ok f ->
                     let
@@ -329,13 +356,15 @@ appInit_ a vflags url key =
                         , id = f.id
                         , url = url
                         , now = Time.millisToPosix f.now
+                        , fps = Nothing
+                        , dev = f.dev
                         }
                         f.config
                         |> Tuple.mapFirst Ok
                         |> (\( f1, s ) ->
                                 ( ( f.title, f1, f.id )
                                 , ( s, f.notch, f.darkMode )
-                                , ( d, f.now, ( f.width, f.height ) )
+                                , ( d, f.now, ( f.width, f.height, f.dev ) )
                                 )
                            )
 
@@ -344,7 +373,7 @@ appInit_ a vflags url key =
                     , ( Cmd.none, 0, False )
                     , ( { class = E.Desktop, orientation = E.Landscape }
                       , 0
-                      , ( 0, 0 )
+                      , ( 0, 0, False )
                       )
                     )
     in
@@ -362,6 +391,10 @@ appInit_ a vflags url key =
       , darkMode = darkMode
       , id = id
       , now = Time.millisToPosix n
+      , fps = Nothing
+      , frameCounter = 0
+      , trackFPS = False
+      , dev = dev
       }
     , cmd
     )
@@ -372,6 +405,11 @@ navigate =
     GoTo >> message
 
 
+collectionFPS : Bool -> Cmd (Msg msg)
+collectionFPS =
+    TrackFPS >> message
+
+
 refresh : Cmd (Msg msg)
 refresh =
     message Refresh
@@ -379,8 +417,14 @@ refresh =
 
 type Magic
     = GetTime
+    | Log
     | Warn
+    | GroupStart
+    | GroupEnd
     | GetTimezoneOffset
+    | Crash
+    | Referer
+    | IsTopLevel
 
 
 magicSlice : Magic -> String -> String
@@ -399,6 +443,24 @@ magicSlice m s =
 
                 GetTimezoneOffset ->
                     2
+
+                GroupStart ->
+                    3
+
+                GroupEnd ->
+                    4
+
+                Log ->
+                    5
+
+                Crash ->
+                    6
+
+                Referer ->
+                    7
+
+                IsTopLevel ->
+                    8
     in
     String.slice magic const s
 
@@ -407,9 +469,61 @@ warn : String -> a -> a
 warn msg a =
     let
         _ =
-            magicSlice Warn msg
+            magicSlice Warn (msg ++ ": " ++ Debug.toString a)
     in
     a
+
+
+log : String -> a -> a
+log msg a =
+    let
+        _ =
+            magicSlice Log (msg ++ ": " ++ Debug.toString a)
+    in
+    a
+
+
+referer : String
+referer =
+    magicSlice Referer ""
+
+
+isTopLevel : Bool
+isTopLevel =
+    case magicSlice IsTopLevel "" of
+        "true" ->
+            True
+
+        _ ->
+            False
+
+
+crash : String -> String
+crash =
+    magicSlice Crash
+
+
+consoleGroupStart : String -> a -> a
+consoleGroupStart _ a =
+    let
+        _ =
+            magicSlice GroupStart
+    in
+    a
+
+
+consoleGroupEnd : a -> a
+consoleGroupEnd a =
+    let
+        _ =
+            magicSlice GroupEnd
+    in
+    a
+
+
+toString : a -> String
+toString =
+    Debug.toString
 
 
 getTime : String -> Time.Posix
@@ -434,8 +548,9 @@ appUpdate :
     -> Model model
     -> ( Model model, Cmd (Msg msg) )
 appUpdate a msg am =
-    appUpdate_ a msg am
+    appUpdate_ a msg (consoleGroupStart "appUpdate" am)
         |> timeIt (tid "update")
+        |> consoleGroupEnd
 
 
 appUpdate_ :
@@ -457,7 +572,7 @@ appUpdate_ a msg am =
                             |> Tuple.mapSecond
                                 (\c_ -> Cmd.batch [ c_, RP.cancelLoading () ])
     in
-    case Debug.log "Realm.update" ( msg, am.shuttingDown ) of
+    case ( msg, am.shuttingDown ) of
         ( Msg imsg, False ) ->
             case am.model of
                 Err _ ->
@@ -473,6 +588,15 @@ appUpdate_ a msg am =
                     Url.toString url
             in
             ( am, Cmd.batch [ BN.pushUrl am.key u, RP.navigate u ] )
+
+        ( TrackFPS v, _ ) ->
+            ( { am | trackFPS = v, fps = Nothing }, Cmd.none )
+
+        ( OnSecond, _ ) ->
+            ( { am | fps = Just am.frameCounter, frameCounter = 0 }, Cmd.none )
+
+        ( OnFrame, _ ) ->
+            ( { am | frameCounter = am.frameCounter + 1 }, Cmd.none )
 
         ( Back, False ) ->
             ( am, BN.back am.key 1 )
@@ -551,8 +675,8 @@ appUpdate_ a msg am =
                 Err e ->
                     ( { am | model = Err (PError { value = v.data, jd = e }) }, Cmd.none )
 
-        ( OnApiResponse err _ (RD.Failure (RR.FieldErrors _ e)), False ) ->
-            passErrorToApp err e
+        ( OnApiResponse errCtr _ (RD.Failure (RR.FieldErrors _ e)), False ) ->
+            passErrorToApp errCtr e
 
         ( OnApiResponse _ _ (RD.Failure e), False ) ->
             ( { am | model = Err (SubmitError e) }, Cmd.none )
@@ -568,15 +692,19 @@ appUpdate_ a msg am =
         ( OnDataResponse _ (RD.Failure e), False ) ->
             ( { am | model = Err (SubmitError e) }, Cmd.none )
 
-        ( OnSubmitResponse err (RD.Success res), False ) ->
+        ( OnSubmitResponse u errCtr (RD.Success res), False ) ->
             case res.data of
                 RR.Navigate n ->
-                    ( am, changePage n )
+                    ( am
+                    , [ ( "data", n ), ( "url", JE.string u ) ]
+                        |> JE.object
+                        |> changePage
+                    )
 
                 RR.FErrors e ->
-                    passErrorToApp err e
+                    passErrorToApp errCtr e
 
-        ( OnSubmitResponse _ (RD.Failure e), False ) ->
+        ( OnSubmitResponse _ _ (RD.Failure e), False ) ->
             ( { am | model = Err (SubmitError e) }, Cmd.none )
 
         _ ->
@@ -610,32 +738,48 @@ timeIt (TimerID id start) a =
         msg =
             id ++ " took " ++ String.fromInt delta ++ "ms."
 
+        showTrivial =
+            False
+
         _ =
             if delta < 10 then
-                Debug.log msg ()
+                if showTrivial then
+                    log msg ""
+
+                else
+                    ""
 
             else
-                warn msg ()
+                warn msg ""
     in
     a
 
 
 appSubscriptions : App config model msg -> Model model -> Sub (Msg msg)
 appSubscriptions a am =
-    appSubscriptions_ a am
+    appSubscriptions_ a (consoleGroupStart "appSubscriptions" am)
         |> timeIt (tid "subscriptions")
+        |> consoleGroupEnd
 
 
 appSubscriptions_ : App config model msg -> Model model -> Sub (Msg msg)
 appSubscriptions_ a am =
     case ( am.model, am.shuttingDown ) of
         ( Ok model, False ) ->
-            Sub.batch
+            Sub.batch <|
                 [ shutdown (always Shutdown)
                 , viewPortChanged ViewPortChanged
                 , a.subscriptions (toIn am) model
                 , BE.onResize OnResize
                 ]
+                    ++ (if am.trackFPS then
+                            [ BE.onAnimationFrame (always OnFrame)
+                            , Time.every 1000 (always OnSecond)
+                            ]
+
+                        else
+                            []
+                       )
 
         _ ->
             Sub.none
@@ -643,8 +787,9 @@ appSubscriptions_ a am =
 
 appDocument : App config model msg -> Model model -> B.Document (Msg msg)
 appDocument a am =
-    appDocument_ a am
+    appDocument_ a (consoleGroupStart "appDocument" am)
         |> timeIt (tid "view")
+        |> consoleGroupEnd
 
 
 appDocument_ : App config model msg -> Model model -> B.Document (Msg msg)
@@ -662,7 +807,7 @@ appDocument_ a am =
 
                 _ ->
                     { title = "failed to parse"
-                    , body = [ H.text ("Network Error: " ++ Debug.toString e) ]
+                    , body = [ H.text ("Network Error: " ++ toString e) ]
                     }
 
         ( Ok model, False ) ->
@@ -779,6 +924,7 @@ type alias TestFlags config =
     , iphoneX : Int
     , notch : Int
     , now : Int
+    , dev : Bool
     }
 
 
@@ -794,6 +940,7 @@ testFlags config =
         |> field "iphoneX" JD.int
         |> field "notch" JD.int
         |> field "now" JD.int
+        |> fieldWithDefault "dev" False JD.bool
 
 
 type alias TModel model =
@@ -808,6 +955,10 @@ type alias TModel model =
     , id : String
     , url : Url
     , now : Time.Posix
+    , frameCounter : Int
+    , fps : Maybe Int
+    , trackFPS : Bool
+    , dev : Bool
 
     -- TODO: add darkMode
     }
@@ -825,6 +976,8 @@ toIn2 m =
     , id = m.id
     , url = m.url
     , now = m.now
+    , fps = m.fps
+    , dev = m.dev
     }
 
 
@@ -835,8 +988,9 @@ testInit :
     -> BN.Key
     -> ( TModel model, Cmd (Msg msg) )
 testInit t vflags url k =
-    testInit_ t vflags url k
+    testInit_ t vflags url (consoleGroupStart "testInit" k)
         |> timeIt (tid "t-init")
+        |> consoleGroupEnd
 
 
 testInit_ :
@@ -863,6 +1017,8 @@ testInit_ t vflags url _ =
                 , id = tflags.id
                 , url = url
                 , now = Time.millisToPosix tflags.now
+                , fps = Nothing
+                , dev = tflags.dev
                 }
                 tflags
                 |> Tuple.mapFirst
@@ -878,12 +1034,16 @@ testInit_ t vflags url _ =
                         , id = tflags.id
                         , url = url
                         , now = Time.millisToPosix tflags.now
+                        , fps = Nothing
+                        , frameCounter = 0
+                        , trackFPS = False
+                        , dev = tflags.dev
                         }
                     )
 
         Err e ->
             ( { model = Nothing
-              , title = Debug.toString e
+              , title = toString e
               , shuttingDown = False
               , device = { class = E.Desktop, orientation = E.Landscape }
               , height = 1024
@@ -893,6 +1053,10 @@ testInit_ t vflags url _ =
               , id = "Unknown"
               , url = url
               , now = Time.millisToPosix 0
+              , fps = Nothing
+              , trackFPS = False
+              , frameCounter = 0
+              , dev = False
               }
             , result Cmd.none [ BadConfig <| JD.errorToString e, TestDone ]
             )
@@ -904,8 +1068,9 @@ testUpdate :
     -> TModel model
     -> ( TModel model, Cmd (Msg msg) )
 testUpdate t msg m =
-    testUpdate_ t msg m
+    testUpdate_ t msg (consoleGroupStart "testUpdate" m)
         |> timeIt (tid "t-update")
+        |> consoleGroupEnd
 
 
 testUpdate_ :
@@ -921,6 +1086,15 @@ testUpdate_ t msg m =
 
         ( _, Shutdown ) ->
             ( { m | shuttingDown = True }, Cmd.none )
+
+        ( _, TrackFPS v ) ->
+            ( { m | trackFPS = v, fps = Nothing }, Cmd.none )
+
+        ( _, OnSecond ) ->
+            ( { m | fps = Just m.frameCounter, frameCounter = 0 }, Cmd.none )
+
+        ( _, OnFrame ) ->
+            ( { m | frameCounter = m.frameCounter + 1 }, Cmd.none )
 
         _ ->
             ( m, Cmd.none )
@@ -938,8 +1112,9 @@ testDocument :
     -> TModel model
     -> B.Document (Msg msg)
 testDocument t m =
-    testDocument_ t m
+    testDocument_ t (consoleGroupStart "testDocument" m)
         |> timeIt (tid "t-view")
+        |> consoleGroupEnd
 
 
 testDocument_ :
@@ -955,7 +1130,7 @@ testDocument_ t m =
             t.document (toIn2 m) model
 
         _ ->
-            { title = m.title, body = [ H.text (Debug.toString m) ] }
+            { title = m.title, body = [ H.text (toString m) ] }
 
 
 testSubscriptions :
@@ -963,8 +1138,9 @@ testSubscriptions :
     -> TModel model
     -> Sub (Msg msg)
 testSubscriptions t m =
-    testSubscriptions_ t m
+    testSubscriptions_ t (consoleGroupStart "testSubscriptions" m)
         |> timeIt (tid "t-subscriptions")
+        |> consoleGroupEnd
 
 
 testSubscriptions_ :
@@ -974,11 +1150,19 @@ testSubscriptions_ :
 testSubscriptions_ t m =
     case ( m.shuttingDown, m.model ) of
         ( False, Just model ) ->
-            Sub.batch
+            Sub.batch <|
                 [ t.subscriptions (toIn2 m) model
                 , BE.onResize OnResize
                 , shutdown (always Shutdown)
                 ]
+                    ++ (if m.trackFPS then
+                            [ BE.onAnimationFrame (always OnFrame)
+                            , Time.every 1000 (always OnSecond)
+                            ]
+
+                        else
+                            []
+                       )
 
         _ ->
             Sub.none

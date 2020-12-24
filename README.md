@@ -19,7 +19,6 @@ Rust / Elm base full stack web framework.
 
 
 [login through terminal]: https://doc.rust-lang.org/cargo/reference/publishing.html
-[UDMIGRATION.md]: https://github.com/ackotech/realm/blob/realm2/UDMIGRATION.md
 
 # ChangeLog
 

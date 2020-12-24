@@ -1,7 +1,7 @@
 #[observed(with_result, namespace = "realm")]
 pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Error> {
     let start = std::time::Instant::now();
-    let path = ctx.request.uri().path();
+    let path = ctx.url.path();
     let mime = mime_guess::from_path(&path).first_or_text_plain();
 
     observe_field("mime", mime.to_string().as_str());
@@ -21,9 +21,7 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
     observe_field("cache_control", cache_control);
 
     if ctx
-        .request
-        .headers()
-        .get("Accept-Encoding")
+        .get_header("Accept-Encoding")
         .map(|v| format!("{:?}", v).contains("br"))
         .unwrap_or(false)
     {
@@ -32,7 +30,7 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
         {
             println!(
                 "ok: br {:?} {} in {}",
-                ctx.request.method(),
+                &ctx.method,
                 path,
                 crate::base::elapsed(start)
             );
@@ -48,9 +46,7 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
         };
     }
     if ctx
-        .request
-        .headers()
-        .get("Accept-Encoding")
+        .get_header("Accept-Encoding")
         .map(|v| format!("{:?}", v).contains("gzip"))
         .unwrap_or(false)
     {
@@ -59,7 +55,7 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
         {
             println!(
                 "ok: gz {:?} {} in {}",
-                ctx.request.method(),
+                &ctx.method,
                 path,
                 crate::base::elapsed(start)
             );
@@ -76,22 +72,14 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
     }
 
     match static_content(path) {
-        Ok(content) => {
-            println!(
-                "ok: {:?} {} in {}",
-                ctx.request.method(),
-                path,
-                crate::base::elapsed(start)
-            );
-            Ok(crate::Response::Http(
-                http::Response::builder()
-                    .header("Cache-Control", cache_control)
-                    .header("Content-Type", mime.to_string())
-                    .header("Service-Worker-Allowed", "/")
-                    .status(http::StatusCode::OK)
-                    .body(content)?,
-            ))
-        }
+        Ok(content) => Ok(crate::Response::Http(
+            http::Response::builder()
+                .header("Cache-Control", cache_control)
+                .header("Content-Type", mime.to_string())
+                .header("Service-Worker-Allowed", "/")
+                .status(http::StatusCode::OK)
+                .body(content)?,
+        )),
         Err(e) => {
             eprintln!("err: {} {}", e.to_string(), path);
             Ok(crate::Response::Http(

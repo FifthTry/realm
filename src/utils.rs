@@ -1,3 +1,4 @@
+pub use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::de::DeserializeOwned;
 use std::{
@@ -7,11 +8,9 @@ use std::{
     str::FromStr,
     string::String,
 };
-use url::Url;
 
-pub fn set_cookie(name: &str, value: &str, age: i32) -> Result<http::HeaderValue, failure::Error> {
-    http::HeaderValue::from_str(format!("{}={}; Max-Age={}; Path=/", name, value, age).as_str())
-        .map_err(|e| format_err!("error: {:?}", e))
+pub fn set_cookie(name: &str, value: &str, age: i32) -> String {
+    format!("{}={}; Max-Age={}; Path=/", name, value, age)
 }
 
 pub fn get_slash_complete_path(path: &str) -> String {
@@ -22,7 +21,20 @@ pub fn get_slash_complete_path(path: &str) -> String {
     }
 }
 
-pub fn url2path(url: &Url) -> String {
+pub fn to_url(path_and_query: &str) -> url::Url {
+    url::Url::parse(&format!("http://foo.com{}", path_and_query).as_str()).unwrap()
+}
+
+pub fn path_and_query(url: &url::Url) -> String {
+    let mut f = url.path().to_string();
+    if let Some(q) = url.query() {
+        f.push('?');
+        f.push_str(q)
+    }
+    f
+}
+
+pub fn url2path(url: &url::Url) -> String {
     let url = url.clone();
     let mut search_str = url
         .query_pairs()
@@ -136,7 +148,7 @@ impl<T> Default for List<T> {
     }
 }
 
-fn first_rest(s: &str) -> (Option<String>, String) {
+pub fn first_rest(s: &str) -> (Option<String>, String) {
     let mut parts = s.split('/');
     match parts.next() {
         Some(v) => (Some(v.to_string()), sub_string(s, v.len() + 1, None)),
@@ -148,6 +160,24 @@ pub fn sub_string(s: &str, start: usize, len: Option<usize>) -> String {
     match len {
         Some(len) => s.chars().skip(start).take(len).collect(),
         None => s.chars().skip(start).collect(),
+    }
+}
+
+pub fn datetime_serializer<S>(x: &DateTime<Utc>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    s.serialize_i64(x.timestamp_millis())
+}
+
+pub fn datetime_serializer_t<S>(x: &DateTime<Utc>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    if crate::base::is_test() {
+        s.serialize_i64(0)
+    } else {
+        s.serialize_i64(x.timestamp_millis())
     }
 }
 

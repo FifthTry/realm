@@ -74,10 +74,10 @@ where
     })
 }
 
-#[cfg(debug_assertions)]
+// #[cfg(debug_assertions)]
 pub type RealmConnection = observer::pg::DebugConnection;
-#[cfg(not(debug_assertions))]
-pub type RealmConnection = diesel::PgConnection;
+// #[cfg(not(debug_assertions))]
+// pub type RealmConnection = diesel::PgConnection;
 
 fn rollback(conn: &RealmConnection) {
     if let Err(e) = conn.transaction_manager().rollback_transaction(conn) {

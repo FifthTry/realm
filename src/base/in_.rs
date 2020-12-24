@@ -4,7 +4,7 @@ use crate::base::pg::RealmConnection;
 use crate::base::sqlite::RealmConnection;
 use crate::base::*;
 use chrono::prelude::*;
-use std::cell::Ref;
+use std::cell::{Ref, RefCell};
 
 pub struct In<'a, UD>
 where
@@ -12,11 +12,23 @@ where
 {
     pub ctx: &'a crate::Context,
     pub lang: Language, // what is language_tags crate about?
-    pub head: std::cell::RefCell<http::response::Builder>,
-    ud: std::cell::RefCell<Option<UD>>,
+    pub head: RefCell<http::response::Builder>,
+    ud: RefCell<Option<UD>>,
     #[cfg(any(feature = "sqlite_default", feature = "postgres_default"))]
     pub conn: &'a RealmConnection,
     pub now: DateTime<Utc>,
+
+    tid: RefCell<Option<String>>,
+    tid_created: RefCell<bool>,
+
+    vid: RefCell<Option<String>>,
+    vid_created: RefCell<bool>,
+
+    // activity stuff
+    okind: RefCell<String>,
+    oid: RefCell<String>,
+    ekind: RefCell<String>,
+    pub activity_data: RefCell<Vec<(String, serde_json::Value)>>,
 }
 
 pub struct UD {}
@@ -60,15 +72,37 @@ where
             observer::log("not reading ud cookie in pure mode");
             None
         } else {
-            get_cookie(&ctx.request, "ud").and_then(In::parse_ud_cookie)
+            match ctx.get_cookie("ud") {
+                Some(c) => {
+                    if c.is_empty() {
+                        None
+                    } else {
+                        In::parse_ud_cookie(c)
+                    }
+                }
+                None => None,
+            }
         };
+        let tid = ctx.get_cookie("tid").and_then(|v| parse_cookie("tid", v));
+        let vid = ctx.get_cookie("vid").and_then(|v| parse_cookie("vid", v));
+
         In {
             ctx,
             lang: Language::default(), // TODO: get this from header
-            head: std::cell::RefCell::new(http::response::Builder::new()),
-            ud: std::cell::RefCell::new(ud),
+            head: RefCell::new(http::response::Builder::new()),
+            ud: RefCell::new(ud),
             conn,
             now: Utc::now(),
+
+            tid: RefCell::new(tid),
+            tid_created: RefCell::new(false),
+            vid: RefCell::new(vid),
+            vid_created: RefCell::new(false),
+
+            okind: RefCell::new("".to_string()),
+            oid: RefCell::new("".to_string()),
+            ekind: RefCell::new("".to_string()),
+            activity_data: RefCell::new(vec![]),
         }
     }
 
@@ -86,40 +120,83 @@ where
     }
 
     pub fn is_local(&self) -> bool {
-        self.get_header(http::header::HOST)
-            .map(|h| h.contains("127.0.0.1") || h.contains("localhost") || h.contains("127.0.0.2"))
+        self.ctx
+            .get_header_string(http::header::HOST)
+            .map(|h| h.starts_with("127.0.0.") || h.contains("localhost"))
             .unwrap_or(false)
     }
 
-    pub fn get_header(&self, header: http::header::HeaderName) -> Option<String> {
-        self.ctx
-            .request
-            .headers()
-            .get(header)
-            .and_then(|v| v.to_str().ok())
-            .map(|v| v.to_string())
-    }
-
-    pub fn get_mode(&self) -> crate::Mode {
-        crate::Mode::detect(&self.ctx.request)
-    }
-
     pub fn get_cookie(&self, name: &str) -> Option<String> {
-        get_cookie(&self.ctx.request, name)
+        self.ctx
+            .get_cookie(name)
+            .and_then(|v| parse_cookie(name, v))
     }
 
     pub fn user_agent(&self) -> Option<String> {
-        self.get_header(http::header::USER_AGENT)
+        self.ctx.user_agent()
     }
 
     pub fn reset_ud(&self) {
         self.ud.replace(None);
-        self.ctx.cookie("ud", "", 0);
+        self.ctx.delete_cookie("ud");
+    }
+
+    pub fn reset_for_test(&self) {
+        self.reset_ud();
+
+        self.tid.replace(None);
+        self.tid_created.replace(false);
+        self.ctx.delete_cookie("tid");
+
+        self.vid.replace(None);
+        self.vid_created.replace(false);
+        self.ctx.delete_cookie("vid");
     }
 
     pub fn ud(&self) -> Ref<Option<UD>> {
         self.ud.borrow()
     }
+
+    pub fn user_id(&self) -> Option<String> {
+        self.ud().as_ref().map(|u| u.user_id())
+    }
+
+    pub fn session_id(&self) -> Option<String> {
+        self.ud().as_ref().map(|u| u.session_id())
+    }
+
+    pub fn activity(&self, okind: &str, oid: &str, ekind: &str) {
+        self.okind.replace(okind.to_string());
+        self.oid.replace(oid.to_string());
+        self.ekind.replace(ekind.to_string());
+    }
+
+    pub(crate) fn get_activity(&self) -> crate::rr::Activity {
+        crate::rr::Activity {
+            oid: self.oid.borrow().to_owned(),
+            okind: self.okind.borrow().to_owned(),
+            ekind: self.ekind.borrow().to_owned(),
+            data: serde_json::Value::Null,
+        }
+    }
+
+    pub fn activity_ekind(&self, ekind: &str) {
+        self.ekind.replace(ekind.to_string());
+    }
+
+    // pub fn activity_data(&self, key: &str, value: serde_json::Value) {
+    //     use std::ops::DerefMut;
+    //
+    //     let mut v1 = self.adata.borrow_mut();
+    //     let v = v1.deref_mut();
+    //     let item = (key.to_string(), value);
+    //     match v {
+    //         Some(a) => a.push(item),
+    //         None => {
+    //             *v = Some(vec![item]);
+    //         }
+    //     }
+    // }
 
     pub fn set_ud(&self, ud: UD) {
         self.ctx
@@ -127,41 +204,97 @@ where
         self.ud.replace(Some(ud));
     }
 
+    pub fn set_tid(&self, tid: String) {
+        self.ctx.cookie(
+            "tid",
+            self.format_cookie_string(&tid).as_str(),
+            COOKIE_AGE * 30,
+        );
+        self.tid.replace(Some(tid));
+        self.tid_created.replace(true);
+    }
+
+    pub fn set_vid(&self, vid: String) {
+        self.ctx.cookie(
+            "vid",
+            self.format_cookie_string(&vid).as_str(),
+            VID_COOKIE_AGE,
+        );
+        self.vid.replace(Some(vid));
+        self.vid_created.replace(true);
+    }
+
+    pub fn refresh_vid(&self, vid: String) {
+        self.ctx.cookie(
+            "vid",
+            self.format_cookie_string(&vid).as_str(),
+            VID_COOKIE_AGE,
+        );
+    }
+
+    pub fn get_tid_vid_created_values(&self) -> Result<(bool, bool)> {
+        Ok((
+            self.tid_created.borrow().to_owned(),
+            self.vid_created.borrow().to_owned(),
+        ))
+    }
+
+    pub fn get_tid_vid_cookies(&self) -> Result<(String, String)> {
+        Ok((
+            self.tid
+                .borrow()
+                .to_owned()
+                .unwrap_or_else(|| "".to_string()),
+            self.vid
+                .borrow()
+                .to_owned()
+                .unwrap_or_else(|| "".to_string()),
+        ))
+    }
+
     pub fn format_cookie(&self, ud: &UD) -> String {
         signed_cookies::sign_value(&ud.to_string(), &cookie_secret())
     }
 
+    pub fn format_cookie_string(&self, s: &str) -> String {
+        signed_cookies::sign_value(&s.to_string(), &cookie_secret())
+    }
+
     pub fn form_error(&self, errors: &std::collections::HashMap<String, String>) -> crate::Result {
-        match self.get_mode() {
+        match self.ctx.mode {
             crate::Mode::Submit => crate::json(&json!({"kind": "errors", "data": errors})),
             _ => crate::err(errors),
         }
     }
 
     #[observed(namespace = "realm__in")]
-    pub fn parse_ud_cookie(ud: String) -> Option<UD> {
+    pub fn parse_ud_cookie(ud: &str) -> Option<UD> {
+        if ud.is_empty() {
+            return None;
+        }
+
         let ud: String = match signed_cookies::signed_value::<String>(
-            ud.as_str(),
+            ud,
             i64::from(COOKIE_AGE),
             &cookie_secret(),
         ) {
             Ok(ud) => ud,
             Err(e) => {
                 observer::log("signature failed");
-                observer::observe_string("ud", ud.as_str()); // TODO
+                observer::transient_string("ud", ud); // TODO
                 observer::observe_string("error", e.to_string().as_str()); // TODO
                 return None;
             }
         };
         match ud.parse::<UD>() {
             Ok(u) => {
-                observer::observe_string("ud", ud.as_str()); // TODO
+                observer::transient_string("ud", ud.as_str()); // TODO
                 Some(u)
             }
             Err(_e) => {
                 observer::log("parse failed");
-                observer::observe_string("ud", ud.as_str()); // TODO
-                                                             // TODO: log e: for now it doesn't implement ToString
+                observer::transient_string("ud", ud.as_str());
+                // TODO: log e: for now it doesn't implement ToString
                 None
             }
         }
@@ -169,6 +302,7 @@ where
 }
 
 const COOKIE_AGE: i32 = 3600 * 24 * 365;
+const VID_COOKIE_AGE: i32 = 60 * 30;
 
 fn cookie_secret() -> Vec<u8> {
     std::env::var("COOKIE_SECRET")
@@ -176,23 +310,24 @@ fn cookie_secret() -> Vec<u8> {
         .into_bytes()
 }
 
-fn get_cookie(req: &Request, name: &str) -> Option<String> {
-    match req
-        .headers()
-        .get(http::header::COOKIE)
-        .and_then(|v| v.to_str().ok())
-        .map(|v| v.split(';').collect::<Vec<&str>>())
-    {
-        Some(l) => {
-            for item in l.iter() {
-                if let Ok(c) = cookie::Cookie::parse_encoded(*item) {
-                    if c.name() == name {
-                        return Some(c.value().to_string());
-                    }
-                }
-            }
-            None
-        }
-        None => None,
+// #[observed(namespace = "realm__in")]
+pub fn parse_cookie(_key: &str, cookie: &str) -> Option<String> {
+    if cookie.is_empty() {
+        return None;
     }
+    // observer::observe_string("cookie", key);
+    let cookie: String = match signed_cookies::signed_value::<String>(
+        cookie,
+        i64::from(COOKIE_AGE),
+        &cookie_secret(),
+    ) {
+        Ok(cookie) => cookie,
+        Err(e) => {
+            observer::log("signature failed");
+            observer::observe_string("cookie", cookie); // TODO
+            observer::observe_string("error", e.to_string().as_str()); // TODO
+            return None;
+        }
+    };
+    Some(cookie)
 }

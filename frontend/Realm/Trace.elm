@@ -39,6 +39,30 @@ type SpanItem
     = Log String
     | Field String JE.Value
     | Frame Span
+    | TransientField String JE.Value
+    | QueryI Query
+
+
+type alias Query =
+    { query : String
+    , bind : Maybe String
+
+    -- TODO: result is missing
+    , result : Result String Int
+    }
+
+
+result : JD.Decoder e -> JD.Decoder s -> JD.Decoder (Result e s)
+result ed sd =
+    JD.oneOf [ JD.field "Err" (JD.map Err ed), JD.field "Ok" (JD.map Ok sd) ]
+
+
+query : JD.Decoder Query
+query =
+    JD.map3 Query
+        (JD.field "query" JD.string)
+        (JD.field "bind" (JD.maybe JD.string))
+        (JD.field "result" (result JD.string JD.int))
 
 
 spanItem : JD.Decoder SpanItem
@@ -56,8 +80,16 @@ spanItem =
                             (JD.field "name" JD.string)
                             (JD.field "value" JD.value)
 
+                    "TransientField" ->
+                        JD.map2 TransientField
+                            (JD.field "name" JD.string)
+                            (JD.field "value" JD.value)
+
                     "Frame" ->
                         JD.map Frame span
+
+                    "Query" ->
+                        JD.map QueryI query
 
                     _ ->
                         JD.fail ("unknown type: " ++ tag)
@@ -139,11 +171,3 @@ span =
         (JD.field "id" JD.string)
         (JD.field "duration" duration)
         (JD.field "items" (JD.list (tuple duration spanItem)))
-
-
-toString : Trace -> String
-toString t =
-    ("{\n    id: " ++ t.id)
-        ++ (",\n    createdOn: " ++ Debug.toString t.createdOn)
-        ++ (",\n    stack: " ++ Debug.toString t.first)
-        ++ "\n}"

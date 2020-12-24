@@ -23,36 +23,17 @@ pub enum Error {
     Multi(Vec<Error>),
 }
 
-pub fn sub_string(s: &str, start: usize, len: Option<usize>) -> String {
-    match len {
-        Some(len) => s.chars().skip(start).take(len).collect(),
-        None => s.chars().skip(start).collect(),
-    }
-}
-
-fn first_rest(s: &str) -> (Option<String>, String) {
-    let mut parts = s.split('/');
-    match parts.next() {
-        Some(v) => (Some(v.to_string()), sub_string(s, v.len() + 1, None)),
-        None => (None, s.to_owned()),
-    }
-}
-
 impl RequestConfig {
-    pub fn new(req: &crate::Request) -> std::result::Result<RequestConfig, failure::Error> {
-        let url = req.uri();
-        let path = crate::utils::get_slash_complete_path(url.path());
-        let url = url::Url::parse(&format!("http://foo.com{}", req.uri()).as_str())?;
-        let rest = crate::utils::sub_string(path.as_ref(), path.len(), None);
-        let data: serde_json::Value =
-            serde_json::from_slice(req.body().as_slice()).unwrap_or_else(|_e| json!(null));
-        let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
-
+    pub fn new(
+        query: &std::collections::HashMap<String, String>,
+        path: &str,
+        data: serde_json::Value,
+    ) -> std::result::Result<RequestConfig, failure::Error> {
         Ok(RequestConfig {
-            rest,
-            query,
+            rest: crate::utils::sub_string(path, path.len(), None),
+            query: query.to_owned(),
             data,
-            path,
+            path: path.to_string(),
         })
     }
 
@@ -68,6 +49,25 @@ impl RequestConfig {
         }
     }
 
+    pub fn either_optional<T>(&mut self, n1: &str, n2: &str) -> Result<Option<T>, crate::Error>
+    where
+        T: FromStr + DeserializeOwned,
+        <T as FromStr>::Err: Debug,
+    {
+        match (self.required_(n1), self.required_(n2)) {
+            (Ok(t), _) => Ok(Some(t)),
+            (_, Ok(t)) => Ok(Some(t)),
+            (Err(Error::NotFound { .. }), Err(Error::NotFound { .. })) => Ok(None),
+            (r1, _) => {
+                let mut errors = vec![];
+                if let Err(e) = r1 {
+                    errors.push(e)
+                };
+                Err(Error::Multi(errors).into())
+            }
+        }
+    }
+
     pub fn optional2<T1, T2>(
         &mut self,
         n1: &str,
@@ -80,12 +80,165 @@ impl RequestConfig {
         <T2 as FromStr>::Err: Debug,
     {
         match (self.required_(n1), self.required_(n2)) {
+            // All or nothing
             (Ok(t1), Ok(t2)) => Ok((Some(t1), Some(t2))),
+            (Err(Error::NotFound { .. }), Err(Error::NotFound { .. })) => Ok((None, None)),
+
+            // One absent
             (Ok(t1), Err(Error::NotFound { .. })) => Ok((Some(t1), None)),
             (Err(Error::NotFound { .. }), Ok(t2)) => Ok((None, Some(t2))),
-            (Err(Error::NotFound { .. }), Err(Error::NotFound { .. })) => Ok((None, None)),
+
+            // Other errors
             (Err(e), _) => Err(e.into()),
             (_, Err(e)) => Err(e.into()),
+        }
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn optional3<T1, T2, T3>(
+        &mut self,
+        n1: &str,
+        n2: &str,
+        n3: &str,
+    ) -> Result<(Option<T1>, Option<T2>, Option<T3>), crate::Error>
+    where
+        T1: FromStr + DeserializeOwned,
+        <T1 as FromStr>::Err: Debug,
+        T2: FromStr + DeserializeOwned,
+        <T2 as FromStr>::Err: Debug,
+        T3: FromStr + DeserializeOwned,
+        <T3 as FromStr>::Err: Debug,
+    {
+        match (self.required_(n1), self.required_(n2), self.required_(n3)) {
+            // All or nothing
+            (Ok(t1), Ok(t2), Ok(t3)) => Ok((Some(t1), Some(t2), Some(t3))),
+            (
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+            ) => Ok((None, None, None)),
+
+            // One absent
+            (Err(Error::NotFound { .. }), Ok(t2), Ok(t3)) => Ok((None, Some(t2), Some(t3))),
+            (Ok(t1), Err(Error::NotFound { .. }), Ok(t3)) => Ok((Some(t1), None, Some(t3))),
+            (Ok(t1), Ok(t2), Err(Error::NotFound { .. })) => Ok((Some(t1), Some(t2), None)),
+
+            // Two absent
+            (Err(Error::NotFound { .. }), Err(Error::NotFound { .. }), Ok(t3)) => {
+                Ok((None, None, Some(t3)))
+            }
+            (Err(Error::NotFound { .. }), Ok(t2), Err(Error::NotFound { .. })) => {
+                Ok((None, Some(t2), None))
+            }
+            (Ok(t1), Err(Error::NotFound { .. }), Err(Error::NotFound { .. })) => {
+                Ok((Some(t1), None, None))
+            }
+
+            // Other errors
+            (Err(e), _, _) => Err(e.into()),
+            (_, Err(e), _) => Err(e.into()),
+            (_, _, Err(e)) => Err(e.into()),
+        }
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn optional4<T1, T2, T3, T4>(
+        &mut self,
+        n1: &str,
+        n2: &str,
+        n3: &str,
+        n4: &str,
+    ) -> Result<(Option<T1>, Option<T2>, Option<T3>, Option<T4>), crate::Error>
+    where
+        T1: FromStr + DeserializeOwned,
+        <T1 as FromStr>::Err: Debug,
+        T2: FromStr + DeserializeOwned,
+        <T2 as FromStr>::Err: Debug,
+        T3: FromStr + DeserializeOwned,
+        <T3 as FromStr>::Err: Debug,
+        T4: FromStr + DeserializeOwned,
+        <T4 as FromStr>::Err: Debug,
+    {
+        match (
+            self.required_(n1),
+            self.required_(n2),
+            self.required_(n3),
+            self.required_(n4),
+        ) {
+            // All or nothing
+            (Ok(t1), Ok(t2), Ok(t3), Ok(t4)) => Ok((Some(t1), Some(t2), Some(t3), Some(t4))),
+            (
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+            ) => Ok((None, None, None, None)),
+
+            // One absent
+            (Err(Error::NotFound { .. }), Ok(t2), Ok(t3), Ok(t4)) => {
+                Ok((None, Some(t2), Some(t3), Some(t4)))
+            }
+            (Ok(t1), Err(Error::NotFound { .. }), Ok(t3), Ok(t4)) => {
+                Ok((Some(t1), None, Some(t3), Some(t4)))
+            }
+            (Ok(t1), Ok(t2), Err(Error::NotFound { .. }), Ok(t4)) => {
+                Ok((Some(t1), Some(t2), None, Some(t4)))
+            }
+            (Ok(t1), Ok(t2), Ok(t3), Err(Error::NotFound { .. })) => {
+                Ok((Some(t1), Some(t2), Some(t3), None))
+            }
+
+            // Two absent
+            (Err(Error::NotFound { .. }), Err(Error::NotFound { .. }), Ok(t3), Ok(t4)) => {
+                Ok((None, None, Some(t3), Some(t4)))
+            }
+            (Err(Error::NotFound { .. }), Ok(t2), Err(Error::NotFound { .. }), Ok(t4)) => {
+                Ok((None, Some(t2), None, Some(t4)))
+            }
+            (Err(Error::NotFound { .. }), Ok(t2), Ok(t3), Err(Error::NotFound { .. })) => {
+                Ok((None, Some(t2), Some(t3), None))
+            }
+            (Ok(t1), Err(Error::NotFound { .. }), Err(Error::NotFound { .. }), Ok(t4)) => {
+                Ok((Some(t1), None, None, Some(t4)))
+            }
+            (Ok(t1), Err(Error::NotFound { .. }), Ok(t3), Err(Error::NotFound { .. })) => {
+                Ok((Some(t1), None, Some(t3), None))
+            }
+            (Ok(t1), Ok(t2), Err(Error::NotFound { .. }), Err(Error::NotFound { .. })) => {
+                Ok((Some(t1), Some(t2), None, None))
+            }
+
+            // Three absent
+            (
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+                Ok(t4),
+            ) => Ok((None, None, None, Some(t4))),
+            (
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+                Ok(t3),
+                Err(Error::NotFound { .. }),
+            ) => Ok((None, None, Some(t3), None)),
+            (
+                Err(Error::NotFound { .. }),
+                Ok(t2),
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+            ) => Ok((None, Some(t2), None, None)),
+            (
+                Ok(t1),
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+                Err(Error::NotFound { .. }),
+            ) => Ok((Some(t1), None, None, None)),
+
+            // Other errors
+            (Err(e), _, _, _) => Err(e.into()),
+            (_, Err(e), _, _) => Err(e.into()),
+            (_, _, Err(e), _) => Err(e.into()),
+            (_, _, _, Err(e)) => Err(e.into()),
         }
     }
 
@@ -113,6 +266,24 @@ impl RequestConfig {
                     errors.push(e)
                 };
                 if let Err(e) = r2 {
+                    errors.push(e)
+                };
+                Err(Error::Multi(errors).into())
+            }
+        }
+    }
+
+    pub fn either<T>(&mut self, n1: &str, n2: &str) -> Result<T, crate::Error>
+    where
+        T: FromStr + DeserializeOwned,
+        <T as FromStr>::Err: Debug,
+    {
+        match (self.required_(n1), self.required_(n2)) {
+            (Ok(t1), _) => Ok(t1),
+            (_, Ok(t2)) => Ok(t2),
+            (r1, _) => {
+                let mut errors = vec![];
+                if let Err(e) = r1 {
                     errors.push(e)
                 };
                 Err(Error::Multi(errors).into())
@@ -263,7 +434,7 @@ impl RequestConfig {
         let rest: &mut String = &mut self.rest;
 
         if !rest.is_empty() {
-            let (first, last) = first_rest(&rest);
+            let (first, last) = crate::utils::first_rest(&rest);
             rest.truncate(0);
             rest.push_str(&last);
             if let Some(v) = first {

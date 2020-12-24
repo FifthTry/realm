@@ -21,6 +21,18 @@ import Realm.Utils as RU exposing (edges, yesno)
 import RemoteData as RD
 
 
+app : Config -> Program () Model Msg
+app config =
+    B.application
+        { init = init config
+        , view = document
+        , update = update
+        , subscriptions = subscriptions
+        , onUrlRequest = always NoOp
+        , onUrlChange = always NoOp
+        }
+
+
 type alias Test =
     { id : String
     , context : List ( String, JE.Value )
@@ -73,10 +85,6 @@ type alias StepWithResults =
     }
 
 
-type alias Trace =
-    {}
-
-
 type alias Selection =
     { selected : Maybe Int
     , showTrace : Bool
@@ -106,6 +114,8 @@ type Msg
     | Skip
 
 
+{-| Trace UI Related Messages
+-}
 type TMsg
     = TMsg_
 
@@ -120,10 +130,6 @@ type FormThing
     | SubmitTest String String
 
 
-
--- | GoTo Int
-
-
 init : Config -> () -> url -> key -> ( Model, Cmd Msg )
 init config _ _ _ =
     doStep 0
@@ -135,7 +141,6 @@ init config _ _ _ =
         , errorOnly = False
         , selection = { selected = Nothing, showTrace = True }
         }
-        |> R.timeIt (R.tid "test-init")
 
 
 apiErrorRequest :
@@ -211,16 +216,25 @@ doStep idx postReset m =
                     Http.expectJson (RR.try >> OnSubmit2Response thing)
                         (RR.bresult RR.layoutResponse)
                 }
+
+        _ =
+            R.warn "context: " m.context
     in
     case Array.get idx m.tests of
         Just tr ->
             let
+                f2 : ( String, JE.Value ) -> JE.Value
+                f2 ( u, d ) =
+                    JE.object [ ( "url", JE.string u ), ( "data", d ) ]
+
                 cmd =
                     case tr.step of
                         Comment _ ->
                             R.message Skip
 
                         Navigate ( elm, id ) url ->
+                            -- id is shown in UI
+                            -- elm id is expected
                             navigate elm id url m.context
 
                         NavigateS ( elm, id ) key f ->
@@ -233,11 +247,13 @@ doStep idx postReset m =
                             submit elm id payload m.context
 
                         SubmitForm ( elm, id ) ( url, data ) ->
-                            submit2 (SubmitTest elm id) ( url, data )
+                            submit elm id (f2 ( url, data )) m.context
 
                         SubmitFormS ( elm, id ) key f ->
-                            submit2 (SubmitTest elm id)
-                                (resolveA2 key JD.string f (JE.object m.context))
+                            submit elm
+                                id
+                                (resolveA key JD.string (f2 << f) (JE.object m.context))
+                                m.context
 
                         SubmitS ( elm, id ) key f ->
                             submit elm
@@ -261,7 +277,11 @@ doStep idx postReset m =
                                     apiErrorRequest id assertions v
 
                                 Nothing ->
-                                    Debug.todo "not handled"
+                                    let
+                                        _ =
+                                            R.crash "not handled1"
+                                    in
+                                    Cmd.none
 
                         Api id runner payload ->
                             apiSuccessRequest id runner payload
@@ -272,11 +292,16 @@ doStep idx postReset m =
                                     apiSuccessRequest id runner v
 
                                 Nothing ->
-                                    Debug.todo "not handled"
+                                    let
+                                        _ =
+                                            R.crash "not handled2"
+                                    in
+                                    Cmd.none
 
                 ( cmd2, ctx2, current ) =
                     -- reset db and context when test changes
                     case ( tr.first, postReset ) of
+                        -- this means we are first Step of some Test: if so we reset the database
                         ( Just first, False ) ->
                             ( Http.post
                                 { url = "/test/reset-db/"
@@ -314,7 +339,11 @@ resolve key dec f v =
             f a
 
         Err _ ->
-            Debug.todo "TODO: fix this"
+            let
+                _ =
+                    R.crash "not handled3"
+            in
+            "not implemented"
 
 
 resolveA : String -> JD.Decoder a -> (a -> JE.Value) -> JE.Value -> JE.Value
@@ -324,7 +353,11 @@ resolveA key dec f v =
             f a
 
         Err _ ->
-            Debug.todo "TODO: fix this"
+            let
+                _ =
+                    R.crash "not handled4"
+            in
+            JE.null
 
 
 resolveA2 :
@@ -339,7 +372,11 @@ resolveA2 key dec f v =
             f a
 
         Err _ ->
-            Debug.todo "TODO: handle this"
+            let
+                _ =
+                    R.crash "not handled5"
+            in
+            ( "not implemented", JE.null )
 
 
 onCurrent : (StepWithResults -> StepWithResults) -> Int -> Model -> Model
@@ -357,10 +394,8 @@ attachTrace tr idx m =
     onCurrent (\s -> { s | trace = Just tr }) idx m
 
 
-type alias Accumulator acc =
-    acc -> acc
-
-
+{-| Insert Results Accumulator: for insertResults function
+-}
 type alias IRAData =
     ( List ( String, JE.Value ), Maybe JE.Value )
 
@@ -368,7 +403,7 @@ type alias IRAData =
 insertResults : List R.TestResult -> Int -> Model -> Model
 insertResults results idx m =
     let
-        pluckContextAndData : R.TestResult -> Accumulator IRAData
+        pluckContextAndData : R.TestResult -> IRAData -> IRAData
         pluckContextAndData r ( l, md ) =
             case r of
                 R.Started d ->
@@ -380,8 +415,12 @@ insertResults results idx m =
                 _ ->
                     ( l, md )
 
-        ( context, data ) =
+        g : IRAData
+        g =
             List.foldl pluckContextAndData ( m.context, Nothing ) results
+
+        ( context, data ) =
+            g
 
         f : StepWithResults -> StepWithResults
         f s =
@@ -470,14 +509,14 @@ checkAssertions assertions d =
                                 ++ " errors, found "
                                 ++ String.fromInt size
                                 ++ ". Errors: "
-                                ++ Debug.toString d
+                                ++ R.toString d
     in
     List.map checkAssertion assertions ++ [ R.TestDone ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
-    (case Debug.log "Test.msg" ( msg, m.current ) of
+    case ( msg, m.current ) of
         ( NoOp, _ ) ->
             ( m, Cmd.none )
 
@@ -491,15 +530,18 @@ update msg m =
             doStep (idx + 1) False m
 
         ( Skip, Nothing ) ->
-            Debug.todo "impossibru"
+            let
+                _ =
+                    R.crash "not handled6"
+            in
+            ( m, Cmd.none )
 
         ( FromChild v, Just idx ) ->
-            case Debug.log "FromChild" <| JD.decodeValue (JD.list R.testResult) v of
+            case JD.decodeValue (JD.list R.testResult) v of
                 Ok results ->
                     let
                         m2 =
                             insertResults results idx m
-                                |> R.timeIt (R.tid "insert-results")
 
                         f =
                             \r mod ->
@@ -508,10 +550,13 @@ update msg m =
                                         case JD.decodeValue (JD.field "trace" Tr.trace) flags of
                                             Ok tr ->
                                                 attachTrace tr idx mod
-                                                    |> R.timeIt (R.tid "attach-trace")
 
                                             Err e ->
-                                                Debug.todo (Debug.toString e)
+                                                let
+                                                    _ =
+                                                        R.crash (R.toString e)
+                                                in
+                                                mod
 
                                     R.UpdateContext lst ->
                                         { mod | context = m.context ++ lst }
@@ -521,11 +566,9 @@ update msg m =
 
                         m3 =
                             List.foldl f m2 results
-                                |> R.timeIt (R.tid "foldl")
                     in
-                    if List.any ((==) R.TestDone) (Debug.log "results" results) then
+                    if List.any ((==) R.TestDone) results then
                         doStep (idx + 1) False m3
-                            |> R.timeIt (R.tid "doStep")
 
                     else
                         ( m3, Cmd.none )
@@ -534,10 +577,18 @@ update msg m =
                     ( m, Cmd.none )
 
         ( FromChild _, Nothing ) ->
-            Debug.todo "impossible"
+            let
+                _ =
+                    R.crash "not handled7"
+            in
+            ( m, Cmd.none )
 
         ( ResetDone, Nothing ) ->
-            Debug.todo "impossible"
+            let
+                _ =
+                    R.crash "not handled8"
+            in
+            ( m, Cmd.none )
 
         ( ResetDone, Just idx ) ->
             doStep (idx + 1) True m
@@ -588,7 +639,11 @@ update msg m =
             doStep (idx + 1) False (insertResults results idx m2)
 
         ( ApiErrorResponse _ _ _, _ ) ->
-            Debug.todo "ApiErrorResponse: not yet implemented"
+            let
+                _ =
+                    R.crash "not handled9"
+            in
+            ( m, Cmd.none )
 
         ( ApiSuccessResponse _ runner (RD.Success v), Just i ) ->
             let
@@ -617,7 +672,7 @@ update msg m =
             doStep (idx + 1)
                 False
                 (insertResults
-                    [ R.TestFailed id ("Request failed: " ++ Debug.toString e)
+                    [ R.TestFailed id ("Request failed: " ++ R.toString e)
                     , R.TestDone
                     ]
                     idx
@@ -625,7 +680,11 @@ update msg m =
                 )
 
         ( ApiSuccessResponse _ _ _, _ ) ->
-            Debug.todo "ApiSuccessResponse: not yet implemented"
+            let
+                _ =
+                    R.crash "not handled10"
+            in
+            ( m, Cmd.none )
 
         ( OnSubmit2Response (FormErrorTest id assertions) (RD.Success res), Just idx ) ->
             let
@@ -669,68 +728,24 @@ update msg m =
             doStep (idx + 1)
                 False
                 (insertResults
-                    [ R.TestFailed id ("Request failed: " ++ Debug.toString e)
+                    [ R.TestFailed id ("Request failed: " ++ R.toString e)
                     , R.TestDone
                     ]
                     idx
                     m
                 )
 
-        ( OnSubmit2Response (SubmitTest elm id) (RD.Success res), Just idx ) ->
-            let
-                m2 =
-                    case res.trace of
-                        Just tr ->
-                            attachTrace tr idx m
-
-                        Nothing ->
-                            m
-            in
-            case res.data of
-                RR.FErrors d ->
-                    m2
-                        |> insertResults
-                            [ R.TestFailed id
-                                ("Expected Navigation, found FormErrors: " ++ Debug.toString d)
-                            , R.TestDone
-                            ]
-                            idx
-                        |> doStep (idx + 1) False
-
-                RR.Navigate payload ->
-                    ( m2, submit elm id payload m.context )
-
-        ( OnSubmit2Response (SubmitTest _ id) (RD.Failure e), Just idx ) ->
-            -- test failed
-            let
-                m2 =
-                    case RR.getTrace e of
-                        Just tr ->
-                            attachTrace tr idx m
-
-                        Nothing ->
-                            m
-            in
-            doStep (idx + 1)
-                False
-                (insertResults
-                    [ R.TestFailed id ("Request failed: " ++ Debug.toString e)
-                    , R.TestDone
-                    ]
-                    idx
-                    m2
-                )
-
         ( OnSubmit2Response _ _, _ ) ->
-            Debug.todo "OnSubmitResponse: must not happen"
-    )
-        |> R.timeIt (R.tid "test-update")
+            let
+                _ =
+                    R.crash "not handled11"
+            in
+            ( m, Cmd.none )
 
 
 document : Model -> B.Document Msg
 document m =
     { title = m.title ++ " Test", body = [ E.layout [] (view m) ] }
-        |> R.timeIt (R.tid "test-view")
 
 
 view : Model -> E.Element Msg
@@ -745,10 +760,14 @@ view m =
 
 
 upTr : TMsg -> Model -> ( Model, Cmd Msg )
-upTr msg =
+upTr msg m =
     case msg of
         TMsg_ ->
-            Debug.todo "not yet implemented"
+            let
+                _ =
+                    R.crash "not handled12"
+            in
+            ( m, Cmd.none )
 
 
 traceView : Model -> StepWithResults -> Tr.Trace -> E.Element Msg
@@ -775,6 +794,28 @@ traceView _ step tr =
                     Tr.Field k v ->
                         E.paragraph [ E.width (E.fill |> E.maximum 500) ]
                             [ E.text (k ++ ": " ++ value v) ]
+
+                    Tr.TransientField k v ->
+                        E.paragraph [ E.width (E.fill |> E.maximum 500) ]
+                            [ E.text (k ++ " := " ++ value v) ]
+
+                    Tr.QueryI q ->
+                        -- TODO: use proper view
+                        E.paragraph [ E.width (E.fill |> E.maximum 500) ]
+                            [ E.text q.query
+                            , case q.bind of
+                                Just b ->
+                                    E.text (" -- " ++ b)
+
+                                Nothing ->
+                                    E.none
+                            , case q.result of
+                                Ok size ->
+                                    E.text (" rows: " ++ String.fromInt size)
+
+                                Err e ->
+                                    E.text ("  error: " ++ e)
+                            ]
 
                     Tr.Frame sp ->
                         spanView sp
@@ -1115,7 +1156,7 @@ resultView _ r =
                 |> p
 
         _ ->
-            p (Debug.toString r)
+            p (R.toString r)
 
 
 stepView : Model -> StepWithResults -> E.Element Msg
@@ -1228,19 +1269,6 @@ subscriptions _ =
         [ fromIframe FromChild
         , BE.onKeyDown (JD.map OnKey (JD.field "key" JD.string))
         ]
-        |> R.timeIt (R.tid "test-subscriptions")
-
-
-app : Config -> Program () Model Msg
-app config =
-    B.application
-        { init = init config
-        , view = document
-        , update = update
-        , subscriptions = subscriptions
-        , onUrlRequest = always NoOp
-        , onUrlChange = always NoOp
-        }
 
 
 type alias Context =
@@ -1347,7 +1375,7 @@ api id assertions ( dec, s, mv ) =
                     List.map (\f -> f a ctx) assertions ++ [ R.TestDone ]
 
                 Err e ->
-                    [ R.TestFailed id (Debug.toString e), R.TestDone ]
+                    [ R.TestFailed id (R.toString e), R.TestDone ]
     in
     Api id runner ( s, mv )
 
@@ -1366,14 +1394,14 @@ apiS ( id, key ) assertions ( dec, fn ) =
                     List.map (\f -> f a ctx) assertions ++ [ R.TestDone ]
 
                 Err e ->
-                    [ R.TestFailed id (Debug.toString e), R.TestDone ]
+                    [ R.TestFailed id (R.toString e), R.TestDone ]
     in
     ApiS ( id, key ) runner fn
 
 
 apiOk : String -> ( JD.Decoder (), String, Maybe JE.Value ) -> Step
 apiOk id params =
-    api id [ \_ _ -> R.TestPassed "Ok" ] params
+    api id [ RU.dalways (R.TestPassed "Ok") ] params
 
 
 apiTrue : String -> ( JD.Decoder Bool, String, Maybe JE.Value ) -> Step

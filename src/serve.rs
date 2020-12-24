@@ -15,11 +15,28 @@ pub fn http_to_hyper(resp: http::Response<Vec<u8>>) -> hyper::Response<hyper::Bo
     hyper::Response::from_parts(parts, hyper::Body::from(body))
 }
 
-pub fn server_error(msg: Vec<u8>) -> hyper::Response<hyper::Body> {
+pub fn server_error(msg: &str) -> hyper::Response<hyper::Body> {
     let mut resp = hyper::Response::default();
     *resp.status_mut() = http::StatusCode::INTERNAL_SERVER_ERROR;
-    *resp.body_mut() = hyper::Body::from(msg);
+    *resp.body_mut() = hyper::Body::from(msg.to_string().into_bytes());
     resp
+}
+
+pub fn redirect(
+    url: &str,
+    cookies: std::collections::HashMap<String, String>,
+) -> hyper::Response<hyper::Body> {
+    let mut builder = http::response::Builder::new();
+    builder.status(http::StatusCode::FOUND);
+    builder.header(http::header::LOCATION, url);
+
+    for (k, v) in cookies.iter() {
+        builder.header(
+            http::header::SET_COOKIE,
+            crate::utils::set_cookie(k, v, if v.is_empty() { 0 } else { 3600 }),
+        );
+    }
+    builder.body(hyper::Body::empty()).unwrap()
 }
 
 #[macro_export]
@@ -27,31 +44,124 @@ macro_rules! realm_serve {
     ($e:expr) => {{
         use futures::{stream::Stream, IntoFuture};
         use hyper::{rt::Future, Body};
+        use std::collections::HashMap;
 
         type BoxFut = Box<Future<Item = hyper::Response<Body>, Error = hyper::Error> + Send>;
+
+        fn replay_file(path: &std::path::Path, result: &mut realm::rr::ReplayResult) -> Result<()> {
+            let start = std::time::Instant::now();
+            let current: realm::rr::Recording = realm::rr::Recording::from_p1(ftd::p1::parse(
+                std::fs::read_to_string(path)?.as_str(),
+            )?)?;
+
+            if let Some(ref b) = current.base {
+                replay_file(&realm::rr::tid_to_path(b), result)?;
+            }
+
+            let mut context: HashMap<String, String> = HashMap::new();
+
+            let count = current.steps.len();
+            for step in current.steps.into_iter() {
+                let ctx = step.ctx(result.cookies.clone(), context);
+                $e(&ctx)?;
+                let got = ctx.get_step().unwrap();
+                if got.test_trace.trim() != step.test_trace.trim() {
+                    println!(
+                        "expected:\n{}\n\nfound:\n{}\n\n",
+                        step.test_trace.as_str(),
+                        got.test_trace.as_str()
+                    );
+                    println!(
+                        "diff:\n{}\n",
+                        diffy::create_patch(step.test_trace.as_str(), got.test_trace.as_str())
+                    );
+                    println!(
+                        "{:?} failed in {:?}",
+                        path,
+                        std::time::Instant::now().duration_since(start)
+                    );
+                    return realm::replay_failed(format!("{:?}", path).as_str());
+                }
+                ctx.merge_cookies(&mut result.cookies);
+                context = ctx.get_context();
+
+                result.final_url = step.final_url.clone();
+            }
+
+            println!(
+                "{:?}, {} steps, passed in {:?}",
+                path,
+                count,
+                std::time::Instant::now().duration_since(start)
+            );
+
+            Ok(())
+        }
+
+        fn replay(path: &std::path::Path) -> Result<realm::rr::ReplayResult> {
+            realm::test::reset_schema(&pg::connection())?;
+            let mut result = realm::rr::ReplayResult::default();
+
+            replay_file(path, &mut result)?;
+            Ok(result)
+        }
+
+        fn replay_all_in(dir: &std::path::Path) -> Result<()> {
+            for entry in std::fs::read_dir(dir)? {
+                let path = entry?.path();
+                if path.is_dir() {
+                    replay_all_in(&path)?;
+                } else {
+                    replay(&path)?;
+                }
+            }
+            Ok(())
+        }
+
+        fn replay_all() -> Result<()> {
+            let args: Vec<String> = std::env::args().collect();
+            if args.len() == 3 {
+                let path = format!("tests/{}.json", args.get(2).unwrap());
+                println!("trying: {}", path.as_str());
+                replay(&std::path::PathBuf::from(path)).map(|_| ())
+            } else {
+                replay_all_in(std::path::PathBuf::from("tests/").as_path())
+            }
+        }
 
         pub fn handle_sync(
             req: realm::Request,
         ) -> std::result::Result<hyper::Response<Body>, hyper::Error> {
+            if req.uri().to_string().starts_with("/test/replay/") {
+                let url = realm::utils::to_url(
+                    req.uri()
+                        .path_and_query()
+                        .map(|p| p.as_str())
+                        .unwrap_or("/"),
+                );
+                let query: std::collections::HashMap<_, _> =
+                    url.query_pairs().into_owned().collect();
+
+                let tid = match query.get("tid") {
+                    Some(tid) => tid,
+                    None => return Ok(realm::serve::server_error("tid parameter not found")),
+                };
+
+                let res = replay(&realm::rr::tid_to_path(tid.as_str())).unwrap();
+                return Ok(realm::serve::redirect(res.final_url.as_str(), res.cookies));
+            }
+
             let req = std::sync::Mutex::new(req);
             let res = std::panic::catch_unwind(|| {
                 let req = req.into_inner().unwrap();
-                let url = req
-                    .uri()
-                    .path_and_query()
-                    .map(|p| p.as_str().to_string())
-                    .unwrap_or_else(|| "/".to_string());
-                let url = url.replace("&realm_mode=ised", "");
-                let url = url.replace("&realm_mode=pure", "");
-                // TODO: these two statements are safe only if realm_mode is
-                //       always the last parameter, which it is so far, but we
-                //       need more robust mechanism.
-                let url = url.replace("?realm_mode=ised", "");
-                let url = url.replace("?realm_mode=pure", "");
-                let ctx = {
-                    let mode = realm::Mode::detect(&req);
-                    realm::Context::new(req, mode)
-                };
+                let url = realm::utils::to_url(
+                    req.uri()
+                        .path_and_query()
+                        .map(|p| p.as_str())
+                        .unwrap_or("/"),
+                );
+                let url = realm::cleanup_url(&url);
+                let ctx = realm::Context::from_request(req);
 
                 let r = match $e(&ctx)
                     .and_then(|r| r.render(&ctx, &url))
@@ -84,7 +194,7 @@ macro_rules! realm_serve {
                     // since hooks are global, store the panic message in a global
                     // hashmap (thread id-message), and retrieve the message by sending
                     // the current thread id.
-                    Ok(realm::serve::server_error("panic".to_string().into_bytes()))
+                    Ok(realm::serve::server_error("panic"))
                 }
             }
         }
@@ -115,7 +225,21 @@ macro_rules! realm_serve {
             hyper::rt::run(server);
         }
 
-        serve()
+        if std::env::args().any(|e| e == "--replay") {
+            match replay_all() {
+                Ok(()) => println!("test passed"),
+                Err(e) => {
+                    match e.downcast_ref::<realm::Error>() {
+                        Some(realm::Error::ReplayFailed { tid }) => {
+                            println!("failed to run test: {}", tid);
+                        }
+                        _ => println!("exception during test: {:?}", e),
+                    };
+                }
+            }
+        } else {
+            serve()
+        }
     }};
 }
 
@@ -123,6 +247,12 @@ macro_rules! realm_serve {
 macro_rules! realm {
     ($e:expr) => {
         pub fn main() {
+            let logger = observer::backends::logger::Logger::builder()
+                .with_path("/tmp/observer.log")
+                .with_stdout()
+                .build();
+
+            observer::builder(logger).init();
             realm::realm_serve!($e)
         }
     };

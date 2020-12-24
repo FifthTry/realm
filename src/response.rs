@@ -2,14 +2,22 @@ use crate::mode::Mode;
 use crate::PageSpec;
 
 #[allow(clippy::large_enum_variant)]
+#[derive(Serialize)]
 pub enum Response {
-    Http(http::response::Response<Vec<u8>>),
+    Http(#[serde(serialize_with = "vec8")] http::response::Response<Vec<u8>>),
     JSON {
         data: Result<serde_json::Value, serde_json::Value>,
         context: Option<serde_json::Value>,
         trace: Option<serde_json::Value>,
     },
     Page(PageSpec),
+}
+
+fn vec8<S>(resp: &http::response::Response<Vec<u8>>, ser: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    ser.serialize_i32(resp.body().len() as i32)
 }
 
 #[observed(with_result, namespace = "realm__response")]
@@ -73,9 +81,17 @@ impl Response {
             _ => self,
         }
     }
+
     pub fn with_replace(self, url: String) -> Response {
         match self {
             Response::Page(s) => Response::Page(s.with_replace(url)),
+            _ => self,
+        }
+    }
+
+    pub fn with_redirect(self, url: String) -> Response {
+        match self {
+            Response::Page(s) => Response::Page(s.with_redirect(url)),
             _ => self,
         }
     }
@@ -90,9 +106,9 @@ impl Response {
     pub fn render(
         self,
         ctx: &crate::Context,
-        url: &str,
+        url: &url::Url,
     ) -> std::result::Result<http::Response<Vec<u8>>, failure::Error> {
-        let mut spec = match self.with_default_url(url.to_string()) {
+        let mut spec = match self.with_default_url(crate::utils::path_and_query(url)) {
             Response::Page(spec) => spec,
             Response::Http(r) => {
                 return Ok(r);
@@ -120,6 +136,10 @@ impl Response {
         };
 
         ctx.header(http::header::CONTENT_TYPE, ctx.mode.content_type());
+        ctx.header(http::header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST");
+        if crate::base::is_test() {
+            ctx.header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+        }
         spec.pure_mode = std::env::var("REALM_PURE")
             .map(|v| v.trim().to_string())
             .unwrap_or_else(|_| "".to_string());
@@ -165,9 +185,8 @@ impl Response {
         T: Into<String>,
         UD: crate::UserData,
     {
-        use http::header;
-        match in_.get_mode() {
-            Mode::ISED => Ok(Response::Page(PageSpec {
+        match in_.ctx.mode {
+            Mode::ISED | Mode::Submit => Ok(Response::Page(PageSpec {
                 id: "".to_owned(),
                 config: json!({}),
                 title: "".to_owned(),
@@ -181,10 +200,11 @@ impl Response {
                 hash: crate::page::CURRENT.clone(),
                 trace: None,
                 activity: None,
+                dev: crate::base::is_test(),
             })),
             _ => {
-                in_.ctx.header(header::LOCATION, next.into());
-                in_.ctx.status(http::StatusCode::TEMPORARY_REDIRECT);
+                in_.ctx.header(http::header::LOCATION, next.into());
+                in_.ctx.status(http::StatusCode::FOUND);
                 Ok(Response::Http(in_.ctx.response("".into())?))
             }
         }
@@ -199,9 +219,8 @@ impl Response {
         T: Into<String>,
         UD: crate::UserData,
     {
-        use http::header;
-        match in_.get_mode() {
-            Mode::ISED => Ok(Response::Page(PageSpec {
+        match in_.ctx.mode {
+            Mode::ISED | Mode::Submit => Ok(Response::Page(PageSpec {
                 id: "".to_owned(),
                 config: json!({}),
                 title: "".to_owned(),
@@ -215,9 +234,10 @@ impl Response {
                 hash: crate::page::CURRENT.clone(),
                 trace: None,
                 activity: None,
+                dev: crate::base::is_test(),
             })),
             _ => {
-                in_.ctx.header(header::LOCATION, next.into());
+                in_.ctx.header(http::header::LOCATION, next.into());
                 in_.ctx.status(status);
                 Ok(Response::Http(in_.ctx.response("".into())?))
             }
@@ -270,9 +290,14 @@ mod tests {
             url: None,
             replace: None,
             redirect: None,
+            cache: None,
+            hash: "".to_string(),
+            pure: false,
             rendered: "empty.html".to_string(),
             trace: None,
             activity: None,
+            pure_mode: "".to_string(),
+            dev: crate::base::is_test(),
         };
         let r = super::Response::Page(page_spec);
         assert_eq!(

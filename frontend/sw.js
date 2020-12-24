@@ -22,7 +22,7 @@ self.addEventListener('activate', function() {
 var USER_DATA_URL = "/__realm__user__/"; // ensure its in sync with Realm.js
 var TEMPLATE_URL = "/__realm__template__/"; // ensure its in sync with Realm.js
 
-self.addEventListener('fetch', function(event) {
+self.addEventListener('fetch2', function(event) {
     console.log("fetch", event, realm_hash);
     var url = new URL(event.request.url);
     var url = url.pathname + url.search;

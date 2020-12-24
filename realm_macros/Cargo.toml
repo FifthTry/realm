@@ -15,12 +15,12 @@ homepage = "https://github.com/ackotech/realm"
 proc-macro = true
 
 [dependencies]
-quote = "0.6"
 proc-macro2 = "0.4"
+quote = "0.6"
 
 [dependencies.syn]
-version = "0.15.42"
 features = ["full"]
+version = "0.15.42"
 
 [dependencies.Inflector]
 version = "0.11.4"

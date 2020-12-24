@@ -15,6 +15,7 @@ def task_pip():
             "pip-compile --output-file=requirements.txt requirements.in",
             "pip-sync",
             "sed -i -e '/macfsevents/d' requirements.txt",
+            "sed -i -e '/pyinotify/d' requirements.txt",
         ],
         "file_dep": ["requirements.in", "dodo.py"],
         "targets": ["requirements.txt"],
@@ -88,6 +89,14 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
         )
 
         yield {
+            "actions": ["npm install"],
+            "file_dep": ["package.json"],
+            "basename": basename,
+            "name": "uglifyjs",
+            "targets": ["node_modules/.bin/uglifyjs"],
+        }
+
+        yield {
             "actions": [lambda: _create_index(prefix, static)],
             "file_dep": [
                 "dodo.py",
@@ -99,9 +108,12 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
             "name": "index",
         }
 
-        proj_elms: List[str] = glob2(
-            "%sfrontend" % (prefix,), r".*\.elm", recursive=True
-        ) + ["%sfrontend/elm.json" % (prefix,)]
+        proj_elms: List[str] = (
+            glob2("%sfrontend" % (prefix,), r".*\.elm", recursive=True)
+            + ["%sfrontend/elm.json" % (prefix,)]
+            + glob2("ftd", r".*\.elm", recursive=True)
+        )
+
         main_elms: List[str] = [
             e.replace("%sfrontend/" % (prefix,), "")
             for e in proj_elms
@@ -131,6 +143,24 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
 
         yield {
             "actions": [
+                "cd fifthtry/frontend && elm make RealmTest.elm"
+                " --output=elm-stuff/t2.js",
+                "mkdir -p %s" % (static,),
+                "cat "
+                "   realm/frontend/pre.js "
+                "   fifthtry/frontend/elm-stuff/t2.js "
+                "   realm/frontend/IframeController.js "
+                "   > %srealm-test.js"  # TODO: remove fifthtry from there
+                % (static,),
+            ],
+            "file_dep": proj_elms + realm_deps,
+            "targets": ["%srealm-test.js" % (static,)],
+            "basename": basename,
+            "name": "realm-test",
+        }
+
+        yield {
+            "actions": [
                 "cd %sfrontend && elm make Storybook.elm  --output=elm-stuff/s.js"
                 % (prefix,),
                 "mkdir -p %s" % (static,),
@@ -151,6 +181,7 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
             ["cd %sfrontend && elm" % (prefix,), "make", "--output=elm-stuff/i.js"]
             + test_elms
         )
+
         yield {
             "actions": [
                 elm_cmd,
@@ -169,14 +200,13 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
         }
 
         elm_cmd = " ".join(
-            ["cd %sfrontend && elm" % (prefix,), "make", "--output=elm-stuff/e.js"]
+            ["cd %sfrontend && elm" % (prefix,), "make --output=elm-stuff/e.js"]
             + main_elms
         )
 
         yield {
             "actions": [
                 elm_cmd,
-                # uglify_cmd,
                 "mkdir -p %s" % (static,),
                 "sh realm/delete_old_builds.sh",
                 lambda: _merge_files_update_latest(
@@ -198,7 +228,7 @@ task_elm = elm_with("")
 
 
 MAIN_ELM = re.compile(r"\Wmain\W")
-TARGETS = ["elm", "iframe", "test", "storybook"]
+TARGETS = ["elm", "iframe", "test", "storybook", "realm-test"]
 
 
 def glob2(

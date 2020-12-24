@@ -2,25 +2,38 @@ from django.db import models
 
 
 class Activity(models.Model):
-    url = models.TextField()  # relative or full?
+    url = models.TextField(default="")
+    method = models.TextField(default="")
+    ua = models.TextField(default="")
+    ip = models.TextField(max_length=39)
 
     okind = models.TextField()
     oid = models.TextField()
     ekind = models.TextField()
+    data = models.JSONField(default=dict)
 
-    # these three contain json. not using pg.JSONField() because sqlite
-    data = models.TextField()
-    trace = models.TextField()
-    # elm.js corresponding to site_version should be used for this
-    response = models.TextField()
+    uid = models.TextField(null=True)
+    sid = models.TextField(null=True)
+    vid = models.TextField(default="")
+    vid_created = models.BooleanField(default=False)
+    tid = models.TextField(default="")
+    tid_created = models.BooleanField(default=False)
 
-    who = models.TextField(null=True)
     when = models.DateTimeField(auto_now_add=True)
+    duration = models.IntegerField(default=-1)
 
-    ip = models.TextField(max_length=39)
-    session = models.TextField(null=True)
-    # tracker? visit?
-    app = models.TextField(blank=True)
+    response = models.JSONField(default=dict)
+    outcome = models.TextField(default="")
+    code = models.TextField(default="")
+
+    trace = models.JSONField(default=dict)
+    hash = models.TextField(default="")
+    rust_trace = models.TextField(null=True)
+
+    utm_source = models.TextField(null=True)
+    utm_medium = models.TextField(null=True)
+    utm_campaign = models.TextField(null=True)
+    utm_term = models.TextField(null=True)
+    utm_content = models.TextField(null=True)
+
     site_version = models.TextField()
-    # mobile vs desktop?
-    # utm parameters?

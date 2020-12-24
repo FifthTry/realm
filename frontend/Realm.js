@@ -1,6 +1,11 @@
 (function (window) {
     "use strict";
 
+    var log = console.log;
+    // console.log = function() {};
+
+    var inChangePage = false;
+
     var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     var ratio = window.devicePixelRatio || 1;
     var screen = {
@@ -17,6 +22,8 @@
     var testContext = null;
     var unloadTest = 0;
 
+    var isDev = false;
+
     window.realm_app = null;
 
     var NOOP = function () {};
@@ -31,17 +38,6 @@
 
     var is_first_load = true;
     var user_data = null;
-
-    var ajax = function (url, data, callback) {
-        var x = new (XMLHttpRequest || ActiveXObject)("MSXML2.XMLHTTP.3.0");
-        x.open(data ? "POST" : "GET", url, true);
-        x.setRequestHeader("Content-type", "application/json");
-        x.onreadystatechange = function () {
-            x.readyState > 3 && callback && callback(x.responseText, x);
-        };
-        x.send(JSON.stringify(data));
-        return x;
-    };
 
     function disableScrolling() {
         console.log("disableScrolling");
@@ -67,6 +63,7 @@
     }
 
     function getApp(id) {
+        // id Pages.Index: js will contain Elm.Pages.Index (Elm.Pages.Index.init())
         var current = Elm;
         var mod_list = id.split(".");
         mod_list.forEach(function (element) {
@@ -86,6 +83,7 @@
         console.log("showLoading: setting timer");
         window.setTimeout(function () {
             if (theApp.is_shutting_down) {
+                console.log("is_shutting_down is true");
                 console.log("showLoading: app shutting down");
                 return;
             }
@@ -111,38 +109,33 @@
         }
     }
 
-    function offline_app(url) {
-        var msg = "Offline - Network Not Available";
-        return {
-            "title": msg,
-            "id": "Pages.Offline",
-            "config": {
-                "message": msg,
-                "title": msg,
-                "base": user_data,
-                "url": url,
-            },
-            "url": url,
-            "replace": null,
-            "redirect": null,
-            "cache": {
-                "etag": null,
-                "purge_caches": [],
-                "id": "default",
-            },
-            "hash": "",
-            "pure": true,
-            "pure_mode": "base",
-        };
-    }
-
-    function navigate(url, isPop) {
+    function navigate(url, isPop, pageLoad) {
         var url = new URL(url, document.location.href);
         url = url.pathname + url.search;
 
         // TODO: if URL is no longer pointing to self domain, document.location = url?
 
-        console.log("navigate", url, isPop);
+        if (url.indexOf("/test/replay/") === 0) {
+            document.location = url;
+            return;
+        }
+
+        console.log("navigate", url, isPop, pageLoad, url.indexOf("/test/replay/"));
+        var realm_navigation_context = {
+            ctx: Math.random(),
+            mode: MODE_NOTHING,
+        };
+
+        if (pageLoad) {
+            window.realm_navigation_context = realm_navigation_context;
+            console.log("page load, not trying ised");
+            loadPage(
+                document.getElementById("data").text,
+                url, false, false, MODE_ISED,
+                realm_navigation_context.ctx,
+            );
+            return;
+        }
 
         // [see https://www.fifthtry.com/amitu/realm/proposal/offline/ for design]
         //
@@ -176,9 +169,9 @@
         var ud_cookie_exists = document.cookie.indexOf("ud=") !== -1;
         var running_under_test = !!testContext;
 
-        var try_ised = false;
-        var try_pure = false;
-        var try_cache = false;
+        var try_ised = false; // short for personalised (ud cookie): this request always goes to our final server
+        var try_pure = false; // this request can be cached at edge (mumbai), and can be shared across all users
+        var try_cache = false; // this is in browser local cache
         var pure_on_cache_miss = false;
         var page_data_on_cache_miss = false;
         var show_offline_on_cache_miss = false;
@@ -227,6 +220,13 @@
             }
         }
 
+        // for now we are disabling caching behaviour
+        try_ised = true;
+        try_cache = false;
+        try_pure = false;
+        pure_on_cache_miss = false;
+        page_data_on_cache_miss = false;
+
         function showOffline() {
             loadPage(JSON.stringify(offline_app(url)), url, false, isPop, MODE_CACHE);
         }
@@ -235,11 +235,6 @@
             showOffline();
             return;
         }
-
-        var realm_navigation_context = {
-            ctx: Math.random(),
-            mode: MODE_NOTHING,
-        };
 
         var ised_url = "";
         var pure_url = "";
@@ -340,7 +335,7 @@
     }
 
     function submit(data) {
-        console.log("submit", data);
+        console.log("submit", data.url, data.data);
         var url = data.url;
         if (url.indexOf("?") !== -1) {
             url = url + "&realm_mode=ised";
@@ -348,6 +343,8 @@
             url = url + "?realm_mode=ised";
         }
         showLoading(window.realm_app);
+
+        // print data.data: if this is null then GET request will go
         ajax(
             url, data.data,
             function (t) {
@@ -359,38 +356,8 @@
 
     function changePage(data) {
         console.log("changePage", data);
-        loadPage(JSON.stringify(data), data.url, true, false, MODE_ISED, null);
-    }
-
-    function detectNotch() {
-        var _notch = 0;
-        if (!iphoneX) {
-            return _notch;
-        }
-
-        if( 'orientation' in window ) {
-          // Mobile
-          if (window.orientation === 90) {
-            _notch = 1;
-          } else if (window.orientation === -90) {
-            _notch = -1;
-          }
-        } else if ( 'orientation' in window.screen ) {
-          // Webkit
-          if( window.screen.orientation.type === 'landscape-primary') {
-            _notch = 1;
-          } else if( window.screen.orientation.type === 'landscape-secondary') {
-            _notch = -1;
-          }
-        } else if( 'mozOrientation' in window.screen ) {
-          // Firefox
-          if( window.screen.mozOrientation === 'landscape-primary') {
-            _notch = 1;
-          } else if( window.screen.mozOrientation === 'landscape-secondary') {
-            _notch = -1;
-          }
-        }
-        return _notch;
+        inChangePage = true;
+        loadPage(JSON.stringify(data.data), data.url, true, false, MODE_ISED, null);
     }
 
     function viewPortChanged() {
@@ -566,6 +533,8 @@
         }
         console.log("loadPage: data", data);
 
+        isDev = data.dev;
+
         if (!!window.caches && data.template) {
             console.log("loadPage: storing template to cache");
             caches.open("realm").then(function(cache) {
@@ -635,11 +604,18 @@
                 cache.put(found_url, new Response(text)).then(NOOP);
             });
         } else {
-            console.log("loadPage: decided not to cache");
+            console.log(
+                "loadPage: decided not to cache",
+                (found_url === expected_url),
+                !!window.caches,
+                (mode === MODE_PURE && !ud_cookie_exists),
+                mode === MODE_ISED,
+                data.id !== "Pages.NotFound"
+            );
         }
 
         // redirect if redirect is present
-        if (data.redirect) {
+        if (data.redirect && data.id === "") {
             console.log("loadPage: redirect is set, redirecting", data.redirect);
             window.location.replace(data.redirect);
             return;
@@ -673,33 +649,20 @@
 
             if (expected_url !== found_url) {
                 if (!!data.replace) {
+                    console.log("replacing", expected_url, found_url, data.replace);
                     history.replaceState(null, null, data.replace);
                 } else {
-                    history.replaceState(null, null, data.url);
-                }
-
-            }
-
-            if (isSubmit) {
-                if (data.replace) {
-                    console.log("loadNow: isSubmit, replacing", data.replace);
-                    history.replaceState(null, null, data.replace);
-                }
-                if (expected_url !== found_url) {
-                    console.log("loadNow: isSubmit, pushing", data.url);
-                    if (data.url !== found_url) {
-                        throw "broken assumption";
-                    }
+                    console.log("pushing", expected_url, found_url, data.replace);
                     history.pushState(null, null, data.url);
                 }
-            } else {
-                if (data.hash > window.realm_hash && navigator.onLine) {
-                    console.log("loadNow: realm hash mismatch, reloading");
-                    document.location.reload();
-                }
             }
 
-            var id = data.id;
+            if (!isSubmit && data.hash > window.realm_hash && navigator.onLine) {
+                console.log("loadNow: realm hash mismatch, reloading");
+                document.location.reload();
+            }
+
+            var id = data.id; // ELM app name, will be like Pages.Index for example
             var flags = data;
 
             if (found_url === "/the/__realm_offline_app__/") {
@@ -726,6 +689,8 @@
                     ]);
                     return;
                 }
+                // id is ELM app name, will be like Pages.Index for example. when running under test, dont actually
+                // load Elm.Pages.Index.init(), we do Elm.Pages.IndexTest.init()
                 id = data.id + "Test";
                 flags = attachFlagVars({
                     "id": testContext.id,
@@ -737,7 +702,7 @@
 
             var app = getApp(id);
             if (!app) {
-                console.log("loadNow: No app found for ", id);
+                log("loadNow: No app found for ", id);
                 if (!!testContext) {
                     window.parent.app.ports.fromIframe.send([
                         {
@@ -783,6 +748,9 @@
         } else if (cmd.action === "submit") {
             testContext = cmd;
             submit(cmd.payload);
+        } else if (cmd.action === "load") {
+            testContext = cmd;
+            loadPage();
         } else if (cmd.action === "render") {
             shutdown();
 
@@ -814,7 +782,9 @@
         flags.iphoneX = iphoneX;
         flags.notch = detectNotch();
         flags.darkMode = darkMode;
-        flags.now = new Date().getTime()
+        flags.now = new Date().getTime();
+        flags.dev = isDev;
+
         return flags;
     }
 
@@ -865,13 +835,13 @@
                     cache.match(USER_DATA_URL).then(function (r) {
                         if (!r) {
                             console.log("main: no user in cache");
-                            navigate(url, false);
+                            navigate(url, false, true);
                             return;
                         }
                         r.json().then(function (u) {
                             console.log("main: populating user_data from cache");
                             user_data = u;
-                            navigate(url, false);
+                            navigate(url, false, true);
                         })
                     });
                 });
@@ -882,7 +852,7 @@
                         cache.delete(USER_DATA_URL).then(NOOP);
                     });
                 }
-                navigate(url, false);
+                navigate(url, false, true);
             }
         }
 
@@ -893,7 +863,7 @@
         };
 
         if (
-               'serviceWorker' in navigator
+            'serviceWorker' in navigator
             && navigator.onLine
             && document.location.toString().indexOf("127.0.0.1") === -1
         ) {
@@ -907,6 +877,100 @@
                 });
             });
         }
+    }
+
+    function detectNotch() {
+        var _notch = 0;
+        if (!iphoneX) {
+            return _notch;
+        }
+
+        if( 'orientation' in window ) {
+            // Mobile
+            if (window.orientation === 90) {
+                _notch = 1;
+            } else if (window.orientation === -90) {
+                _notch = -1;
+            }
+        } else if ( 'orientation' in window.screen ) {
+            // Webkit
+            if( window.screen.orientation.type === 'landscape-primary') {
+                _notch = 1;
+            } else if( window.screen.orientation.type === 'landscape-secondary') {
+                _notch = -1;
+            }
+        } else if( 'mozOrientation' in window.screen ) {
+            // Firefox
+            if( window.screen.mozOrientation === 'landscape-primary') {
+                _notch = 1;
+            } else if( window.screen.mozOrientation === 'landscape-secondary') {
+                _notch = -1;
+            }
+        }
+        return _notch;
+    }
+
+    class RealmHTML extends HTMLElement{
+        constructor() {
+            super();
+
+            this._src = "<h1>hello world</h1>";
+        }
+
+        get src () {
+            return this._src;
+        }
+
+        set src(value) {
+            if (value === this._src) {
+                return;
+            }
+
+            this._src = value;
+            this.innerHTML = value;
+        }
+
+        connectedCallback() {
+            this.innerHTML = this._src;
+        }
+    }
+    customElements.define('realm-html', RealmHTML);
+
+
+    var ajax = function (url, data, callback) {
+        var x = new (XMLHttpRequest || ActiveXObject)("MSXML2.XMLHTTP.3.0");
+        x.open(data ? "POST" : "GET", url, true);
+        x.setRequestHeader("Content-type", "application/json");
+        x.onreadystatechange = function () {
+            x.readyState > 3 && callback && callback(x.responseText, x);
+        };
+        x.send(JSON.stringify(data));
+        return x;
+    };
+
+    function offline_app(url) {
+        var msg = "Offline - Network Not Available";
+        return {
+            "title": msg,
+            "id": "Pages.Offline",
+            "config": {
+                "message": msg,
+                "title": msg,
+                "base": user_data,
+                "url": url,
+            },
+            "url": url,
+            "replace": null,
+            "redirect": null,
+            "cache": {
+                "etag": null,
+                "purge_caches": [],
+                "id": "default",
+            },
+            "hash": "",
+            "pure": true,
+            "pure_mode": "base",
+        };
     }
 
     main();

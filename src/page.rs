@@ -15,6 +15,15 @@ impl Default for CacheSpec {
     }
 }
 
+#[derive(Debug)]
+pub struct Activity {
+    pub okind: String,
+    pub oid: String,
+    pub ekind: String,
+    pub success: bool,
+    pub data: serde_json::Value,
+}
+
 #[derive(Serialize, Debug)]
 pub struct PageSpec {
     pub id: String,
@@ -27,13 +36,14 @@ pub struct PageSpec {
     pub hash: String,
     pub pure: bool,
     pub pure_mode: String,
-    pub trace: Option<serde_json::Value>,
+    pub trace: Option<serde_json::Value>, // change it to Option<Trace>
+    pub dev: bool,
 
     #[serde(skip)]
     pub rendered: String,
 
     #[serde(skip)]
-    pub activity: Option<crate::Activity>,
+    pub activity: Option<Activity>,
 }
 
 fn escape(s: &str) -> String {
@@ -105,6 +115,11 @@ impl PageSpec {
         self.replace = Some(url);
         self
     }
+
+    pub fn with_redirect(mut self, url: String) -> Self {
+        self.redirect = Some(url);
+        self
+    }
 }
 
 pub trait Page: serde::ser::Serialize + askama::Template {
@@ -113,7 +128,7 @@ pub trait Page: serde::ser::Serialize + askama::Template {
     fn with(
         &self,
         title: &str,
-        activity: Option<crate::Activity>,
+        activity: Option<Activity>,
         cache: CacheSpec,
     ) -> Result<crate::Response, failure::Error> {
         Ok(crate::Response::Page(PageSpec {
@@ -129,6 +144,7 @@ pub trait Page: serde::ser::Serialize + askama::Template {
             pure_mode: "".into(),
             hash: CURRENT.clone(),
             trace: None,
+            dev: crate::base::is_test(),
             activity,
         }))
     }
@@ -165,14 +181,17 @@ pub trait Page: serde::ser::Serialize + askama::Template {
         okind: &str,
         oid: &str,
         ekind: &str,
+        edata: serde_json::Value,
+        success: bool,
     ) -> Result<crate::Response, failure::Error> {
         self.with(
             title,
-            Some(crate::Activity {
+            Some(Activity {
                 okind: okind.to_string(),
                 oid: oid.to_string(),
                 ekind: ekind.to_string(),
-                data: serde_json::Value::Null,
+                data: edata,
+                success,
             }),
             CacheSpec::default(),
         )
@@ -191,7 +210,6 @@ fn read_index() -> String {
     let proj_dir = std::env::current_dir().expect("Could not find current dir");
     let path =
         proj_dir.join(std::env::var("REALM_INDEX").unwrap_or_else(|_| "index.html".to_string()));
-    println!("reading_index: {:?}", &path);
     match std::fs::read_to_string(path) {
         Ok(p) => p,
         Err(_err) => default_page(),
@@ -204,7 +222,6 @@ pub(crate) fn read_current() -> String {
         std::env::var("REALM_CURRENT_HASH_FILE")
             .unwrap_or_else(|_| "static/current.txt".to_string()),
     );
-    println!("reading_current: {:?}", &path);
     std::fs::read_to_string(path).expect("current.txt missing")
 }
 

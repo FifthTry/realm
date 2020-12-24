@@ -1,4 +1,4 @@
-module Realm.Storybook exposing (Story, app)
+module Realm.Storybook exposing (Story, StorySection, app, getIdx)
 
 import Array exposing (Array)
 import Browser as B
@@ -16,8 +16,10 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Process
+import Realm as R
 import Realm.Ports as RP
 import Realm.Utils as RU exposing (edges)
+import Set exposing (Set)
 import Task
 import Tuple
 import Url exposing (Url)
@@ -30,7 +32,15 @@ type alias Story =
     , pageTitle : String
     , id : String
     , elmId : String
+
+    -- , reference : Url (https://www.fifthtry.com/amitu/fifthtry/images/crs.png)
     , config : JE.Value
+    }
+
+
+type alias StorySection =
+    { id : String
+    , stories : List Story
     }
 
 
@@ -40,13 +50,15 @@ type alias Model =
     , key : BN.Key
     , hash : Maybe String
     , hideSidebar : Bool
+
+    -- array of story section id and story
     , stories : Array ( String, Story )
     , title : String
     }
 
 
 type alias Config =
-    { stories : List ( String, List Story )
+    { stories : List StorySection
     , title : String
     }
 
@@ -72,6 +84,20 @@ desktop =
     { class = E.Desktop, orientation = E.Landscape }
 
 
+getIdx : List ( String, Story ) -> Int -> String -> Maybe Int
+getIdx lst idx ss =
+    case lst of
+        [] ->
+            Nothing
+
+        ( secId, story ) :: xs ->
+            if secId ++ "." ++ story.id == ss then
+                Just idx
+
+            else
+                getIdx xs (idx + 1) ss
+
+
 init : Config -> () -> Url -> BN.Key -> ( Model, Cmd Msg )
 init config _ url key =
     let
@@ -91,35 +117,60 @@ init config _ url key =
                 |> Maybe.map (\d -> RU.yesno (d == "desktop") desktop mobile)
                 |> Maybe.withDefault desktop
 
-        toCurrent : Maybe Int
+        toCurrent : Maybe String
         toCurrent =
-            (Url.Parser.s "storybook" <?> Q.int "current")
+            (Url.Parser.s "storybook" <?> Q.string "current")
                 |> (\p -> Url.Parser.parse p url)
                 |> Maybe.withDefault Nothing
 
+        stories : Array ( String, Story )
         stories =
             flatten config.stories
 
+        currentIdx : Maybe Int
+        currentIdx =
+            toCurrent
+                |> Maybe.andThen (getIdx (Array.toList stories) 0)
+
+        _ =
+            -- Check if all &current= slugs are unique
+            let
+                uLst : List String
+                uLst =
+                    stories
+                        |> Array.map (\( secId, story ) -> secId ++ "." ++ story.id)
+                        |> Array.toList
+                        |> Set.fromList
+                        |> Set.toList
+            in
+            if List.length uLst /= List.length (Array.toList stories) then
+                Debug.todo "Story IDs not unique"
+
+            else
+                Nothing
+
+        m : Model
         m =
-            { current = toCurrent
+            { current = currentIdx
             , title = config.title
             , device = toDevice
             , key = key
             , hash = Nothing
-            , hideSidebar = toSidebar
+            , hideSidebar =
+                if R.isTopLevel then
+                    toSidebar
+
+                else
+                    True
             , stories = stories
             }
     in
-    ( m
-    , Cmd.batch
-        [ Cmd.none -- TODO: bring this back: poll "empty"
-        , m.current
-            |> Maybe.andThen (\idx -> Array.get idx stories)
-            |> Maybe.map Tuple.second
-            |> Maybe.map render
-            |> Maybe.withDefault Cmd.none
-        ]
-    )
+    case currentIdx of
+        Just i ->
+            goto i m
+
+        Nothing ->
+            ( m, Cmd.none )
 
 
 poll : String -> Cmd Msg
@@ -132,7 +183,7 @@ poll hash =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
-    case Debug.log "Storybook.msg" ( msg, m.current ) of
+    case ( msg, m.current ) of
         ( Navigate idx, _ ) ->
             let
                 m2 =
@@ -238,10 +289,50 @@ goto idx m =
         |> Maybe.withDefault ( m, Cmd.none )
 
 
-flatten : List ( String, List Story ) -> Array ( String, Story )
+
+-- input to flatten:
+--
+-- [ { id = "Index"
+--   , stories = [ { config = <internals>
+--       , elmId = "Pages.Index"
+--       , id = "anonymous"
+--       , pageTitle = "Anonymous"
+--       , title = "Anonymous"
+--       }
+--     , { config = <internals>
+--       , elmId = "Pages.Index"
+--       , id = "with-no-tracks-or-library-with-users"
+--       , pageTitle = "With No Tracks Or Library, with Users"
+--       , title = "With No Tracks Or Library, with Users"
+--       }
+--    ]
+-- } ]
+--
+-- output:
+--
+-- [ ( "Index"
+--   , { config = <internals>
+--     , elmId = "Pages.Index"
+--     , id = "anonymous"
+--     , pageTitle = "Anonymous"
+--     , title = "Anonymous"
+--     }
+--   )
+--   , ( "Index"
+--     , { config = <internals>
+--       , elmId = "Pages.Index"
+--       , id = "with-no-tracks-or-library-with-users"
+--       , pageTitle = "With No Tracks Or Library, with Users"
+--       , title = "With No Tracks Or Library, with Users"
+--       }
+--   )
+-- ]
+
+
+flatten : List StorySection -> Array ( String, Story )
 flatten lst =
     lst
-        |> List.map (\( s, stories ) -> List.map (\story -> ( s, story )) stories)
+        |> List.map (\sec -> List.map (\story -> ( sec.id, story )) sec.stories)
         |> List.concat
         |> Array.fromList
 
@@ -432,7 +523,12 @@ updateUrl m c =
                 ++ RU.yesno (m.device == desktop) "desktop" "mobile"
                 ++ (case m.current of
                         Just idx ->
-                            "&current=" ++ String.fromInt idx
+                            case Array.get idx m.stories of
+                                Just ( secId, story ) ->
+                                    "&current=" ++ Url.percentEncode (secId ++ "." ++ story.id)
+
+                                Nothing ->
+                                    ""
 
                         Nothing ->
                             ""

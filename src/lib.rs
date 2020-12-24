@@ -14,6 +14,8 @@ extern crate failure;
 extern crate log;
 #[macro_use]
 extern crate observer_attribute;
+#[macro_use]
+extern crate askama;
 
 #[cfg(any(
     all(
@@ -31,14 +33,16 @@ extern crate observer_attribute;
 ))]
 compile_error!("only one of postgre_default, mysql_default or sqlite_default can be activated");
 
-pub mod activity;
 pub mod base;
 mod context;
+mod end_context;
+pub mod env;
 pub mod iframe;
 mod mode;
 mod page;
 pub mod request_config;
 mod response;
+pub mod schema;
 pub mod serve;
 pub mod serve_static;
 pub mod storybook;
@@ -46,19 +50,21 @@ pub mod test;
 mod urls;
 pub mod utils;
 pub mod watcher;
+pub use chrono::{DateTime, Utc};
+pub mod rr;
 
-pub use crate::context::Context;
+pub use crate::context::{cookies_from_request, Context};
+pub use crate::end_context::end_context;
 pub use crate::mode::Mode;
 pub use crate::page::{Page, PageSpec};
 pub use crate::request_config::RequestConfig;
+pub use crate::response::Response;
 pub use crate::response::{err, json, json_ok, json_with_context};
 pub use crate::serve::{http_to_hyper, THREAD_POOL};
 pub use crate::serve_static::serve_static;
 pub use crate::urls::{handle, is_realm_url};
+pub use crate::utils::{datetime_serializer, datetime_serializer_t};
 
-pub use crate::activity::Activity;
-
-pub use crate::response::Response;
 pub type Result = std::result::Result<crate::response::Response, failure::Error>;
 pub type Request = http::request::Request<Vec<u8>>;
 
@@ -73,60 +79,13 @@ pub trait UserData: std::string::ToString + std::str::FromStr {
     fn has_perm(&self, perm: &str) -> std::result::Result<bool, failure::Error>;
 }
 
-pub fn end_context<UD, NF>(in_: &crate::base::In<UD>, resp: Result, not_found: NF) -> Result
-where
-    UD: crate::UserData,
-    NF: FnOnce(&crate::base::In<UD>, &str) -> Result,
-{
-    #[cfg(feature = "postgres")]
-    crate::base::pg::rollback_if_required(&in_.conn);
-
-    let resp = match resp {
-        Ok(r) => Ok(r),
-        Err(e) => {
-            match e.downcast_ref::<crate::Error>() {
-                Some(crate::Error::PageNotFound { message }) => {
-                    observer::log("PageNotFound");
-                    observer::observe_string("error", message.as_str()); // TODO
-                    not_found(&in_, message.as_str())
-                }
-                Some(crate::Error::InputError { error }) => {
-                    let e = error.to_string();
-                    observer::log("InputError");
-                    observer::observe_json("error", serde_json::to_value(&e)?); // TODO
-                    not_found(&in_, e.as_str())
-                }
-                Some(crate::Error::FormError { errors }) => {
-                    observer::log("FormError");
-                    observer::observe_json("form_error", serde_json::to_value(&errors)?); // TODO
-                    in_.form_error(&errors)
-                }
-                _ => Err(e),
-            }
-        }
-    };
-
-    let v = observer::end_context().expect("create_context() not called");
-
-    match resp {
-        Ok(crate::Response::Page(page)) if in_.is_dev() => {
-            page.with_trace(v).map(crate::Response::Page)
-        }
-        Ok(crate::Response::JSON { data, context, .. }) if in_.is_dev() => {
-            Ok(crate::Response::JSON {
-                data,
-                context,
-                trace: Some(serde_json::to_value(v)?),
-            })
-        }
-        resp => resp,
-    }
-}
-
 #[derive(Fail, Debug)]
 pub enum Error {
     #[fail(display = "404 Page Not Found: {}", message)]
     PageNotFound { message: String },
+
+    #[fail(display = "replay failed: {}", tid)]
+    ReplayFailed { tid: String },
 
     #[fail(display = "Input Error: {:?}", error)]
     InputError {
@@ -137,6 +96,9 @@ pub enum Error {
     #[fail(display = "Form Error: {:?}", errors)]
     FormError {
         errors: std::collections::HashMap<String, String>,
+        success: String,
+        code: String,
+        data: serde_json::Value,
     },
 
     #[fail(display = "Internal Server Error: {}", message)]
@@ -159,18 +121,51 @@ pub enum Error {
         #[cause]
         error: diesel::result::Error,
     },
+
+    #[fail(display = "IO Error: {}", error)]
+    IOError {
+        #[cause]
+        error: std::io::Error,
+    },
 }
 
-pub fn error<T>(key: &str, message: &str) -> std::result::Result<T, failure::Error> {
+pub fn error<T>(
+    key: &str,
+    message: &str,
+    success: &str,
+    code: impl std::fmt::Display,
+) -> std::result::Result<T, failure::Error> {
     let mut e = std::collections::HashMap::new();
     e.insert(key.into(), message.into());
 
-    Err(Error::FormError { errors: e }.into())
+    Err(Error::FormError {
+        errors: e,
+        success: success.to_string(),
+        code: code.to_string(),
+        data: serde_json::json!({
+            key: key,
+            message: message,
+        }),
+    }
+    .into())
+}
+
+pub fn replay_failed<T>(tid: &str) -> std::result::Result<T, failure::Error> {
+    Err(Error::ReplayFailed {
+        tid: tid.to_string(),
+    }
+    .into())
 }
 
 impl From<diesel::result::Error> for Error {
     fn from(error: diesel::result::Error) -> Error {
         Error::DieselError { error }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Error {
+        Error::IOError { error }
     }
 }
 
@@ -205,4 +200,16 @@ impl<T> Or404<T> for std::result::Result<T, failure::Error> {
             .into()
         })
     }
+}
+
+pub fn cleanup_url(url: &url::Url) -> url::Url {
+    let mut out = url::Url::parse(&format!("http://yoursite.com{}", url.path())).unwrap();
+    for (k, v) in url.query_pairs() {
+        if k == "realm_mode" {
+            continue;
+        }
+        out.query_pairs_mut().append_pair(&k, &v);
+    }
+
+    out
 }

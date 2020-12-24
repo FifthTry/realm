@@ -1,6 +1,6 @@
 [package]
 name = "realm"
-version = "0.1.22"
+version = "0.1.23"
 authors = ["Amit Upadhyay <amitu@acko.com>"]
 description = "Rust / Elm base full stack web framework."
 license = "MIT"
@@ -14,45 +14,46 @@ homepage = "https://github.com/ackotech/realm"
 [features]
 default = []
 postgres = ["diesel/postgres", "observer/postgres"]
-sqlite = ["diesel/sqlite"]
 postgres_default = ["diesel/postgres"]
+sqlite = ["diesel/sqlite"]
 sqlite_default = ["diesel/sqlite"]
 
 [dependencies]
-mime_guess = "2"
-hyper = "0.12.33"
-futures-cpupool = "0.1.8"
-lazy_static = "1"
-futures = "0.1.26"
-http = "0.1.18"
-serde_json = "~1.0.0"
-serde = "~1.0.0"
-serde_derive = "~1.0.0"
-failure = "0.1"
-url = "2"
-itertools = "0.9"
-notify = "=5.0.0-pre.1"
-crossbeam-channel = "0.3.9"
-diesel = { version = "1.4.4", features = ["chrono"] }
+antidote = "1.0.0"
+askama = "0.10.1"
+bcrypt = "0.7"
 byteorder = "~1"
+colored = "1"
+cookie = { version = "0.13", features = ["percent-encode"] }
+crossbeam-channel = "0.3.9"
+diesel = { version = "1.4.4", features = ["chrono", "serde_json"] }
+failure = "0.1"
+ftd = { path = "../ftd" }
+futures = "0.1.26"
+futures-cpupool = "0.1.8"
+http = "0.1.18"
+hyper = "0.12.33"
+itertools = "0.9"
+lazy_static = "1"
+log = "0.4"
+mime_guess = "2"
+notify = "=5.0.0-pre.1"
+
+observer = { path = "../observer/observer" }
+observer_attribute = "0.1.8"
 r2d2 = "0.8.5"
 r2d2-diesel = "1.0.0"
-cookie = { version = "0.13", features = ["percent-encode"] }
+serde = "~1.0.0"
+serde_derive = "~1.0.0"
+serde_json = "~1.0.0"
 signed_cookies = "0.1.2"
-bcrypt = "0.7"
-colored = "1"
 syntect = "4"
-antidote = "1.0.0"
-askama = "0.9"
+url = "2"
 woothee = "0.11"
-log = "0.4"
-
-observer = "0.2.3"
-observer_attribute = "0.1.8"
 
 [dependencies.chrono]
-version = "0.4"
 features = ["serde"]
+version = "0.4"
 
 [dev-dependencies]
 pretty_assertions = "0.6"

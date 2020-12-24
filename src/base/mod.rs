@@ -1,6 +1,6 @@
 mod db;
 mod form;
-mod in_;
+pub(crate) mod in_;
 #[cfg(feature = "postgres")]
 pub mod pg;
 #[cfg(feature = "sqlite")]
@@ -8,14 +8,12 @@ pub mod sqlite;
 
 #[cfg(feature = "postgres")]
 pub mod point;
-pub mod sql_types;
 
 mod utils;
 
 pub use form::{Form, FormErrors};
 pub use in_::{In, In0, UD};
 
-pub use sql_types::{cistring_to_string, citext, CiString};
 pub use utils::elapsed;
 
 pub type Request = http::Request<Vec<u8>>;
@@ -43,7 +41,7 @@ pub fn error_stack(err: &failure::Error) -> String {
 }
 
 pub fn is_test() -> bool {
-    std::env::args().any(|e| e == "--test")
+    std::env::args().any(|e| e == "--test" || e == "--replay")
 }
 
 #[observed(namespace = "realm", with_result)]

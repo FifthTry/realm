@@ -37,19 +37,19 @@ impl FormErrors {
     }
 }
 
-impl From<FormErrors> for failure::Error {
-    fn from(e: FormErrors) -> failure::Error {
-        crate::Error::FormError {
-            errors: e
-                .0
-                .into_iter()
-                .filter(|(_, (_, e))| e.is_some())
-                .map(|(k, (_, e))| (k, e.unwrap()))
-                .collect(),
-        }
-        .into()
-    }
-}
+// impl From<FormErrors> for failure::Error {
+//     fn from(e: FormErrors) -> failure::Error {
+//         crate::Error::FormError {
+//             errors: e
+//                 .0
+//                 .into_iter()
+//                 .filter(|(_, (_, e))| e.is_some())
+//                 .map(|(k, (_, e))| (k, e.unwrap()))
+//                 .collect(),
+//         }
+//         .into()
+//     }
+// }
 
 impl Default for FormErrors {
     fn default() -> FormErrors {
@@ -128,19 +128,28 @@ where
         self.errors.0.values().any(|(_, e)| e.is_some())
     }
 
-    pub fn errors<T>(self) -> Result<T, FormErrors> {
-        Err(self.errors)
-    }
+    pub fn errors<T>(self, error: &str) -> Result<T, failure::Error> {
+        // TODO: create Error code from errors.
 
-    pub fn errors2<T>(self) -> Result<T, failure::Error> {
+        let errors: HashMap<String, String> = self
+            .errors
+            .0
+            .into_iter()
+            .filter(|(_, (_, e))| e.is_some())
+            .map(|(k, (_, e))| (k, e.unwrap()))
+            .collect();
+
+        let data = serde_json::json!(&errors);
+
+        let mut keys = errors.keys().map(|s| &**s).collect::<Vec<&str>>();
+        keys.sort_unstable();
+        let code = "form_errors: ".to_string() + &keys.join(" | ");
+
         Err(crate::Error::FormError {
-            errors: self
-                .errors
-                .0
-                .into_iter()
-                .filter(|(_, (_, e))| e.is_some())
-                .map(|(k, (_, e))| (k, e.unwrap()))
-                .collect(),
+            errors,
+            success: error.to_string(),
+            code,
+            data,
         }
         .into())
     }

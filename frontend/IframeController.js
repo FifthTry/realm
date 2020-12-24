@@ -1,6 +1,10 @@
+console.log = function() {}
+
 app = null;
 
-if (Elm.Test) {
+if (Elm.RealmTest) {
+    app = Elm.RealmTest.init({});
+} else if (Elm.Test) {
     app = Elm.Test.init({});
 } else {
     app = Elm.Storybook.init({});
@@ -32,7 +36,7 @@ if (app.ports && app.ports.toIframe) {
     app.ports.toIframe.subscribe(function(cmd) {
         console.log("cmd", cmd);
         // we unconditionally set this because iframe reloads in case outer page URL
-        // changes (which we change to keep track of story id etc in storybook).
+        // changes (which we change to keep collection of story id etc in storybook).
         lastCmd = cmd;
 
         var iframe = window.frames[0];

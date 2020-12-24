@@ -1,4 +1,4 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), aif, aifn, button, contains, deleteIth, edges, emptyField, err, escEnter, false, false2, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldWithDefault, fieldsNoError, fmaybe, form, formE, html, htmlLine, htmlWith, id, iff, iframe, isJust, jo, lGet, ltr, mString, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, nif, niff, none, onClick, onDoubleClick, onEnter, onEsc, onFocus, onSpecialS, rendered, renderedE, renderedToString, result, rtl, slugify, style, subIfJust, subIfNothing, text, title, true, true2, val, withError, withFocus, yesno, yesno1, zip)
+module Realm.Utils exposing (Field, Form, Rendered(..), aif, aifn, button, capitalize, class, contains, dalways, deleteIth, edges, emptyField, err, escEnter, false, false2, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldWithDefault, fieldsNoError, fmaybe, form, formE, html, htmlLine, htmlWith, id, iff, iframe, isJust, jo, lGet, ltr, mString, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, mif2, mifab, nif, niff, none, onClick, onDoubleClick, onEnter, onEsc, onFocus, onSpecialS, oneOf, posix, posixE, pre, rendered, renderedE, renderedToString, result, rtl, slugify, style, subIfJust, subIfNothing, text, title, true, true2, val, withError, withFocus, withInitialValue, yesno, yesno1, zIndex, zip)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -7,18 +7,22 @@ import Element.Input as EI
 import Html
 import Html.Attributes as HA
 import Html.Events
-import Html.Parser
-import Html.Parser.Util
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
 import Slug
 import Task
+import Time
 
 
 id : String -> E.Attribute msg
 id =
     HA.id >> E.htmlAttribute
+
+
+class : String -> E.Attribute msg
+class =
+    HA.class >> E.htmlAttribute
 
 
 jo : List ( String, JE.Value ) -> Maybe JE.Value
@@ -94,6 +98,21 @@ mif m f =
             E.none
 
 
+dalways : c -> a -> b -> c
+dalways c _ _ =
+    c
+
+
+mif2 : Maybe a -> E.Element msg -> E.Element msg
+mif2 m f =
+    case m of
+        Just _ ->
+            f
+
+        Nothing ->
+            E.none
+
+
 nif : Maybe a -> E.Element msg -> E.Element msg
 nif m f =
     case m of
@@ -102,6 +121,16 @@ nif m f =
 
         Nothing ->
             f
+
+
+mifab : Maybe a -> b -> b -> b
+mifab m f1 f2 =
+    case m of
+        Just _ ->
+            f1
+
+        Nothing ->
+            f2
 
 
 onEnter : msg -> E.Attribute msg
@@ -141,7 +170,7 @@ onSpecialS msg =
                 |> JD.andThen
                     (\( key, special ) ->
                         case
-                            Debug.log "Book.save" ( key, special )
+                            ( key, special )
                         of
                             ( "s", True ) ->
                                 JD.succeed { message = msg, stopPropagation = True, preventDefault = True }
@@ -301,6 +330,16 @@ ltr =
         |> E.htmlAttribute
 
 
+posix : JD.Decoder Time.Posix
+posix =
+    JD.map Time.millisToPosix JD.int
+
+
+posixE : Time.Posix -> JE.Value
+posixE t =
+    JE.int (Time.posixToMillis t)
+
+
 type Rendered
     = Rendered String
 
@@ -322,14 +361,12 @@ renderedE (Rendered md) =
 
 html : List (E.Attribute msg) -> Rendered -> E.Element msg
 html attrs (Rendered md) =
-    case Html.Parser.run md of
-        Ok r ->
-            Html.Parser.Util.toVirtualDom r
-                |> List.map E.html
-                |> E.textColumn attrs
-
-        Err e ->
-            E.text (Debug.toString e)
+    E.el attrs
+        (E.html <|
+            Html.node "realm-html"
+                [ HA.src md, HA.style "white-space" "initial" ]
+                []
+        )
 
 
 htmlWith :
@@ -337,27 +374,28 @@ htmlWith :
     -> (E.Element msg -> E.Element msg)
     -> Rendered
     -> E.Element msg
-htmlWith attrs wrapper (Rendered md) =
-    case Html.Parser.run md of
-        Ok r ->
-            Html.Parser.Util.toVirtualDom r
-                |> List.map (E.html >> wrapper)
-                |> E.textColumn attrs
-
-        Err e ->
-            E.text (Debug.toString e)
+htmlWith attrs _ r =
+    html attrs r
 
 
 htmlLine : List (E.Attribute msg) -> Rendered -> E.Element msg
-htmlLine attrs (Rendered md) =
-    case Html.Parser.run md of
-        Ok r ->
-            Html.Parser.Util.toVirtualDom r
-                |> List.map E.html
-                |> E.paragraph attrs
+htmlLine =
+    html
 
-        Err e ->
-            E.text (Debug.toString e)
+
+pre : List (Html.Attribute msg) -> String -> E.Element msg
+pre styles s =
+    E.html
+        (Html.pre
+            ([ HA.style "overflow-x" "auto"
+             , HA.style "overflow-y" "hidden"
+             , HA.style "padding" "8px"
+             , HA.style "margin" "0"
+             ]
+                ++ styles
+            )
+            [ Html.text s ]
+        )
 
 
 edges : { top : Int, right : Int, bottom : Int, left : Int }
@@ -486,6 +524,15 @@ type alias Field =
     , error : Maybe String
     , edited : Bool
     , focused : Bool
+    }
+
+
+withInitialValue : String -> Field
+withInitialValue v =
+    { value = v
+    , edited = False
+    , error = Nothing
+    , focused = False
     }
 
 
@@ -639,11 +686,37 @@ false2 tid v _ =
 match : String -> a -> a -> R.TestResult
 match tid exp got =
     if exp /= got then
+        let
+            _ =
+                R.log "TestID" tid
+
+            expS =
+                R.log "exp" (R.toString exp)
+
+            gotS =
+                R.log "got" (R.toString got)
+
+            _ =
+                R.log "Eqv" (expS == gotS)
+
+            _ =
+                R.log "EqvOrg" (exp == got)
+        in
         R.TestFailed tid
-            ("Expected: " ++ Debug.toString exp ++ " got: " ++ Debug.toString got)
+            ("Expected: " ++ R.toString exp ++ " got: " ++ R.toString got)
 
     else
         R.TestPassed tid
+
+
+oneOf : String -> List a -> a -> R.TestResult
+oneOf tid exp got =
+    if List.member got exp then
+        R.TestPassed tid
+
+    else
+        R.TestFailed tid
+            ("Expected: " ++ R.toString exp ++ " got: " ++ R.toString got)
 
 
 matchCtx : a -> String -> JD.Decoder a -> JE.Value -> R.TestResult
@@ -657,9 +730,9 @@ matchCtx got key dec v =
             if exp /= got then
                 R.TestFailed tid <|
                     "Expected: "
-                        ++ Debug.toString exp
+                        ++ R.toString exp
                         ++ " got: "
-                        ++ Debug.toString got
+                        ++ R.toString got
 
             else
                 R.TestPassed tid
@@ -680,3 +753,23 @@ matchCtx2 tid ( key, dec, v ) f =
 
         Err e ->
             R.TestFailed tid (JD.errorToString e)
+
+
+capitalize : String -> String
+capitalize str =
+    case List.head <| String.toList str of
+        Just h ->
+            case List.tail <| String.toList str of
+                Just t ->
+                    (String.toUpper <| String.fromChar h) ++ String.fromList t
+
+                Nothing ->
+                    String.toUpper <| String.fromChar h
+
+        Nothing ->
+            ""
+
+
+zIndex : Int -> E.Attribute msg
+zIndex i =
+    E.htmlAttribute (HA.style "z-index" (String.fromInt i))
