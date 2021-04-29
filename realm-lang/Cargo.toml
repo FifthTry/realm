@@ -1,0 +1,19 @@
+[package]
+name = "realm-lang"
+description = "localisation library for the realm framework"
+version = "0.1.0"
+authors = ["Amit Upadhyay <upadhyay@gmail.com>"]
+edition = "2018"
+license = "Apache-2.0"
+documentation = "https://www.fifthtry.com/amitu/realm/"
+
+[lib]
+path = "src/lib.rs"
+bench = false
+
+[dependencies]
+accept-language = "2"
+thiserror = "1"
+serde = "1"
+enum-iterator = "0.6.0"
+enum-iterator-derive = "0.6.0"
