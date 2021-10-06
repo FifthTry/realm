@@ -31,3 +31,18 @@ table! {
         site_version -> Text,
     }
 }
+
+table! {
+    realm_task (id) {
+        id -> Int4,
+        data -> Jsonb,
+        cookies -> Jsonb,
+        status -> Text,
+        path -> Text,
+        method -> Text,
+        number_tries -> Int4,
+        priority -> Int4,
+        created_on -> Timestamptz,
+        updated_on -> Timestamptz,
+    }
+}

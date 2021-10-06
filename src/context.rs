@@ -2,7 +2,7 @@ pub struct Context {
     pub method: http::Method,
     pub url: url::Url,
     pub query: std::collections::HashMap<String, String>,
-    headers: http::HeaderMap<http::HeaderValue>,
+    pub headers: http::HeaderMap<http::HeaderValue>,
     cookies: std::collections::HashMap<String, String>,
     set_cookies: std::cell::RefCell<std::collections::HashMap<String, String>>,
     context: std::cell::RefCell<std::collections::HashMap<String, String>>,
@@ -13,6 +13,7 @@ pub struct Context {
     pub(crate) record: Option<String>,
     step: std::cell::RefCell<Option<crate::rr::Step>>,
     is_test: bool,
+    meta: std::cell::RefCell<crate::HTMLMeta>,
 }
 
 pub fn cookies_from_request(
@@ -33,11 +34,11 @@ pub fn cookies_from_request(
 impl Context {
     pub fn from(
         method: http::Method,
-        path: String,
+        path: &str,
         body: serde_json::Value,
         cookies: std::collections::HashMap<String, String>,
     ) -> Self {
-        let url = crate::utils::to_url(path.as_str());
+        let url = crate::utils::to_url(path);
         let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
 
         Context {
@@ -48,6 +49,7 @@ impl Context {
             context: std::cell::RefCell::new(std::collections::HashMap::new()),
             url,
             body,
+            meta: std::cell::RefCell::new(Default::default()),
             mode: crate::Mode::ISED,
             is_crawler: false,
             query,
@@ -58,6 +60,10 @@ impl Context {
         }
     }
 
+    pub fn meta(&self) -> std::cell::RefMut<crate::HTMLMeta> {
+        self.meta.borrow_mut()
+    }
+
     pub(crate) fn set_step(&self, step: crate::rr::Step) {
         self.step.replace(Some(step));
     }
@@ -66,11 +72,11 @@ impl Context {
         self.step.replace(None)
     }
 
-    pub fn from_request(req: http::request::Request<Vec<u8>>) -> Self {
-        let url = url::Url::parse(&format!("http://foo.com{}", req.uri()).as_str()).unwrap();
+    pub fn from_request(req: &http::request::Request<Vec<u8>>) -> Self {
+        let url = url::Url::parse(format!("http://foo.com{}", req.uri()).as_str()).unwrap();
         let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
 
-        let cookies = cookies_from_request(&req);
+        let cookies = cookies_from_request(req);
 
         let method = req.method().to_owned();
         let headers = req.headers().to_owned();
@@ -94,6 +100,7 @@ impl Context {
             context: std::cell::RefCell::new(std::collections::HashMap::new()),
             step: std::cell::RefCell::new(None),
             is_test: false,
+            meta: std::cell::RefCell::new(Default::default()),
         }
     }
 
@@ -220,11 +227,11 @@ impl Context {
         self.cookie(name, "", 0);
     }
 
-    pub fn cookie(&self, name: &str, value: &str, age: i32) {
+    pub fn cookie(&self, name: &str, value: &str, age: i64) {
         if name != "vid" && name != "tid" {
             observer::observe_string("cookie_name", name);
             observer::transient_string("cookie_value", value);
-            observer::observe_i32("cookie_age", age);
+            observer::observe_i64("cookie_age", age);
         }
 
         self.set_cookies
@@ -278,5 +285,9 @@ impl Context {
             .replace(http::response::Builder::new())
             .body(body)
             .map_err(|e| e.into())
+    }
+
+    pub fn get_body(&self) -> String {
+        self.body.to_string()
     }
 }

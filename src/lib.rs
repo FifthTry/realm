@@ -1,6 +1,4 @@
 #[macro_use]
-extern crate serde_derive;
-#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
@@ -37,24 +35,29 @@ pub mod base;
 mod context;
 mod end_context;
 pub mod env;
+mod html_meta;
 pub mod iframe;
 mod mode;
 mod page;
 pub mod request_config;
 mod response;
 pub mod schema;
-pub mod serve;
 pub mod serve_static;
 pub mod storybook;
 pub mod test;
+mod tldr;
 mod urls;
 pub mod utils;
 pub mod watcher;
 pub use chrono::{DateTime, Utc};
+pub mod i18n;
 pub mod rr;
+pub mod serve;
+pub mod worker;
 
 pub use crate::context::{cookies_from_request, Context};
 pub use crate::end_context::end_context;
+pub use crate::html_meta::HTMLMeta;
 pub use crate::mode::Mode;
 pub use crate::page::{Page, PageSpec};
 pub use crate::request_config::RequestConfig;
@@ -62,14 +65,17 @@ pub use crate::response::Response;
 pub use crate::response::{err, json, json_ok, json_with_context};
 pub use crate::serve::{http_to_hyper, THREAD_POOL};
 pub use crate::serve_static::serve_static;
+pub use crate::tldr::TLDR;
 pub use crate::urls::{handle, is_realm_url};
-pub use crate::utils::{datetime_serializer, datetime_serializer_t};
+pub use crate::utils::{datetime_serializer, datetime_serializer_t, option_datetime_serializer};
 
 pub type Result = std::result::Result<crate::response::Response, failure::Error>;
 pub type Request = http::request::Request<Vec<u8>>;
 
 pub trait Subject: askama::Template {}
 pub trait Text: askama::Template {}
+
+#[allow(clippy::upper_case_acronyms)]
 pub trait HTML: askama::Template {}
 
 // TODO: add a constraint to FromStr::Err implements Debug
@@ -140,6 +146,25 @@ pub fn error<T>(
 
     Err(Error::FormError {
         errors: e,
+        success: success.to_string(),
+        code: code.to_string(),
+        data: serde_json::json!({
+            key: key,
+            message: message,
+        }),
+    }
+    .into())
+}
+
+pub fn error_with_errors<T>(
+    key: &str,
+    message: &str,
+    success: &str,
+    code: impl std::fmt::Display,
+    errors: std::collections::HashMap<String, String>,
+) -> std::result::Result<T, failure::Error> {
+    Err(Error::FormError {
+        errors,
         success: success.to_string(),
         code: code.to_string(),
         data: serde_json::json!({

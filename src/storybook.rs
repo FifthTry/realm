@@ -58,11 +58,10 @@ fn is_ref_allowed(referer: &str, allowed_refs: &str) -> bool {
         "http://0.0.0.0:3000/",
     ]
     .to_vec();
-    let ar: Vec<&str> = allowed_refs.split(',').collect();
 
     local_referers
         .into_iter()
-        .chain(ar.into_iter())
+        .chain(allowed_refs.split(','))
         .any(|x| referer.starts_with(x))
 }
 
@@ -100,7 +99,7 @@ mod tests {
 
     #[test]
     fn not_allowed_wrong_referer() {
-        match allowed(false, "wrong referer", "") {
+        match allowed(false, "wrong referer", "xyz") {
             Ok(_) => assert!(false, "Should not be allowed with wrong referer"),
             Err(_) => assert!(true),
         }

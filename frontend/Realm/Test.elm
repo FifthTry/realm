@@ -341,7 +341,7 @@ resolve key dec f v =
         Err _ ->
             let
                 _ =
-                    R.crash "not handled3"
+                    R.crash <| "key not found3: " ++ key ++ " in " ++ JE.encode 0 v
             in
             "not implemented"
 
@@ -355,7 +355,7 @@ resolveA key dec f v =
         Err _ ->
             let
                 _ =
-                    R.crash "not handled4"
+                    R.crash <| "key not found1: " ++ key ++ " in " ++ JE.encode 0 v
             in
             JE.null
 
@@ -374,7 +374,7 @@ resolveA2 key dec f v =
         Err _ ->
             let
                 _ =
-                    R.crash "not handled5"
+                    R.crash <| "key not found2: " ++ key ++ " in " ++ JE.encode 0 v
             in
             ( "not implemented", JE.null )
 
@@ -537,7 +537,7 @@ update msg m =
             ( m, Cmd.none )
 
         ( FromChild v, Just idx ) ->
-            case JD.decodeValue (JD.list R.testResult) v of
+            case R.log "decoded" <| JD.decodeValue (JD.list R.testResult) v of
                 Ok results ->
                     let
                         m2 =

@@ -53,5 +53,10 @@
     "critical": false,
     "result_type": "list",
     "fields": {}
+  },
+  "realm__pg__connection_with_url": {
+    "critical": false,
+    "result_type": "list",
+    "fields": {}
   }
 }

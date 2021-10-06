@@ -92,33 +92,64 @@ pub fn serve_static(ctx: &crate::Context) -> Result<crate::Response, failure::Er
 }
 
 lazy_static! {
-    pub static ref ELM: Vec<u8> = read_static("elm", "");
-    pub static ref ELM_GZ: Vec<u8> = read_static("elm", ".gz");
-    pub static ref ELM_BR: Vec<u8> = read_static("elm", ".br");
-    pub static ref SW: Vec<u8> = read_static("sw", "");
+    pub static ref ELM: std::io::Result<Vec<u8>> = read_static(PrefixSuffix::Elm);
+    pub static ref ELM_GZ: std::io::Result<Vec<u8>> = read_static(PrefixSuffix::ElmGz);
+    pub static ref ELM_BR: std::io::Result<Vec<u8>> = read_static(PrefixSuffix::ElmBr);
+    pub static ref SW: std::io::Result<Vec<u8>> = read_static(PrefixSuffix::Sw);
 }
 
-fn read_static(prefix: &str, suffix: &str) -> Vec<u8> {
-    let proj_dir = std::env::current_dir().expect("Could not find current dir");
+fn read_static(pre_suffix: PrefixSuffix) -> std::io::Result<Vec<u8>> {
+    let proj_dir = std::env::current_dir().map_err(|e| {
+        println!("read_static_err: {}", e.to_string());
+        e
+    })?;
+    let (prefix, suffix) = pre_suffix.to_str();
     let path = proj_dir.join(format!(
         "static/{}.{}.js{}",
         prefix,
         crate::page::read_current(),
         suffix
     ));
-    std::fs::read(path.as_path()).unwrap_or_else(|_| panic!("failed to read: {:?}", path))
+    std::fs::read(path.as_path()).map_err(|e| {
+        println!(
+            "path_not_found: {:?}, err: {}",
+            path.as_os_str(),
+            e.to_string()
+        );
+        e
+    })
 }
 
-fn get_static(prefix: &str, suffix: &str) -> Vec<u8> {
+enum PrefixSuffix {
+    Elm,   // "elm", ""
+    ElmGz, // "elm", ".gz"
+    ElmBr, // "elm", ".br"
+    Sw,    // "sw", ""
+}
+
+impl PrefixSuffix {
+    pub fn to_str(&self) -> (&str, &str) {
+        match self {
+            Self::Elm => ("elm", ""),
+            Self::ElmGz => ("elm", ".gz"),
+            Self::ElmBr => ("elm", ".br"),
+            Self::Sw => ("sw", ""),
+        }
+    }
+}
+
+fn get_static(pre_suffix: PrefixSuffix) -> Result<Vec<u8>, failure::Error> {
     if cfg!(debug_assertions) {
-        read_static(prefix, suffix)
+        read_static(pre_suffix).map_err(|e| failure::err_msg(format!("{}", e)))
     } else {
-        match (prefix, suffix) {
-            ("elm", "") => ELM.clone(),
-            ("elm", ".gz") => ELM_GZ.clone(),
-            ("elm", ".br") => ELM_BR.clone(),
-            ("sw", "") => SW.clone(),
-            _ => unreachable!(),
+        match match pre_suffix {
+            PrefixSuffix::Elm => ELM.as_ref(),
+            PrefixSuffix::ElmGz => ELM_GZ.as_ref(),
+            PrefixSuffix::ElmBr => ELM_BR.as_ref(),
+            PrefixSuffix::Sw => SW.as_ref(),
+        } {
+            Ok(t) => Ok(t.clone()),
+            Err(e) => Err(failure::err_msg(format!("{}", e))),
         }
     }
 }
@@ -132,11 +163,11 @@ pub fn static_content(src: &str) -> Result<Vec<u8>, failure::Error> {
         }
 
         return Ok(if src.ends_with(".js") {
-            get_static("elm", "")
+            get_static(PrefixSuffix::Elm)?
         } else if src.ends_with(".js.gz") {
-            get_static("elm", ".gz")
+            get_static(PrefixSuffix::ElmGz)?
         } else {
-            get_static("elm", ".br")
+            get_static(PrefixSuffix::ElmBr)?
         });
     }
 
@@ -146,7 +177,7 @@ pub fn static_content(src: &str) -> Result<Vec<u8>, failure::Error> {
         }
 
         return Ok(if src.ends_with(".js") {
-            get_static("sw", "")
+            get_static(PrefixSuffix::Sw)?
         } else {
             return Err(failure::err_msg("not found"));
         });

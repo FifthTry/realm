@@ -1,6 +1,4 @@
-// yo
-
-#[derive(Serialize, Debug)]
+#[derive(serde::Serialize, Debug)]
 pub struct CacheSpec {
     etag: Option<String>,
     purge_caches: Vec<String>,
@@ -26,7 +24,7 @@ pub struct Activity {
     pub data: serde_json::Value,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(serde::Serialize, Debug)]
 pub struct PageSpec {
     pub id: String,
     pub config: serde_json::Value,
@@ -40,6 +38,7 @@ pub struct PageSpec {
     pub pure_mode: String,
     pub trace: Option<serde_json::Value>, // change it to Option<Trace>
     pub dev: bool,
+    pub domain: String,
 
     #[serde(skip)]
     pub rendered: String,
@@ -48,7 +47,7 @@ pub struct PageSpec {
     pub activity: Option<Activity>,
 }
 
-fn escape(s: &str) -> String {
+pub fn escape(s: &str) -> String {
     let s = s.replace('>', "\\u003E");
     let s = s.replace('<', "\\u003C");
     s.replace('&', "\\u0026")
@@ -67,11 +66,11 @@ impl PageSpec {
         let data = serde_json::to_value(&self)?;
 
         let data = match data {
-            serde_json::Value::Object(mut m) => {
-                let h2 = html
+            serde_json::Value::Object(m) => {
+                let _h2 = html
                     .replace("__realm_hash__", CURRENT.as_str())
                     .replace("__realm_body__", "");
-                m.insert("template".to_string(), serde_json::Value::String(h2));
+                // m.insert("template".to_string(), serde_json::Value::String(h2));
                 serde_json::Value::Object(m)
             }
             _ => data,
@@ -80,17 +79,28 @@ impl PageSpec {
         Ok(data)
     }
 
-    pub fn render(&self, is_crawler: bool) -> Result<Vec<u8>, failure::Error> {
+    pub fn render(
+        &self,
+        is_crawler: bool,
+        meta: std::cell::RefMut<crate::HTMLMeta>,
+    ) -> Result<Vec<u8>, failure::Error> {
         let data = escape(serde_json::to_string_pretty(&self.json_with_template()?)?.as_str());
-
+        let title = escape(&self.title);
         let mut html = get_page();
-        html = html.replace("__realm_title__", escape(&self.title).as_str());
+        html = html
+            .replace("__realm_title__", title.as_str())
+            .replace("__realm_meta__", meta.to_html(title.as_str()).as_str())
+            .replace(
+                "__ftd_js__",
+                std::fs::read_to_string("ftd/ftd.js")?.as_str(),
+            );
 
         if is_crawler {
             html = html
                 .replace("__realm_body__", &self.rendered)
                 .replace("__realm_data__", "")
-                .replace("<script src='/static/elm.__realm_hash__.js'></script>", "");
+                .replace("<script src='/static/__hash__/elm.js'></script>", "")
+                .replace("type='module'", "type='ignore-please'");
         } else {
             html = html
                 .replace("__realm_data__", &data)
@@ -147,6 +157,7 @@ pub trait Page: serde::ser::Serialize + askama::Template {
             hash: CURRENT.clone(),
             trace: None,
             dev: crate::base::is_test(),
+            domain: crate::env::site_url(),
             activity,
         }))
     }
@@ -156,9 +167,13 @@ pub trait Page: serde::ser::Serialize + askama::Template {
     }
 
     fn with_etag(&self, title: &str, etag: &str) -> Result<crate::Response, failure::Error> {
-        let mut cache = CacheSpec::default();
-        cache.etag = Some(etag.to_string());
-        self.with_cache(title, cache)
+        self.with_cache(
+            title,
+            CacheSpec {
+                etag: Some(etag.to_string()),
+                ..Default::default()
+            },
+        )
     }
 
     fn with_cache_id(
@@ -167,10 +182,14 @@ pub trait Page: serde::ser::Serialize + askama::Template {
         etag: Option<String>,
         id: &str,
     ) -> Result<crate::Response, failure::Error> {
-        let mut cache = CacheSpec::default();
-        cache.etag = etag;
-        cache.id = Some(id.to_string());
-        self.with_cache(title, cache)
+        self.with_cache(
+            title,
+            CacheSpec {
+                etag,
+                id: Some(id.to_string()),
+                ..Default::default()
+            },
+        )
     }
 
     fn with_title(&self, title: &str) -> Result<crate::Response, failure::Error> {
@@ -200,7 +219,7 @@ pub trait Page: serde::ser::Serialize + askama::Template {
     }
 }
 
-fn get_page() -> String {
+pub(crate) fn get_page() -> String {
     if cfg!(debug_assertions) {
         read_index()
     } else {
@@ -245,10 +264,32 @@ __realm_data__
         <style>p {margin: 0}</style>
     </head>
     <body>
-        __realm_body__
-        <div id="main"></div>
-        <script src="/static/elm.__realm_hash__.js"></script>
-    </body>
+    __realm_body__
+    <div id="main"></div>
+    <script src="/static/__hash__/elm.js"></script>
+
+    <script type="module">
+      import init, { create } from '/static/__hash__/ftd_rt.js';
+
+      async function run() {
+        await init();
+
+        function inner() {
+          if (!window.realm) {
+              window.requestAnimationFrame(inner);
+              return;
+          }
+
+          realm(create);
+        }
+
+        window.requestAnimationFrame(inner);
+      }
+
+      run();
+    </script>
+
+  </body>
 </html>
 "#
     .to_string()

@@ -1,6 +1,4 @@
-use enum_iterator_derive::IntoEnumIterator;
-
-#[derive(Copy, Debug, PartialEq, Clone, Eq, Hash, IntoEnumIterator)]
+#[derive(Copy, Debug, PartialEq, Clone, Eq, Hash, enum_iterator_derive::IntoEnumIterator)]
 pub enum Language {
     Afar,
     Abkhaz,
@@ -1200,6 +1198,33 @@ impl Language {
     pub fn all() -> Vec<Language> {
         use enum_iterator::IntoEnumIterator;
         Language::into_enum_iter().collect()
+    }
+
+    pub fn common() -> Vec<Language> {
+        vec![
+            Language::Bengali,
+            Language::Chinese,
+            Language::Dutch,
+            Language::English,
+            Language::Esperanto,
+            Language::French,
+            Language::Greek,
+            Language::Hebrew,
+            Language::Hindi,
+            Language::Indonesian,
+            Language::Italian,
+            Language::Japanese,
+            Language::Korean,
+            Language::Polish,
+            Language::Portuguese,
+            Language::Russian,
+            Language::Spanish,
+            Language::Tagalog,
+            Language::Tamil,
+            Language::Telugu,
+            Language::Turkish,
+            Language::Ukrainian,
+        ]
     }
 }
 

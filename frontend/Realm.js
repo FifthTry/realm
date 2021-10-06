@@ -1,4 +1,4 @@
-(function (window) {
+(function () {
     "use strict";
 
     var log = console.log;
@@ -9,24 +9,20 @@
     var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     var ratio = window.devicePixelRatio || 1;
     var screen = {
-        width : window.screen.width * ratio,
-        height : window.screen.height * ratio
+        width: window.screen.width * ratio,
+        height: window.screen.height * ratio
     };
-    var iphoneX = (iOS && screen.width === 1242 && screen.height === 2688)? 1 : 0;
-
-    var darkMode = !!(
-        window.matchMedia
-        && window.matchMedia('(prefers-color-scheme: dark)').matches
-    );
+    var iphoneX = (iOS && screen.width === 1242 && screen.height === 2688) ? 1 : 0;
 
     var testContext = null;
     var unloadTest = 0;
 
     var isDev = false;
+    var domain = "";
 
     window.realm_app = null;
 
-    var NOOP = function () {};
+    var NOOP = function () { };
 
     var MODE_NOTHING = 0;
     var MODE_CACHE = 1;
@@ -39,13 +35,32 @@
     var is_first_load = true;
     var user_data = null;
 
+    function setSessionStorage(data) {
+        localStorage.setItem(data.key, JSON.stringify(data.value.local));
+        sessionStorage.setItem(data.key, JSON.stringify(data.value.session));
+    }
+    function setLocalStorage(data) {
+        localStorage.setItem(data.key, JSON.stringify(data.value));
+    }
+    function deleteSessionStorage(data) {
+        sessionStorage.setItem(data.key, null);
+        localStorage.setItem(data.key, null);
+    }
+
+    function scrollIntoView(id) {
+        var element = document.getElementById(id);
+        if (element != null) {
+            element.scrollIntoView();
+        }
+    }
+
     function disableScrolling() {
         console.log("disableScrolling");
 
-        var x=window.scrollX;
-        var y=window.scrollY;
+        var x = window.scrollX;
+        var y = window.scrollY;
 
-        window.onscroll=function(){
+        window.onscroll = function () {
             window.scrollTo(x, y);
             sendScroll();
         };
@@ -59,7 +74,7 @@
 
     function enableScrolling() {
         console.log("enableScrolling");
-        window.onscroll=sendScroll;
+        window.onscroll = sendScroll;
     }
 
     function getApp(id) {
@@ -110,8 +125,13 @@
     }
 
     function navigate(url, isPop, pageLoad) {
-        var url = new URL(url, document.location.href);
-        url = url.pathname + url.search;
+        // if old url and url only differ in hash then return
+        console.log("navigate", url);
+        enableScrolling();
+        // TODO: Fix replay test.
+        // var url = new URL(url, document.location.href);
+        // url = url.origin + url.pathname + url.search;
+        // url = url.pathname + url.search;
 
         // TODO: if URL is no longer pointing to self domain, document.location = url?
 
@@ -169,32 +189,32 @@
         var ud_cookie_exists = document.cookie.indexOf("ud=") !== -1;
         var running_under_test = !!testContext;
 
-        var try_ised = false; // short for personalised (ud cookie): this request always goes to our final server
-        var try_pure = false; // this request can be cached at edge (mumbai), and can be shared across all users
-        var try_cache = false; // this is in browser local cache
+        var try_rust = false; // short for personalised (ud cookie): this request always goes to our final server
+        var try_cdn = false; // this request can be cached at edge (mumbai), and can be shared across all users
+        var try_browser_cache = false; // this is in browser local cache
         var pure_on_cache_miss = false;
         var page_data_on_cache_miss = false;
         var show_offline_on_cache_miss = false;
 
         if (running_under_test) {
-            try_ised = true;
-            try_cache = false;
-            try_pure = false;
+            try_rust = true;
+            try_browser_cache = false;
+            try_cdn = false;
             pure_on_cache_miss = false;
             page_data_on_cache_miss = false;
         } else {
             if (is_first_load) {
                 if (ud_cookie_exists) {
-                    try_pure = false;
-                    try_ised = navigator.onLine;
-                    try_cache = !!window.caches;
+                    try_cdn = false;
+                    try_rust = navigator.onLine;
+                    try_browser_cache = !!window.caches;
                     pure_on_cache_miss = false;
                     page_data_on_cache_miss = true;
                     show_offline_on_cache_miss = false;
                 } else {
-                    try_pure = navigator.onLine;
-                    try_ised = false;
-                    try_cache = !!window.caches;
+                    try_cdn = navigator.onLine;
+                    try_rust = false;
+                    try_browser_cache = !!window.caches;
                     pure_on_cache_miss = false;
                     page_data_on_cache_miss = true;
                     show_offline_on_cache_miss = false;
@@ -203,16 +223,16 @@
             } else {
                 // not first load
                 if (ud_cookie_exists) {
-                    try_ised = navigator.onLine;
-                    try_pure = false;
-                    try_cache = !!window.caches;
+                    try_rust = navigator.onLine;
+                    try_cdn = false;
+                    try_browser_cache = !!window.caches;
                     pure_on_cache_miss = true;
                     page_data_on_cache_miss = false;
                     show_offline_on_cache_miss = !navigator.onLine;
                 } else {
-                    try_ised = false;
-                    try_pure = navigator.onLine;
-                    try_cache = !!window.caches;
+                    try_rust = false;
+                    try_cdn = navigator.onLine;
+                    try_browser_cache = !!window.caches;
                     pure_on_cache_miss = false;
                     page_data_on_cache_miss = false;
                     show_offline_on_cache_miss = !navigator.onLine;
@@ -221,9 +241,9 @@
         }
 
         // for now we are disabling caching behaviour
-        try_ised = true;
-        try_cache = false;
-        try_pure = false;
+        try_rust = true;
+        try_browser_cache = false;
+        try_cdn = false;
         pure_on_cache_miss = false;
         page_data_on_cache_miss = false;
 
@@ -231,7 +251,7 @@
             loadPage(JSON.stringify(offline_app(url)), url, false, isPop, MODE_CACHE);
         }
 
-        if (!window.caches && !navigator.onLine && !try_pure && !try_ised) {
+        if (!window.caches && !navigator.onLine && !try_cdn && !try_rust) {
             showOffline();
             return;
         }
@@ -248,7 +268,7 @@
 
         showLoading(window.realm_app);
 
-        if (try_ised) {
+        if (try_rust) {
             ajax(
                 ised_url,
                 null,
@@ -285,23 +305,23 @@
                     }
 
                     loadPage(
-                        t, url,false, isPop,
+                        t, url, false, isPop,
                         MODE_PURE, realm_navigation_context.ctx,
                     );
                 }
             );
         }
 
-        if (try_cache) {
+        if (try_browser_cache) {
             // we are writing code with assumption that all cache implementations also
             // implement promise based api
-            caches.open("realm").then(function(cache){
+            caches.open("realm").then(function (cache) {
                 cache.match(url).then(function (r) {
                     if (!!r) {
-                        r.text().then(function(text){
+                        r.text().then(function (text) {
                             console.log("navigate: cache response:", url, text.substr(0, 100));
                             loadPage(
-                                text, url,false, isPop,
+                                text, url, false, isPop,
                                 MODE_CACHE, realm_navigation_context.ctx,
                             );
                         });
@@ -327,14 +347,27 @@
             });
         }
 
-        if (try_pure) {
+        if (try_cdn) {
             do_pure();
         }
 
         window.realm_navigation_context = realm_navigation_context;
     }
 
+    function unescapeUrlString(urlString) {
+        urlString = urlString.replace("\\u003E", '>');
+        urlString = urlString.replace("\\u003C", '<');
+        urlString = urlString.replace("\\u0026", '&')
+        return urlString
+    }
+
     function submit(data) {
+        if(typeof data === 'string' || data instanceof String) {
+            data = {
+                url: unescapeUrlString(data),
+                data: {}
+            }
+        }
         console.log("submit", data.url, data.data);
         var url = data.url;
         if (url.indexOf("?") !== -1) {
@@ -348,11 +381,13 @@
         ajax(
             url, data.data,
             function (t) {
-                loadPage(t, data.url,true, false, MODE_ISED, null);
+                loadPage(t, data.url, true, false, MODE_ISED, null);
             }
         );
         window.realm_navigation_context = null;
     }
+
+    window.REALM_SUBMIT = submit;
 
     function changePage(data) {
         console.log("changePage", data);
@@ -360,9 +395,25 @@
         loadPage(JSON.stringify(data.data), data.url, true, false, MODE_ISED, null);
     }
 
+    function triggerReload(id) {
+        if (document.getElementById(id).contentDocument && document.getElementById(id).contentDocument.location) {
+            document.getElementById(id).contentDocument.location.reload(true);
+        }
+    }
+    function triggerClassReload(name) {
+        var els = document.getElementsByClassName(name);
+        if (!els || els.length === 0) return;
+
+        for (var i = 0; i < els.length; i++) {
+            if (els[i].contentDocument && els[i].contentDocument.location) {
+                els[i].contentDocument.location.reload(true);
+            }
+        }
+    }
+
     function viewPortChanged() {
         if (
-               window.realm_app
+            window.realm_app
             && window.realm_app.ports
             && window.realm_app.ports.viewPortChanged
         ) {
@@ -374,21 +425,62 @@
         }
     }
 
+    function initializeFtd(theApp, data) {
+        /*
+            data:
+
+            { id: "ftd-main",   // ID of dom node where ftd should render things
+            , data: {}          // interpreter data
+            }
+        */
+
+        // when this is called elm may not yet have constructed the DOM node
+        // where wasm should render things, so we subscribe to animation frame
+        // and wait for a DOM node with data.id to show up.
+
+
+        let attempts = 0;
+
+        function inner() {
+            if (!document.getElementById(data.id)) {
+                if (attempts < 10) {
+                    console.log("initializeFtd", data.id, "not yet found");
+                    attempts += 1;
+                    window.requestAnimationFrame(inner);
+                    return;
+                } else {
+                    console.log("initializeFtd", data.id, "not found after 10 attempts");
+                    return;
+                }
+            }
+
+            console.log("initializeFtd__", data);
+
+            document.getElementById(data.id).innerHTML = data.data.html;
+
+            window.ftd.init(data.id, data.data.data, data.data.external_children);
+
+            theApp.ports.ftdHandle.send({ id: data.id, handle: data.id });
+        }
+
+        window.requestAnimationFrame(inner);
+    }
+
     function ports(app) {
         if (app.ports && app.ports.navigate) {
             app.ports.navigate.subscribe(function (u) { navigate(u, false) });
         }
         if (app.ports && app.ports.setLoading) {
-            app.ports.setLoading.subscribe(function() {showLoading(app)});
+            app.ports.setLoading.subscribe(function () { showLoading(app) });
         }
         if (app.ports && app.ports.cancelLoading) {
-            app.ports.cancelLoading.subscribe(function() {cancelLoading(app)});
+            app.ports.cancelLoading.subscribe(function () { cancelLoading(app) });
         }
         if (app.ports && app.ports.submit) {
             app.ports.submit.subscribe(submit);
         }
         if (app.ports && app.ports.toIframe) {
-            app.ports.toIframe.subscribe(function(r){
+            app.ports.toIframe.subscribe(function (r) {
                 console.log("loadNow: toIframe", r);
                 window.parent.app.ports.fromIframe.send(r);
             });
@@ -405,13 +497,60 @@
         if (app.ports && app.ports.copyToClipboard) {
             app.ports.copyToClipboard.subscribe(copyToClipboard);
         }
+        if (app.ports && app.ports.setSessionStorage) {
+            app.ports.setSessionStorage.subscribe(setSessionStorage);
+        }
+        if (app.ports && app.ports.deleteSessionStorage) {
+            app.ports.deleteSessionStorage.subscribe(deleteSessionStorage);
+        }
+        if (app.ports && app.ports.scrollIntoView) {
+            app.ports.scrollIntoView.subscribe(scrollIntoView);
+        }
+        if (app.ports && app.ports.initializeFtd) {
+            app.ports.initializeFtd.subscribe(
+                function (data) { initializeFtd(app, data); }
+            );
+        }
+        if (app.ports && app.ports.renderFtd) {
+            app.ports.renderFtd.subscribe(
+                function (handle) {
+                    console.log("renderFtd", handle);
+                    handle.render();
+                }
+            );
+        }
+        if (app.ports && app.ports.setFtdBool) {
+            app.ports.setFtdBool.subscribe(
+                function (data) {
+                    console.log("setFtdBool", data); // TODO: fix this
+                    window.ftd.set_bool(data.handle, data.variable, data.value);
+                }
+            );
+        }
+        if (app.ports && app.ports.setFtdMultiValue) {
+            app.ports.setFtdMultiValue.subscribe(
+                function (data) {
+                    console.log("setFtdMultiValue", data); // TODO: fix this
+                    window.ftd.set_multi_value(data.handle, data.list);
+                }
+            );
+        }
 
         if (app.ports && window.realm_extra_ports) {
             for (var portName in app.ports) {
-                if(window.realm_extra_ports.hasOwnProperty(portName)) {
+                if (window.realm_extra_ports.hasOwnProperty(portName)) {
                     app.ports[portName].subscribe(window.realm_extra_ports[portName]);
                 }
             }
+        }
+        if (app.ports && app.ports.triggerReload) {
+            app.ports.triggerReload.subscribe(triggerReload);
+        }
+        if (app.ports && app.ports.triggerClassReload) {
+            app.ports.triggerClassReload.subscribe(triggerClassReload);
+        }
+        if (app.ports && app.ports.setLocalStorage) {
+            app.ports.setLocalStorage.subscribe(setLocalStorage);
         }
     }
 
@@ -483,7 +622,7 @@
         console.log("loadPage: called", expected_url, isSubmit, isPop, mode, ctx);
 
         if (
-               !!ctx
+            !!ctx
             && !!window.realm_navigation_context
             && window.realm_navigation_context.ctx === ctx
             && window.realm_navigation_context.mode < mode
@@ -492,7 +631,7 @@
         }
 
         if (
-               !!ctx
+            !!ctx
             && !!window.realm_navigation_context
             && window.realm_navigation_context.ctx !== ctx
         ) {
@@ -501,7 +640,7 @@
         }
 
         if (
-               !!mode
+            !!mode
             && !!window.realm_navigation_context
             && window.realm_navigation_context.mode > mode
         ) {
@@ -526,7 +665,7 @@
                         kind: "BadServer",
                         message: message,
                     },
-                    {kind: "TestDone"}
+                    { kind: "TestDone" }
                 ]);
             }
             throw e;
@@ -534,10 +673,12 @@
         console.log("loadPage: data", data);
 
         isDev = data.dev;
+        domain = data.domain;
+
 
         if (!!window.caches && data.template) {
             console.log("loadPage: storing template to cache");
-            caches.open("realm").then(function(cache) {
+            caches.open("realm").then(function (cache) {
                 cache.put(TEMPLATE_URL, new Response(data.template)).then(NOOP);
             });
         }
@@ -553,7 +694,7 @@
         var ud_cookie_exists = document.cookie.indexOf("ud=") !== -1;
 
         if (
-               data.id !== "Pages.NotFound"
+            data.id !== "Pages.NotFound"
             && mode === MODE_ISED
             && found_url === expected_url
         ) {
@@ -565,20 +706,20 @@
         if (mode === MODE_ISED && !!window.caches && !!user_data) {
             // on every ised response we update the cache
             console.log("loadPage: storing user_data to cache");
-            caches.open("realm").then(function(cache) {
+            caches.open("realm").then(function (cache) {
                 cache.put(
                     USER_DATA_URL, new Response(JSON.stringify(user_data))
                 ).then(NOOP);
             });
         } else if (!!window.caches) {
             console.log("loadPage: purging user_data from cache");
-            caches.open("realm").then(function(cache) {
+            caches.open("realm").then(function (cache) {
                 cache.delete(USER_DATA_URL).then(NOOP);
             });
         }
 
         if (
-               mode !== MODE_ISED
+            mode !== MODE_ISED
             && ud_cookie_exists
             && (
                 expected_url !== found_url
@@ -591,7 +732,7 @@
 
         // NOTE: we want to cache *irrespective* of what isSubmit is.
         if (
-               (found_url === expected_url)
+            (found_url === expected_url)
             && !!window.caches
             && (
                 (mode === MODE_PURE && !ud_cookie_exists)
@@ -599,7 +740,7 @@
             )
             && data.id !== "Pages.NotFound"
         ) {
-            caches.open("realm").then(function(cache) {
+            caches.open("realm").then(function (cache) {
                 console.log("loadPage: storing data to cache", found_url);
                 cache.put(found_url, new Response(text)).then(NOOP);
             });
@@ -625,7 +766,7 @@
 
         function loadNow() {
             if (
-                   !!ctx
+                !!ctx
                 && !!window.realm_navigation_context
                 && window.realm_navigation_context.ctx !== ctx
             ) {
@@ -634,7 +775,7 @@
             }
 
             if (
-                   !!mode
+                !!mode
                 && !!window.realm_navigation_context
                 && window.realm_navigation_context.mode > mode
             ) {
@@ -645,6 +786,18 @@
             // wait for previous app to cleanup
             if (waitAfterShutdown(loadNow)) {
                 return;
+            }
+
+            var hostname = window.location.hostname;
+
+            try {
+                var url_constructed = new URL(data.url);
+                var url_hostname = url_constructed.hostname;
+            } catch (_) {
+                var url_hostname = hostname;
+            }
+            if (hostname != url_hostname) {
+                document.location = data.url;
             }
 
             if (expected_url !== found_url) {
@@ -675,7 +828,7 @@
 
             if (!!testContext) {
                 window.parent.app.ports.fromIframe.send([
-                    {kind: "Started", flags: data}
+                    { kind: "Started", flags: data }
                 ]);
 
                 if (testContext.elm !== id) {
@@ -685,7 +838,7 @@
                             kind: "BadElm",
                             message: "Expected: " + testContext.elm + " got: " + id
                         },
-                        {kind: "TestDone"}
+                        { kind: "TestDone" }
                     ]);
                     return;
                 }
@@ -709,13 +862,13 @@
                             kind: "BadElm",
                             message: "No app found for: " + id
                         },
-                        {kind: "TestDone"}
+                        { kind: "TestDone" }
                     ]);
                 }
                 return;
             }
 
-            app = app.init({flags: flags});
+            app = app.init({ flags: flags });
             ports(app);
 
             // trying to disable auto scroll behaviour, but its buggy
@@ -761,7 +914,7 @@
                 }
 
                 attachFlagVars(cmd.data);
-                window.realm_app = getApp(cmd.data.id).init({flags: cmd.data});
+                window.realm_app = getApp(cmd.data.id).init({ flags: cmd.data });
                 enableScrolling();
 
                 // TODO: initially we did not subscribe to ports, why?
@@ -781,9 +934,13 @@
         flags.height = window.innerHeight;
         flags.iphoneX = iphoneX;
         flags.notch = detectNotch();
-        flags.darkMode = darkMode;
+        flags.darkMode = !!(
+            window.matchMedia
+            && window.matchMedia('(prefers-color-scheme: dark)').matches
+        );
         flags.now = new Date().getTime();
         flags.dev = isDev;
+        flags.domain = domain;
 
         return flags;
     }
@@ -816,9 +973,9 @@
             return;
         }
         navigator.clipboard.writeText(text).then(
-            function() {
+            function () {
                 console.log('Async: Copying to clipboard was successful!');
-            }, function(e) {
+            }, function (e) {
                 console.error('copyText: writeText failed', e);
             }
         );
@@ -831,7 +988,7 @@
         } else {
             var url = document.location.pathname + document.location.search;
             if (document.cookie.indexOf("ud=") !== -1 && !!window.caches) {
-                caches.open("realm").then(function(cache) {
+                caches.open("realm").then(function (cache) {
                     cache.match(USER_DATA_URL).then(function (r) {
                         if (!r) {
                             console.log("main: no user in cache");
@@ -848,7 +1005,7 @@
             } else {
                 if (!!window.caches) {
                     console.log("main: purging user_data from cache");
-                    caches.open("realm").then(function(cache) {
+                    caches.open("realm").then(function (cache) {
                         cache.delete(USER_DATA_URL).then(NOOP);
                     });
                 }
@@ -859,19 +1016,20 @@
         window.addEventListener("resize", viewPortChanged);
         window.addEventListener("orientationchange", viewPortChanged);
         window.onpopstate = function () {
+            console.log("onpopstate", document.pathname);
             navigate(document.location.pathname + document.location.search, true);
         };
 
-        if (
+        if ( false &&
             'serviceWorker' in navigator
             && navigator.onLine
             && document.location.toString().indexOf("127.0.0.1") === -1
         ) {
             // in Safari, to see service worker logs Develop -> Service Workers.
-            window.addEventListener('load', function() {
+            window.addEventListener('load', function () {
                 navigator.serviceWorker.register(
-                    '/static/sw.' + window.realm_hash + '.js',
-                    {"scope": "/"},
+                    '/static/' + window.realm_hash + '/sw.js',
+                    { "scope": "/" },
                 ).then(function () {
                     console.log("registered service worker");
                 });
@@ -885,39 +1043,39 @@
             return _notch;
         }
 
-        if( 'orientation' in window ) {
+        if ('orientation' in window) {
             // Mobile
             if (window.orientation === 90) {
                 _notch = 1;
             } else if (window.orientation === -90) {
                 _notch = -1;
             }
-        } else if ( 'orientation' in window.screen ) {
+        } else if ('orientation' in window.screen) {
             // Webkit
-            if( window.screen.orientation.type === 'landscape-primary') {
+            if (window.screen.orientation.type === 'landscape-primary') {
                 _notch = 1;
-            } else if( window.screen.orientation.type === 'landscape-secondary') {
+            } else if (window.screen.orientation.type === 'landscape-secondary') {
                 _notch = -1;
             }
-        } else if( 'mozOrientation' in window.screen ) {
+        } else if ('mozOrientation' in window.screen) {
             // Firefox
-            if( window.screen.mozOrientation === 'landscape-primary') {
+            if (window.screen.mozOrientation === 'landscape-primary') {
                 _notch = 1;
-            } else if( window.screen.mozOrientation === 'landscape-secondary') {
+            } else if (window.screen.mozOrientation === 'landscape-secondary') {
                 _notch = -1;
             }
         }
         return _notch;
     }
 
-    class RealmHTML extends HTMLElement{
+    class RealmHTML extends HTMLElement {
         constructor() {
             super();
 
             this._src = "<h1>hello world</h1>";
         }
 
-        get src () {
+        get src() {
             return this._src;
         }
 
@@ -974,4 +1132,5 @@
     }
 
     main();
-}(this));
+    return submit;
+})();

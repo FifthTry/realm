@@ -8,8 +8,8 @@ self.addEventListener('install', function(event) {
         caches.open('realm').then(function (cache) {
             console.log("sw: installed", realm_hash);
             return cache.addAll([
-                '/static/elm.' + realm_hash + ".js",
-                '/static/sw.' + realm_hash + ".js",
+                '/static/' + realm_hash + "/elm.js",
+                '/static/' + realm_hash + "/sw.js",
             ]);
         })
     );

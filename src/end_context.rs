@@ -10,7 +10,7 @@ where
     UD: crate::UserData,
     NF: FnOnce(&crate::base::In<UD>, &str) -> crate::Result,
 {
-    crate::base::pg::rollback_if_required(&in_.conn);
+    crate::base::pg::rollback_if_required(in_.conn);
     use crate::schema::realm_activity;
 
     let mut response = serde_json::Value::Null; // empty data;
@@ -56,7 +56,7 @@ where
                     observer::log("PageNotFound2");
                     observer::observe_string("error", message.as_str()); // TODO
                     (
-                        not_found(&in_, message.as_str()),
+                        not_found(in_, message.as_str()),
                         "user_error".to_string(),
                         "not_found".to_string(),
                     )
@@ -66,7 +66,7 @@ where
                     observer::log("InputError");
                     observer::observe_json("error", serde_json::to_value(&e)?); // TODO
                     (
-                        not_found(&in_, e.as_str()),
+                        not_found(in_, e.as_str()),
                         "user_error".to_string(),
                         "input_error".to_string(),
                     )
@@ -81,7 +81,7 @@ where
                     observer::observe_json("form_error", serde_json::to_value(&errors)?); // TODO
                     response = serde_json::to_value(&errors).expect("TODO");
                     (
-                        in_.form_error(&errors),
+                        in_.form_error(errors),
                         success.to_string(),
                         code.to_string(),
                     )
@@ -90,7 +90,7 @@ where
                     Some(diesel::result::Error::NotFound) => {
                         observer::log("diesel::NotFound");
                         (
-                            not_found(&in_, "NotFound"),
+                            not_found(in_, "NotFound"),
                             "user_error".to_string(),
                             "diesel_not_found".to_string(),
                         )
@@ -200,6 +200,10 @@ where
     let url = in_.ctx.url.path().to_lowercase();
 
     if in_.ctx.is_crawler {
+        return false;
+    }
+
+    if url.ends_with(".php") {
         return false;
     }
 

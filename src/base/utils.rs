@@ -1,4 +1,5 @@
 pub fn elapsed(e: std::time::Instant) -> String {
+    // NOTE: there is a copy of this function in ftd also
     let e = e.elapsed();
     let nanos = e.subsec_nanos();
     let fraction = match nanos {

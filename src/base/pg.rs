@@ -37,15 +37,31 @@ lazy_static! {
 
 #[observed(namespace = "realm__pg")]
 pub fn connection() -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<RealmConnection>> {
-    connection_with_url(std::env::var("DATABASE_URL").expect("DATABASE_URL not set"))
+    connection_with_url_(std::env::var("DATABASE_URL").expect("DATABASE_URL not set"))
 }
 
+#[observed(namespace = "realm__pg")]
 pub fn connection_with_url(
+    db_url: String,
+) -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<RealmConnection>> {
+    connection_with_url_(db_url)
+}
+
+pub fn connection_with_url_(
     db_url: String,
 ) -> r2d2::PooledConnection<r2d2_diesel::ConnectionManager<RealmConnection>> {
     {
         if let Some(pool) = DIESEL_POOLS.read().get(&db_url) {
-            return pool.get().unwrap();
+            return pool
+                .get()
+                .map_err(|e| {
+                    observer::observe_string(
+                        "get_connection_error",
+                        &format!("url: {}, error: {}", db_url, e),
+                    );
+                    e
+                })
+                .unwrap();
         }
     }
     match DIESEL_POOLS.write().entry(db_url.clone()) {

@@ -1,6 +1,9 @@
 pub use chrono::{DateTime, Utc};
 use itertools::Itertools;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use serde::de::DeserializeOwned;
+
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
@@ -9,8 +12,24 @@ use std::{
     string::String,
 };
 
-pub fn set_cookie(name: &str, value: &str, age: i32) -> String {
-    format!("{}={}; Max-Age={}; Path=/", name, value, age)
+pub fn get_domain_from_url(inp_str: String) -> String {
+    const TEXTS: [&str; 3] = ["http://", "https://", "www."];
+    let mut out_str: String = inp_str;
+    for text in TEXTS.iter() {
+        out_str = out_str.trim_start_matches(text).to_string();
+    }
+    out_str
+}
+
+#[allow(clippy::logic_bug)]
+pub fn set_cookie(name: &str, value: &str, age: i64) -> String {
+    let domain = if false && crate::env::is_subdomain_cookie_allowed() {
+        let domain_name = get_domain_from_url(crate::env::site_url());
+        format!("domain={}", domain_name)
+    } else {
+        "".to_string()
+    };
+    format!("{}={}; Max-Age={}; Path=/; {}", name, value, age, &domain)
 }
 
 pub fn get_slash_complete_path(path: &str) -> String {
@@ -22,7 +41,7 @@ pub fn get_slash_complete_path(path: &str) -> String {
 }
 
 pub fn to_url(path_and_query: &str) -> url::Url {
-    url::Url::parse(&format!("http://foo.com{}", path_and_query).as_str()).unwrap()
+    url::Url::parse(format!("http://foo.com{}", path_and_query).as_str()).unwrap()
 }
 
 pub fn path_and_query(url: &url::Url) -> String {
@@ -41,7 +60,7 @@ pub fn url2path(url: &url::Url) -> String {
         .filter(|(_, v)| v != "null")
         .map(|(k, v)| format!("{}={}", k, v))
         .join("&");
-    if search_str != "" {
+    if !search_str.is_empty() {
         search_str = format!("?{}", search_str);
     };
     format!("{}{}", url.path(), search_str)
@@ -57,7 +76,7 @@ pub fn uri2path(uri: &hyper::Uri) -> String {
     )
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct Maybe<T>(pub Option<T>);
 
 impl<T> FromStr for Maybe<T>
@@ -101,7 +120,7 @@ impl<T> Default for Maybe<T> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct List<T>(pub Vec<T>);
 
 impl<T: ToString> ToString for List<T>
@@ -170,6 +189,16 @@ where
     s.serialize_i64(x.timestamp_millis())
 }
 
+pub fn option_datetime_serializer<S>(x: &Option<DateTime<Utc>>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match x {
+        Some(v) => s.serialize_i64(v.timestamp_millis()),
+        None => s.serialize_none(),
+    }
+}
+
 pub fn datetime_serializer_t<S>(x: &DateTime<Utc>, s: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
@@ -194,7 +223,7 @@ where
 {
     // handle path
     if !rest.is_empty() {
-        let (first, last) = first_rest(&rest);
+        let (first, last) = first_rest(rest);
         rest.truncate(0);
         rest.push_str(&last);
         if let Some(v) = first {
@@ -227,14 +256,57 @@ where
     Err(format_err!("\"{}\" not found", name))
 }
 
-pub fn append_params(prefix: &str, q_params: &[(String, String)]) -> String {
-    let mut url: String = prefix.into();
-    for (arg, val) in q_params {
-        if !url.contains('?') {
-            url.push_str(&format!("?{}={}", arg, val));
-        } else {
-            url.push_str(&format!("&{}={}", arg, val));
-        }
+pub fn get_random_alphanumeric_string(length: usize) -> String {
+    thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect()
+}
+
+pub fn request_with_url(
+    req: crate::Request,
+    url: &str,
+    method: Option<http::Method>,
+) -> Result<crate::Request, failure::Error> {
+    let (mut parts, _) = req.into_parts();
+    if let Some(method) = method {
+        parts.method = method;
     }
-    url
+    parts.uri = http::Uri::from_str(url)
+        .map_err(|e| failure::format_err!("Invalid url: {}", e.to_string()))?;
+    Ok(http::Request::from_parts(parts, vec![]))
+}
+
+pub fn request_with_slash(req: crate::Request) -> (bool, crate::Request) {
+    fn has_extension(path: &str) -> bool {
+        use std::path::Path;
+        Path::new(path).extension().is_some()
+    }
+
+    let uri = req.uri();
+
+    if !uri.path().ends_with('/') && req.method() == http::Method::GET && !has_extension(uri.path())
+    {
+        let mut s = "".to_string();
+        if let Some(scheme) = uri.scheme_part() {
+            s += format!("{}://", scheme.to_string()).as_str()
+        }
+        if let Some(authority) = uri.authority_part() {
+            s += authority.to_string().as_str();
+        }
+
+        if uri.path().ends_with('/') {
+            s += uri.path()
+        } else {
+            s += format!("{}/", uri.path()).as_str()
+        };
+
+        if let Some(query) = uri.query() {
+            s += format!("?{}", query).as_str()
+        }
+        (true, request_with_url(req, s.as_str(), None).unwrap())
+    } else {
+        (false, req)
+    }
 }

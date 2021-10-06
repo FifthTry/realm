@@ -1,3 +1,4 @@
+#[allow(clippy::upper_case_acronyms)]
 #[derive(PartialEq)]
 pub enum Mode {
     API,

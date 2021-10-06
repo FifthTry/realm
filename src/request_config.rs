@@ -9,7 +9,7 @@ pub struct RequestConfig {
     pub path: String,
 }
 
-#[derive(Fail, Debug, Serialize)]
+#[derive(Fail, Debug, serde::Serialize)]
 pub enum Error {
     #[fail(display = "Expected input parameter not found: {}", key)]
     NotFound { key: String },
@@ -434,7 +434,7 @@ impl RequestConfig {
         let rest: &mut String = &mut self.rest;
 
         if !rest.is_empty() {
-            let (first, last) = crate::utils::first_rest(&rest);
+            let (first, last) = crate::utils::first_rest(rest);
             rest.truncate(0);
             rest.push_str(&last);
             if let Some(v) = first {

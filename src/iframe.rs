@@ -10,17 +10,13 @@ where
 
     Ok(crate::Response::Http(
         in_.ctx.response(
-            r#"<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8" />
-        <title>Realm iFrame Controller</title>
-        <meta name="viewport" content="width=device-width" />
-    </head>
-    <body>
-        <script src='/static/iframe.js'></script>
-    </body>
-</html>"#
+            crate::page::HTML_PAGE
+                .replace("__realm_meta__", "")
+                .replace("__realm_body__", "")
+                .replace(
+                    &format!("{}/elm.", &crate::page::CURRENT.to_string()),
+                    "iframe.",
+                )
                 .into(),
         )?,
     ))

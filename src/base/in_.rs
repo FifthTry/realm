@@ -11,7 +11,7 @@ where
     UD: crate::UserData,
 {
     pub ctx: &'a crate::Context,
-    pub lang: Language, // what is language_tags crate about?
+    lang: RefCell<realm_lang::Language>,
     pub head: RefCell<http::response::Builder>,
     ud: RefCell<Option<UD>>,
     #[cfg(any(feature = "sqlite_default", feature = "postgres_default"))]
@@ -31,6 +31,7 @@ where
     pub activity_data: RefCell<Vec<(String, serde_json::Value)>>,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct UD {}
 
 impl std::str::FromStr for UD {
@@ -88,7 +89,12 @@ where
 
         In {
             ctx,
-            lang: Language::default(), // TODO: get this from header
+            lang: RefCell::new(realm_lang::Language::from_accept_language_header(
+                ctx.get_cookie("realm-lang")
+                    .map(|v| v.to_string())
+                    .or_else(|| ctx.get_header_string(http::header::ACCEPT_LANGUAGE)),
+                *crate::env::REALM_LANG,
+            )),
             head: RefCell::new(http::response::Builder::new()),
             ud: RefCell::new(ud),
             conn,
@@ -126,6 +132,14 @@ where
             .unwrap_or(false)
     }
 
+    pub fn get_host(&self) -> String {
+        self.ctx.get_header_string("x-host").unwrap_or_else(|| {
+            self.ctx
+                .get_header_string(http::header::HOST)
+                .expect("no host provided!")
+        })
+    }
+
     pub fn get_cookie(&self, name: &str) -> Option<String> {
         self.ctx
             .get_cookie(name)
@@ -155,6 +169,10 @@ where
 
     pub fn ud(&self) -> Ref<Option<UD>> {
         self.ud.borrow()
+    }
+
+    pub fn lang(&self) -> realm_lang::Language {
+        *self.lang.borrow()
     }
 
     pub fn user_id(&self) -> Option<String> {
@@ -200,16 +218,18 @@ where
 
     pub fn set_ud(&self, ud: UD) {
         self.ctx
-            .cookie("ud", self.format_cookie(&ud).as_str(), COOKIE_AGE);
+            .cookie("ud", self.format_cookie(&ud).as_str(), DECADE);
         self.ud.replace(Some(ud));
     }
 
+    pub fn set_lang(&self, lang: realm_lang::Language) {
+        self.ctx.cookie("realm-lang", lang.id(), DECADE);
+        self.lang.replace(lang);
+    }
+
     pub fn set_tid(&self, tid: String) {
-        self.ctx.cookie(
-            "tid",
-            self.format_cookie_string(&tid).as_str(),
-            COOKIE_AGE * 30,
-        );
+        self.ctx
+            .cookie("tid", self.format_cookie_string(&tid).as_str(), DECADE * 30);
         self.tid.replace(Some(tid));
         self.tid_created.replace(true);
     }
@@ -273,11 +293,8 @@ where
             return None;
         }
 
-        let ud: String = match signed_cookies::signed_value::<String>(
-            ud,
-            i64::from(COOKIE_AGE),
-            &cookie_secret(),
-        ) {
+        let ud: String = match signed_cookies::signed_value::<String>(ud, DECADE, &cookie_secret())
+        {
             Ok(ud) => ud,
             Err(e) => {
                 observer::log("signature failed");
@@ -301,8 +318,8 @@ where
     }
 }
 
-const COOKIE_AGE: i32 = 3600 * 24 * 365;
-const VID_COOKIE_AGE: i32 = 60 * 30;
+const DECADE: i64 = 3600 * 24 * 365 * 10;
+const VID_COOKIE_AGE: i64 = 60 * 30;
 
 fn cookie_secret() -> Vec<u8> {
     std::env::var("COOKIE_SECRET")
@@ -316,18 +333,15 @@ pub fn parse_cookie(_key: &str, cookie: &str) -> Option<String> {
         return None;
     }
     // observer::observe_string("cookie", key);
-    let cookie: String = match signed_cookies::signed_value::<String>(
-        cookie,
-        i64::from(COOKIE_AGE),
-        &cookie_secret(),
-    ) {
-        Ok(cookie) => cookie,
-        Err(e) => {
-            observer::log("signature failed");
-            observer::observe_string("cookie", cookie); // TODO
-            observer::observe_string("error", e.to_string().as_str()); // TODO
-            return None;
-        }
-    };
+    let cookie: String =
+        match signed_cookies::signed_value::<String>(cookie, DECADE, &cookie_secret()) {
+            Ok(cookie) => cookie,
+            Err(e) => {
+                observer::log("signature failed");
+                observer::observe_string("cookie", cookie); // TODO
+                observer::observe_string("error", e.to_string().as_str()); // TODO
+                return None;
+            }
+        };
     Some(cookie)
 }

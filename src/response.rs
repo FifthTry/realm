@@ -2,7 +2,8 @@ use crate::mode::Mode;
 use crate::PageSpec;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Serialize)]
+#[allow(clippy::upper_case_acronyms)]
+#[derive(serde::Serialize)]
 pub enum Response {
     Http(#[serde(serialize_with = "vec8")] http::response::Response<Vec<u8>>),
     JSON {
@@ -11,6 +12,8 @@ pub enum Response {
         trace: Option<serde_json::Value>,
     },
     Page(PageSpec),
+    RealmRedirect(String),
+    NotFound,
 }
 
 fn vec8<S>(resp: &http::response::Response<Vec<u8>>, ser: S) -> Result<S::Ok, S::Error>
@@ -109,6 +112,15 @@ impl Response {
         url: &url::Url,
     ) -> std::result::Result<http::Response<Vec<u8>>, failure::Error> {
         let mut spec = match self.with_default_url(crate::utils::path_and_query(url)) {
+            Response::RealmRedirect(url) => {
+                return Err(failure::format_err!(
+                    "render called on Response::Redirect to {}",
+                    url
+                ));
+            }
+            Response::NotFound => {
+                return Err(failure::format_err!("render called on Response::NotFound"));
+            }
             Response::Page(spec) => spec,
             Response::Http(r) => {
                 return Ok(r);
@@ -138,6 +150,7 @@ impl Response {
         ctx.header(http::header::CONTENT_TYPE, ctx.mode.content_type());
         ctx.header(http::header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST");
         if crate::base::is_test() {
+            ctx.header(http::header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type");
             ctx.header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
         }
         spec.pure_mode = std::env::var("REALM_PURE")
@@ -159,8 +172,8 @@ impl Response {
 
         Ok(ctx.response(match ctx.mode {
             Mode::API => serde_json::to_string_pretty(&spec.config)?.into(),
-            Mode::HTML => spec.render(false)?,
-            Mode::SSR => spec.render(true)?,
+            Mode::HTML => spec.render(false, ctx.meta())?,
+            Mode::SSR => spec.render(true, ctx.meta())?,
             Mode::ISED | Mode::Pure => {
                 serde_json::to_string_pretty(&spec.json_with_template()?)?.into()
             }
@@ -186,22 +199,7 @@ impl Response {
         UD: crate::UserData,
     {
         match in_.ctx.mode {
-            Mode::ISED | Mode::Submit => Ok(Response::Page(PageSpec {
-                id: "".to_owned(),
-                config: json!({}),
-                title: "".to_owned(),
-                url: None,
-                replace: None,
-                redirect: Some(next.into()),
-                rendered: "".to_string(),
-                cache: None,
-                pure: false,
-                pure_mode: "".into(),
-                hash: crate::page::CURRENT.clone(),
-                trace: None,
-                activity: None,
-                dev: crate::base::is_test(),
-            })),
+            Mode::ISED | Mode::Submit | Mode::Pure => Ok(Response::RealmRedirect(next.into())),
             _ => {
                 in_.ctx.header(http::header::LOCATION, next.into());
                 in_.ctx.status(http::StatusCode::FOUND);
@@ -220,22 +218,7 @@ impl Response {
         UD: crate::UserData,
     {
         match in_.ctx.mode {
-            Mode::ISED | Mode::Submit => Ok(Response::Page(PageSpec {
-                id: "".to_owned(),
-                config: json!({}),
-                title: "".to_owned(),
-                url: None,
-                replace: None,
-                redirect: Some(next.into()),
-                rendered: "".to_string(),
-                cache: None,
-                pure: false,
-                pure_mode: "".into(),
-                hash: crate::page::CURRENT.clone(),
-                trace: None,
-                activity: None,
-                dev: crate::base::is_test(),
-            })),
+            Mode::ISED | Mode::Submit | Mode::Pure => Ok(Response::RealmRedirect(next.into())),
             _ => {
                 in_.ctx.header(http::header::LOCATION, next.into());
                 in_.ctx.status(status);
@@ -258,10 +241,7 @@ mod tests {
         assert_eq!(
             serde_json::to_value(r).unwrap(),
             json!({
-                "Http": {
-                    "body": "",
-                    "status": 200
-                }
+                "Http": 0
             })
         );
     }
@@ -273,10 +253,7 @@ mod tests {
         assert_eq!(
             serde_json::to_value(r).unwrap(),
             json!({
-                "Http": {
-                    "body": "hello world",
-                    "status": 200
-                }
+                "Http": 11
             })
         );
     }
@@ -298,18 +275,26 @@ mod tests {
             activity: None,
             pure_mode: "".to_string(),
             dev: crate::base::is_test(),
+            domain: "".to_string(),
         };
         let r = super::Response::Page(page_spec);
         assert_eq!(
             serde_json::to_value(r).unwrap(),
             json!({
-                "PageSpec": {
+                "Page": {
                     "id": "test-id",
                     "config": json!({}),
                     "title": "test-title",
                     "url": Null,
                     "replace": Null,
-                    "redirect": Null
+                    "redirect": Null,
+                    "cache": Null,
+                    "hash": "",
+                    "pure": false,
+                    "pure_mode": "",
+                    "trace": Null,
+                    "dev": false,
+                    "domain": ""
                 }
             })
         );

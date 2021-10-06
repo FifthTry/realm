@@ -1,4 +1,4 @@
-module Realm exposing (App, Element, In, Msg(..), Notch(..), TestFlags, TestResult(..), api, app, cmdMap, collectionFPS, consoleGroupEnd, consoleGroupStart, controller, crash, data, document, field, fieldWithDefault, getHash, getTime, here, init0, isPass, isTopLevel, log, maybe, message, navigate, pushHash, referer, refresh, result, sub0, submit, test, test0, testResult, tid, timeIt, toString, tuple, tupleE, update0, warn)
+module Realm exposing (..)
 
 import Browser as B
 import Browser.Events as BE
@@ -6,7 +6,7 @@ import Browser.Navigation as BN
 import Dict exposing (Dict)
 import Element as E
 import Html as H
-import Html.Attributes
+import Html.Attributes as HA
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
@@ -64,6 +64,7 @@ type alias Model model =
     , fps : Maybe Int
     , trackFPS : Bool
     , dev : Bool
+    , domain : String
     }
 
 
@@ -245,12 +246,25 @@ type alias In =
     , now : Time.Posix
     , fps : Maybe Int
     , dev : Bool
+    , domain : String
     }
 
 
 type alias App config model msg =
     { config : JD.Decoder config
     , init : In -> config -> ( model, Cmd (Msg msg) )
+    , update : In -> msg -> model -> ( model, Cmd (Msg msg) )
+    , subscriptions : In -> model -> Sub (Msg msg)
+    , document : In -> model -> B.Document (Msg msg)
+    }
+
+
+type alias LocalApp local config model msg =
+    { local : JD.Decoder local
+    , config : JD.Decoder config
+    , init : In -> local -> config -> ( model, Cmd (Msg msg) )
+    , keyer : In -> config -> String
+    , defaultLocalAndSession : local
     , update : In -> msg -> model -> ( model, Cmd (Msg msg) )
     , subscriptions : In -> model -> Sub (Msg msg)
     , document : In -> model -> B.Document (Msg msg)
@@ -268,6 +282,7 @@ type alias Flags config =
     , id : String
     , now : Int
     , dev : Bool
+    , domain : String
     }
 
 
@@ -284,6 +299,7 @@ flags config =
         |> field "id" JD.string
         |> field "now" JD.int
         |> fieldWithDefault "dev" False JD.bool
+        |> field "domain" JD.string
 
 
 app : App config model msg -> Program JE.Value (Model model) (Msg msg)
@@ -293,6 +309,18 @@ app a =
         , view = appDocument a
         , update = appUpdate a
         , subscriptions = appSubscriptions a
+        , onUrlRequest = UrlRequest
+        , onUrlChange = UrlChange
+        }
+
+
+localApp : LocalApp local config model msg -> Program JE.Value (Model model) (Msg msg)
+localApp a =
+    B.application
+        { init = appInit_local a
+        , view = appDocument_local a
+        , update = appUpdate_local a
+        , subscriptions = appSubscriptions_local a
         , onUrlRequest = UrlRequest
         , onUrlChange = UrlChange
         }
@@ -312,6 +340,7 @@ toIn m =
     , now = m.now
     , fps = m.fps
     , dev = m.dev
+    , domain = m.domain
     }
 
 
@@ -338,12 +367,12 @@ appInit_ a vflags url key =
         hash =
             fromHash url
 
-        ( ( title, im, id ), ( cmd, notch, darkMode ), ( device, n, ( width, height, dev ) ) ) =
+        ( ( title, im, id ), ( cmd, notch, darkMode ), ( device, n, ( width, height, ( dev, domain ) ) ) ) =
             case JD.decodeValue (flags a.config) vflags of
                 Ok f ->
                     let
                         d =
-                            E.classifyDevice f
+                            classifyDevice f
                     in
                     a.init
                         { title = f.title
@@ -358,13 +387,14 @@ appInit_ a vflags url key =
                         , now = Time.millisToPosix f.now
                         , fps = Nothing
                         , dev = f.dev
+                        , domain = f.domain
                         }
                         f.config
                         |> Tuple.mapFirst Ok
                         |> (\( f1, s ) ->
                                 ( ( f.title, f1, f.id )
                                 , ( s, f.notch, f.darkMode )
-                                , ( d, f.now, ( f.width, f.height, f.dev ) )
+                                , ( d, f.now, ( f.width, f.height, ( f.dev, f.domain ) ) )
                                 )
                            )
 
@@ -373,7 +403,7 @@ appInit_ a vflags url key =
                     , ( Cmd.none, 0, False )
                     , ( { class = E.Desktop, orientation = E.Landscape }
                       , 0
-                      , ( 0, 0, False )
+                      , ( 0, 0, ( False, "" ) )
                       )
                     )
     in
@@ -395,6 +425,98 @@ appInit_ a vflags url key =
       , frameCounter = 0
       , trackFPS = False
       , dev = dev
+      , domain = domain
+      }
+    , cmd
+    )
+
+
+appInit_local :
+    LocalApp local config model msg
+    -> JE.Value
+    -> Url
+    -> BN.Key
+    -> ( Model model, Cmd (Msg msg) )
+appInit_local a vflags url key =
+    let
+        hash =
+            fromHash url
+
+        ( ( title, im, id ), ( cmd, notch, darkMode ), ( device, n, ( width, height, ( dev, domain ) ) ) ) =
+            case JD.decodeValue (flags a.config) vflags of
+                Ok f ->
+                    let
+                        d =
+                            classifyDevice f
+
+                        inVal =
+                            { title = f.title
+                            , hash = hash
+                            , device = d
+                            , height = f.height
+                            , width = f.width
+                            , notch = intToNotch f.notch
+                            , darkMode = f.darkMode
+                            , id = f.id
+                            , url = url
+                            , now = Time.millisToPosix f.now
+                            , fps = Nothing
+                            , dev = f.dev
+                            , domain = f.domain
+                            }
+
+                        ld =
+                            case a.keyer inVal f.config |> getLocal |> JD.decodeString a.local of
+                                Ok l ->
+                                    l
+
+                                Err e ->
+                                    let
+                                        _ =
+                                            log "error -" e
+                                    in
+                                    a.defaultLocalAndSession
+                    in
+                    a.init
+                        inVal
+                        ld
+                        f.config
+                        |> Tuple.mapFirst Ok
+                        |> (\( f1, s ) ->
+                                ( ( f.title, f1, f.id )
+                                , ( s, f.notch, f.darkMode )
+                                , ( d, f.now, ( f.width, f.height, ( f.dev, f.domain ) ) )
+                                )
+                           )
+
+                Err e ->
+                    ( ( "", Err (PError { value = vflags, jd = e }), "" )
+                    , ( Cmd.none, 0, False )
+                    , ( { class = E.Desktop, orientation = E.Landscape }
+                      , 0
+                      , ( 0, 0, ( False, "" ) )
+                      )
+                    )
+    in
+    ( { url = url
+      , key = key
+      , model = im
+      , shuttingDown = False
+      , title = title
+      , dict = hash
+      , clearedHash = False
+      , device = device
+      , height = height
+      , width = width
+      , notch = intToNotch notch
+      , darkMode = darkMode
+      , id = id
+      , now = Time.millisToPosix n
+      , fps = Nothing
+      , frameCounter = 0
+      , trackFPS = False
+      , dev = dev
+      , domain = domain
       }
     , cmd
     )
@@ -425,6 +547,8 @@ type Magic
     | Crash
     | Referer
     | IsTopLevel
+    | SessionStorageGetItem
+    | GetThemeConfig
 
 
 magicSlice : Magic -> String -> String
@@ -461,15 +585,31 @@ magicSlice m s =
 
                 IsTopLevel ->
                     8
+
+                SessionStorageGetItem ->
+                    9
+
+                GetThemeConfig ->
+                    10
     in
     String.slice magic const s
+
+
+getThemeConfig : String -> String
+getThemeConfig a =
+    magicSlice GetThemeConfig a
+
+
+getLocal : String -> String
+getLocal a =
+    magicSlice SessionStorageGetItem a
 
 
 warn : String -> a -> a
 warn msg a =
     let
         _ =
-            magicSlice Warn (msg ++ ": " ++ Debug.toString a)
+            magicSlice Warn (msg ++ ": " ++ toString a)
     in
     a
 
@@ -478,7 +618,7 @@ log : String -> a -> a
 log msg a =
     let
         _ =
-            magicSlice Log (msg ++ ": " ++ Debug.toString a)
+            magicSlice Log (msg ++ ": " ++ toString a)
     in
     a
 
@@ -523,7 +663,8 @@ consoleGroupEnd a =
 
 toString : a -> String
 toString =
-    Debug.toString
+    --  Debug.toString
+    always "release"
 
 
 getTime : String -> Time.Posix
@@ -582,13 +723,6 @@ appUpdate_ a msg am =
                     a.update (toIn am) imsg model
                         |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
 
-        ( UrlRequest (B.Internal url), False ) ->
-            let
-                u =
-                    Url.toString url
-            in
-            ( am, Cmd.batch [ BN.pushUrl am.key u, RP.navigate u ] )
-
         ( TrackFPS v, _ ) ->
             ( { am | trackFPS = v, fps = Nothing }, Cmd.none )
 
@@ -606,6 +740,13 @@ appUpdate_ a msg am =
 
         ( Refresh, False ) ->
             ( am, RP.navigate (Url.toString am.url) )
+
+        ( UrlRequest (B.Internal url), False ) ->
+            let
+                u =
+                    Url.toString url
+            in
+            ( am, Cmd.batch [ BN.pushUrl am.key u, RP.navigate u ] )
 
         ( UrlRequest (B.External url), False ) ->
             ( am, BN.load url )
@@ -653,7 +794,189 @@ appUpdate_ a msg am =
                         am2 =
                             { am | width = w, height = h, notch = intToNotch n }
                     in
-                    ( { am2 | device = E.classifyDevice am2 }, Cmd.none )
+                    ( { am2 | device = classifyDevice am2 }, Cmd.none )
+
+                _ ->
+                    ( am, Cmd.none )
+
+        ( Shutdown, False ) ->
+            ( { am | shuttingDown = True }, Cmd.none )
+
+        ( ReloadPage, _ ) ->
+            ( am, BN.reload )
+
+        ( OnResize w h, _ ) ->
+            ( { am | width = w, height = h }, Cmd.none )
+
+        ( OnApiResponse _ d (RD.Success v), False ) ->
+            case JD.decodeValue d v.data of
+                Ok m ->
+                    ( am, Cmd.batch [ message (Msg m), RP.cancelLoading () ] )
+
+                Err e ->
+                    ( { am | model = Err (PError { value = v.data, jd = e }) }, Cmd.none )
+
+        ( OnApiResponse errCtr _ (RD.Failure (RR.FieldErrors _ e)), False ) ->
+            passErrorToApp errCtr e
+
+        ( OnApiResponse _ _ (RD.Failure e), False ) ->
+            ( { am | model = Err (SubmitError e) }, Cmd.none )
+
+        ( OnDataResponse d (RD.Success v), False ) ->
+            case JD.decodeValue d v.data of
+                Ok m ->
+                    ( am, Cmd.batch [ message (Msg m), RP.cancelLoading () ] )
+
+                Err e ->
+                    ( { am | model = Err (PError { value = v.data, jd = e }) }, Cmd.none )
+
+        ( OnDataResponse _ (RD.Failure e), False ) ->
+            ( { am | model = Err (SubmitError e) }, Cmd.none )
+
+        ( OnSubmitResponse u errCtr (RD.Success res), False ) ->
+            case res.data of
+                RR.Navigate n ->
+                    ( am
+                    , [ ( "data", n ), ( "url", JE.string u ) ]
+                        |> JE.object
+                        |> changePage
+                    )
+
+                RR.FErrors e ->
+                    passErrorToApp errCtr e
+
+        ( OnSubmitResponse _ _ (RD.Failure e), False ) ->
+            ( { am | model = Err (SubmitError e) }, Cmd.none )
+
+        _ ->
+            let
+                _ =
+                    warn "ignoring" ()
+            in
+            ( am, Cmd.none )
+
+
+classifyDevice : { window | height : Int, width : Int } -> E.Device
+classifyDevice window =
+    -- Tested in this ellie:
+    -- https://ellie-app.com/68QM7wLW8b9a1
+    { class =
+        if window.width < 600 then
+            E.Phone
+
+        else if window.width <= 1200 then
+            E.Tablet
+
+        else if window.width > 1200 && window.width <= 1920 then
+            E.Desktop
+
+        else
+            E.BigDesktop
+    , orientation =
+        if window.width < window.height then
+            E.Portrait
+
+        else
+            E.Landscape
+    }
+
+
+appUpdate_local :
+    LocalApp local config model msg
+    -> Msg msg
+    -> Model model
+    -> ( Model model, Cmd (Msg msg) )
+appUpdate_local a msg am =
+    let
+        passErrorToApp =
+            \ctr e ->
+                case am.model of
+                    Err _ ->
+                        ( am, Cmd.none )
+
+                    Ok model ->
+                        a.update (toIn am) (ctr e) model
+                            |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
+                            |> Tuple.mapSecond
+                                (\c_ -> Cmd.batch [ c_, RP.cancelLoading () ])
+    in
+    case ( msg, am.shuttingDown ) of
+        ( Msg imsg, False ) ->
+            case am.model of
+                Err _ ->
+                    ( am, Cmd.none )
+
+                Ok model ->
+                    a.update (toIn am) imsg model
+                        |> Tuple.mapFirst (\m_ -> { am | model = Ok m_ })
+
+        ( UrlRequest (B.Internal url), False ) ->
+            let
+                u =
+                    Url.toString url
+            in
+            ( am, Cmd.batch [ BN.pushUrl am.key u, RP.navigate u ] )
+
+        ( TrackFPS v, _ ) ->
+            ( { am | trackFPS = v, fps = Nothing }, Cmd.none )
+
+        ( OnSecond, _ ) ->
+            ( { am | fps = Just am.frameCounter, frameCounter = 0 }, Cmd.none )
+
+        ( OnFrame, _ ) ->
+            ( { am | frameCounter = am.frameCounter + 1 }, Cmd.none )
+
+        ( Back, False ) ->
+            ( am, BN.back am.key 1 )
+
+        ( GoTo url, False ) ->
+            ( am, Cmd.batch [ BN.pushUrl am.key url, RP.navigate url ] )
+
+        ( Refresh, False ) ->
+            ( am, RP.navigate (Url.toString am.url) )
+
+        ( UrlRequest (B.External url), False ) ->
+            ( am, BN.load url )
+
+        ( UrlChange _, False ) ->
+            ( am, Cmd.none )
+
+        ( UpdateHashKV k "", False ) ->
+            let
+                m =
+                    { am | dict = Dict.remove (Url.percentEncode k) am.dict }
+            in
+            ( m, updateHash m )
+
+        ( UpdateHashKV k v, False ) ->
+            let
+                m =
+                    { am
+                        | dict =
+                            Dict.insert
+                                (Url.percentEncode k)
+                                (Url.percentEncode v)
+                                am.dict
+                    }
+            in
+            ( m, updateHash m )
+
+        ( ViewPortChanged v, False ) ->
+            case
+                JD.decodeValue
+                    (JD.succeed (\x y z -> ( x, y, z ))
+                        |> field "width" JD.int
+                        |> field "height" JD.int
+                        |> field "notch" JD.int
+                    )
+                    v
+            of
+                Ok ( w, h, n ) ->
+                    let
+                        am2 =
+                            { am | width = w, height = h, notch = intToNotch n }
+                    in
+                    ( { am2 | device = classifyDevice am2 }, Cmd.none )
 
                 _ ->
                     ( am, Cmd.none )
@@ -785,6 +1108,29 @@ appSubscriptions_ a am =
             Sub.none
 
 
+appSubscriptions_local : LocalApp local config model msg -> Model model -> Sub (Msg msg)
+appSubscriptions_local a am =
+    case ( am.model, am.shuttingDown ) of
+        ( Ok model, False ) ->
+            Sub.batch <|
+                [ shutdown (always Shutdown)
+                , viewPortChanged ViewPortChanged
+                , a.subscriptions (toIn am) model
+                , BE.onResize OnResize
+                ]
+                    ++ (if am.trackFPS then
+                            [ BE.onAnimationFrame (always OnFrame)
+                            , Time.every 1000 (always OnSecond)
+                            ]
+
+                        else
+                            []
+                       )
+
+        _ ->
+            Sub.none
+
+
 appDocument : App config model msg -> Model model -> B.Document (Msg msg)
 appDocument a am =
     appDocument_ a (consoleGroupStart "appDocument" am)
@@ -794,6 +1140,31 @@ appDocument a am =
 
 appDocument_ : App config model msg -> Model model -> B.Document (Msg msg)
 appDocument_ a am =
+    case ( am.model, am.shuttingDown ) of
+        ( Err e, False ) ->
+            case e of
+                PError p ->
+                    { title = "failed to parse"
+                    , body =
+                        [ H.text ("value: " ++ JE.encode 4 p.value)
+                        , H.text ("error: " ++ JD.errorToString p.jd)
+                        ]
+                    }
+
+                _ ->
+                    { title = "failed to parse"
+                    , body = [ H.text ("Network Error: " ++ toString e) ]
+                    }
+
+        ( Ok model, False ) ->
+            a.document (toIn am) model
+
+        ( _, True ) ->
+            shutdownView
+
+
+appDocument_local : LocalApp local config model msg -> Model model -> B.Document (Msg msg)
+appDocument_local a am =
     case ( am.model, am.shuttingDown ) of
         ( Err e, False ) ->
             case e of
@@ -925,6 +1296,7 @@ type alias TestFlags config =
     , notch : Int
     , now : Int
     , dev : Bool
+    , domain : String
     }
 
 
@@ -941,6 +1313,7 @@ testFlags config =
         |> field "notch" JD.int
         |> field "now" JD.int
         |> fieldWithDefault "dev" False JD.bool
+        |> field "domain" JD.string
 
 
 type alias TModel model =
@@ -959,6 +1332,7 @@ type alias TModel model =
     , fps : Maybe Int
     , trackFPS : Bool
     , dev : Bool
+    , domain : String
 
     -- TODO: add darkMode
     }
@@ -978,6 +1352,7 @@ toIn2 m =
     , now = m.now
     , fps = m.fps
     , dev = m.dev
+    , domain = m.domain
     }
 
 
@@ -1004,7 +1379,7 @@ testInit_ t vflags url _ =
         Ok tflags ->
             let
                 device =
-                    E.classifyDevice tflags
+                    classifyDevice tflags
             in
             t.init
                 { title = tflags.title
@@ -1019,6 +1394,7 @@ testInit_ t vflags url _ =
                 , now = Time.millisToPosix tflags.now
                 , fps = Nothing
                 , dev = tflags.dev
+                , domain = tflags.domain
                 }
                 tflags
                 |> Tuple.mapFirst
@@ -1038,6 +1414,7 @@ testInit_ t vflags url _ =
                         , frameCounter = 0
                         , trackFPS = False
                         , dev = tflags.dev
+                        , domain = tflags.domain
                         }
                     )
 
@@ -1057,6 +1434,7 @@ testInit_ t vflags url _ =
               , trackFPS = False
               , frameCounter = 0
               , dev = False
+              , domain = ""
               }
             , result Cmd.none [ BadConfig <| JD.errorToString e, TestDone ]
             )
@@ -1102,9 +1480,7 @@ testUpdate_ t msg m =
 
 shutdownView : B.Document (Msg msg)
 shutdownView =
-    { title = "shuttingDown"
-    , body = [ H.div [ Html.Attributes.id "appShutdownEmptyElement" ] [] ]
-    }
+    { title = "shuttingDown", body = [ H.div [ HA.id "appShutdownEmptyElement" ] [] ] }
 
 
 testDocument :
@@ -1287,6 +1663,20 @@ test0 a init =
         }
 
 
+testWithLocal :
+    LocalApp local config model msg
+    -> (In -> TestFlags config -> ( model, Cmd (Msg msg) ))
+    -> Program JE.Value (TModel model) (Msg msg)
+testWithLocal a init =
+    test
+        { config = a.config
+        , init = init
+        , update = \i msg m -> a.update i msg m
+        , subscriptions = a.subscriptions
+        , document = a.document
+        }
+
+
 controller : TestResult -> JE.Value
 controller c =
     (case c of
@@ -1342,3 +1732,95 @@ tuple a b =
 tupleE : (a -> JE.Value) -> (b -> JE.Value) -> ( a, b ) -> JE.Value
 tupleE fa fb ( a, b ) =
     JE.list identity [ fa a, fb b ]
+
+
+getEditorWidth : In -> Int
+getEditorWidth in_ =
+    case in_.device.class of
+        E.Desktop ->
+            710
+
+        E.Phone ->
+            in_.width - 30
+
+        E.Tablet ->
+            if in_.width > 700 then
+                700
+
+            else
+                in_.width - 40
+
+        _ ->
+            710
+
+
+getContainerWidth : In -> ( Int, Int, Int )
+getContainerWidth in_ =
+    let
+        sideBarWidth =
+            500
+
+        width =
+            in_.width
+    in
+    case in_.device.class of
+        E.Desktop ->
+            let
+                remainWidth =
+                    width - sideBarWidth
+
+                centreWidth =
+                    if remainWidth > 700 then
+                        700
+
+                    else
+                        remainWidth - 60
+
+                padding =
+                    120
+            in
+            ( centreWidth, remainWidth - padding, remainWidth )
+
+        E.Phone ->
+            let
+                remainWidth =
+                    width - 30
+
+                centreWidth =
+                    remainWidth
+
+                padding =
+                    10
+            in
+            ( centreWidth - padding, remainWidth, width )
+
+        E.Tablet ->
+            let
+                remainWidth =
+                    width - 40
+
+                centreWidth =
+                    if remainWidth > 700 then
+                        700
+
+                    else
+                        remainWidth - 80
+            in
+            ( centreWidth, centreWidth, width )
+
+        _ ->
+            let
+                remainWidth =
+                    width - sideBarWidth
+
+                centreWidth =
+                    if remainWidth > 700 then
+                        700
+
+                    else
+                        remainWidth - 60
+
+                padding =
+                    120
+            in
+            ( centreWidth, remainWidth - padding, remainWidth )

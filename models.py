@@ -37,3 +37,18 @@ class Activity(models.Model):
     utm_content = models.TextField(null=True)
 
     site_version = models.TextField()
+
+
+class Task(models.Model):
+    path = models.TextField()
+    method = models.TextField()
+    data = models.JSONField(default=dict)
+    cookies = models.JSONField(default=dict)
+
+    priority = models.IntegerField()
+
+    status = models.TextField()
+    number_tries = models.IntegerField()
+
+    created_on = models.DateTimeField(auto_now_add=True)
+    updated_on = models.DateTimeField(auto_now=True)

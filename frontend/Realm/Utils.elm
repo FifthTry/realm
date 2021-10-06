@@ -1,18 +1,73 @@
-module Realm.Utils exposing (Field, Form, Rendered(..), aif, aifn, button, capitalize, class, contains, dalways, deleteIth, edges, emptyField, err, escEnter, false, false2, fi, fieldError, fieldNoError, fieldValid, fieldValue, fieldWithDefault, fieldsNoError, fmaybe, form, formE, html, htmlLine, htmlWith, id, iff, iframe, isJust, jo, lGet, ltr, mString, mapAIth, mapIth, match, matchCtx, matchCtx2, maybe, maybeE, maybeS, message, mif, mif2, mifab, nif, niff, none, onClick, onDoubleClick, onEnter, onEsc, onFocus, onSpecialS, oneOf, posix, posixE, pre, rendered, renderedE, renderedToString, result, rtl, slugify, style, subIfJust, subIfNothing, text, title, true, true2, val, withError, withFocus, withInitialValue, yesno, yesno1, zIndex, zip)
+module Realm.Utils exposing (..)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Element as E
 import Element.Input as EI
-import Html
+import Html as H
 import Html.Attributes as HA
-import Html.Events
+import Html.Events as HE
 import Json.Decode as JD
 import Json.Encode as JE
 import Realm as R
+import Realm.Ports as RP
 import Slug
 import Task
 import Time
+
+
+initializeFtd : String -> JE.Value -> Cmd msg
+initializeFtd ftdId data =
+    [ ( "id", JE.string ftdId ), ( "data", data ) ]
+        |> JE.object
+        |> RP.initializeFtd
+
+
+setFtdBool : String -> Bool -> JE.Value -> Cmd msg
+setFtdBool var value handle =
+    [ ( "variable", JE.string var )
+    , ( "value", JE.bool value )
+    , ( "handle", handle )
+    ]
+        |> JE.object
+        |> RP.setFtdBool
+
+
+setMultiAndRender : List ( String, JE.Value ) -> JE.Value -> Cmd msg
+setMultiAndRender list handle =
+    [ ( "list", JE.list (R.tupleE JE.string identity) list )
+    , ( "handle", handle )
+    ]
+        |> JE.object
+        |> RP.setFtdMultiValue
+
+
+isMobile : E.Device -> Bool
+isMobile device =
+    case device.class of
+        E.Phone ->
+            True
+
+        _ ->
+            False
+
+
+renderFtd : JE.Value -> Cmd msg
+renderFtd handle =
+    RP.renderFtd handle
+
+
+type alias FTDHandle =
+    { id : String
+    , handle : JE.Value
+    }
+
+
+ftdHandle : JD.Decoder FTDHandle
+ftdHandle =
+    JD.succeed FTDHandle
+        |> R.field "id" JD.string
+        |> R.field "handle" JD.value
 
 
 id : String -> E.Attribute msg
@@ -25,14 +80,19 @@ class =
     HA.class >> E.htmlAttribute
 
 
+maximumWidthOfApp : Int -> E.Attribute msg
+maximumWidthOfApp w =
+    E.width (E.px w)
+
+
 jo : List ( String, JE.Value ) -> Maybe JE.Value
 jo =
     JE.object >> Just
 
 
-iframe : String -> List (Html.Attribute msg) -> E.Element msg
+iframe : String -> List (H.Attribute msg) -> E.Element msg
 iframe src attrs =
-    E.html <| Html.node "iframe" (HA.src src :: attrs) []
+    E.html <| H.node "iframe" (HA.src src :: attrs) []
 
 
 title : String -> E.Attribute msg
@@ -43,6 +103,11 @@ title =
 style : String -> String -> E.Attribute msg
 style k v =
     E.htmlAttribute (HA.style k v)
+
+
+maxContent : E.Attribute msg
+maxContent =
+    style "width" "max-content"
 
 
 lGet : Int -> List a -> Maybe a
@@ -81,6 +146,11 @@ isJust n =
 iff : Bool -> E.Element msg -> E.Element msg
 iff c e =
     yesno c e E.none
+
+
+listNotEmpty : List a -> Bool
+listNotEmpty l =
+    not (List.isEmpty l)
 
 
 niff : Bool -> E.Element msg -> E.Element msg
@@ -136,7 +206,7 @@ mifab m f1 f2 =
 onEnter : msg -> E.Attribute msg
 onEnter msg =
     E.htmlAttribute
-        (Html.Events.on "keyup"
+        (HE.on "keyup"
             (JD.field "key" JD.string
                 |> JD.andThen
                     (\key ->
@@ -153,7 +223,7 @@ onEnter msg =
 onSpecialS : msg -> E.Attribute msg
 onSpecialS msg =
     E.htmlAttribute
-        (Html.Events.custom
+        (HE.custom
             "keydown"
             (JD.map2 Tuple.pair
                 (JD.field "key" JD.string)
@@ -185,7 +255,7 @@ onSpecialS msg =
 onEsc : msg -> E.Attribute msg
 onEsc esc =
     E.htmlAttribute
-        (Html.Events.on "keyup"
+        (HE.on "keyup"
             (JD.succeed esc)
         )
 
@@ -193,7 +263,7 @@ onEsc esc =
 onClick : msg -> E.Attribute msg
 onClick msg =
     E.htmlAttribute
-        (Html.Events.custom
+        (HE.custom
             "click"
             (JD.succeed
                 { message = msg
@@ -204,10 +274,27 @@ onClick msg =
         )
 
 
+onShiftClick : (Bool -> msg) -> E.Attribute msg
+onShiftClick msg =
+    let
+        fn : Bool -> JD.Decoder { message : msg, stopPropagation : Bool, preventDefault : Bool }
+        fn v =
+            JD.succeed
+                { message = msg v
+                , stopPropagation = True
+                , preventDefault = True
+                }
+    in
+    E.htmlAttribute
+        (HE.custom "click"
+            (JD.field "shiftKey" JD.bool |> JD.andThen fn)
+        )
+
+
 onDoubleClick : msg -> E.Attribute msg
 onDoubleClick msg =
     E.htmlAttribute
-        (Html.Events.custom
+        (HE.custom
             "dblclick"
             (JD.succeed
                 { message = msg
@@ -221,7 +308,7 @@ onDoubleClick msg =
 onFocus : msg -> E.Attribute msg
 onFocus msg =
     E.htmlAttribute
-        (Html.Events.custom
+        (HE.custom
             "focus"
             (JD.succeed
                 { message = msg
@@ -235,7 +322,7 @@ onFocus msg =
 escEnter : msg -> msg -> E.Attribute msg
 escEnter esc enter =
     E.htmlAttribute
-        (Html.Events.on "keyup"
+        (HE.on "keyup"
             (JD.field "key" JD.string
                 |> JD.andThen
                     (\key ->
@@ -256,7 +343,7 @@ escEnter esc enter =
 onSpaceOrEnter : msg -> E.Attribute msg
 onSpaceOrEnter msg =
     E.htmlAttribute
-        (Html.Events.on "keyup"
+        (HE.on "keyup"
             (JD.field "key" JD.string
                 |> JD.andThen
                     (\key ->
@@ -363,7 +450,7 @@ html : List (E.Attribute msg) -> Rendered -> E.Element msg
 html attrs (Rendered md) =
     E.el attrs
         (E.html <|
-            Html.node "realm-html"
+            H.node "realm-html"
                 [ HA.src md, HA.style "white-space" "initial" ]
                 []
         )
@@ -383,10 +470,10 @@ htmlLine =
     html
 
 
-pre : List (Html.Attribute msg) -> String -> E.Element msg
+pre : List (H.Attribute msg) -> String -> E.Element msg
 pre styles s =
     E.html
-        (Html.pre
+        (H.pre
             ([ HA.style "overflow-x" "auto"
              , HA.style "overflow-y" "hidden"
              , HA.style "padding" "8px"
@@ -394,7 +481,7 @@ pre styles s =
              ]
                 ++ styles
             )
-            [ Html.text s ]
+            [ H.text s ]
         )
 
 
@@ -663,6 +750,16 @@ result ed sd =
     JD.oneOf [ JD.field "Err" (JD.map Err ed), JD.field "Ok" (JD.map Ok sd) ]
 
 
+resultE : (a -> JE.Value) -> (b -> JE.Value) -> Result a b -> JE.Value
+resultE a b r =
+    case r of
+        Ok b_ ->
+            b b_
+
+        Err a_ ->
+            a a_
+
+
 true : String -> Bool -> R.TestResult
 true tid v =
     match tid True v
@@ -684,26 +781,20 @@ false2 tid v _ =
 
 
 match : String -> a -> a -> R.TestResult
-match tid exp got =
-    if exp /= got then
+match tid left right =
+    if left /= right then
         let
             _ =
                 R.log "TestID" tid
 
             expS =
-                R.log "exp" (R.toString exp)
+                R.log "left" (R.toString left)
 
             gotS =
-                R.log "got" (R.toString got)
-
-            _ =
-                R.log "Eqv" (expS == gotS)
-
-            _ =
-                R.log "EqvOrg" (exp == got)
+                R.log "right" (R.toString right)
         in
         R.TestFailed tid
-            ("Expected: " ++ R.toString exp ++ " got: " ++ R.toString got)
+            ("Left: " ++ expS ++ " right: " ++ gotS)
 
     else
         R.TestPassed tid
@@ -773,3 +864,44 @@ capitalize str =
 zIndex : Int -> E.Attribute msg
 zIndex i =
     E.htmlAttribute (HA.style "z-index" (String.fromInt i))
+
+
+ellipses : Int -> String -> String
+ellipses i s =
+    if String.length s <= i then
+        s
+
+    else
+        String.slice 0 i s ++ "..."
+
+
+stickyElement : String -> String -> List (E.Attribute msg)
+stickyElement t h =
+    [ style "top" t
+    , style "height" h
+    , style "position" "sticky"
+    ]
+
+
+fixElement : String -> String -> List (E.Attribute msg)
+fixElement s h =
+    [ style "height" h
+    , style "position" "fixed"
+    , style "top" s
+    , zIndex 10
+    ]
+
+
+row : List (E.Attribute msg) -> List (E.Element msg) -> E.Element msg
+row att el =
+    E.row ([ style "position" "static" ] ++ att) el
+
+
+column : List (E.Attribute msg) -> List (E.Element msg) -> E.Element msg
+column att el =
+    E.column ([ style "position" "static" ] ++ att) el
+
+
+wrapperRow : List (E.Attribute msg) -> List (E.Element msg) -> E.Element msg
+wrapperRow att el =
+    E.wrappedRow ([ style "position" "static" ] ++ att) el

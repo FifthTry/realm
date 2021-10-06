@@ -4,6 +4,7 @@ pub fn is_realm_url(p: (&str, &http::Method)) -> bool {
         ("/storybook/poll/", &http::Method::GET) => true,
         ("/iframe/", &http::Method::GET) => true,
         ("/favicon.ico", &http::Method::GET) => true,
+        ("/robots.txt", &http::Method::GET) => true,
         (t, _) if t.starts_with("/test/") => true,
         (t, &http::Method::GET) if t.starts_with("/static/") => true,
         _ => false,
@@ -42,9 +43,12 @@ where
         ("/favicon.ico", &http::Method::GET) => {
             crate::serve_static::serve_static(in_.ctx).map_err(Into::into)
         }
+        ("/robots.txt", &http::Method::GET) => {
+            crate::serve_static::serve_static(in_.ctx).map_err(Into::into)
+        }
         (t, &http::Method::GET) if t.starts_with("/static/") => {
             crate::serve_static::serve_static(in_.ctx).map_err(Into::into)
         }
-        _ => unreachable!("{:?}", p),
+        _ => Err(format_err!("{:?}", p)),
     }
 }

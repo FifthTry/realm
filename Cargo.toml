@@ -21,14 +21,17 @@ sqlite_default = ["diesel/sqlite"]
 [dependencies]
 antidote = "1.0.0"
 askama = "0.10.1"
-bcrypt = "0.7"
+bcrypt = "0.10.1"
 byteorder = "~1"
 colored = "1"
 cookie = { version = "0.13", features = ["percent-encode"] }
 crossbeam-channel = "0.3.9"
 diesel = { version = "1.4.4", features = ["chrono", "serde_json"] }
+diffy = "0.2.1"
 failure = "0.1"
+ctrlc = "3.1.7"
 ftd = { path = "../ftd" }
+ftd-rt = { path = "../ftd-rt" }
 futures = "0.1.26"
 futures-cpupool = "0.1.8"
 http = "0.1.18"
@@ -39,17 +42,20 @@ log = "0.4"
 mime_guess = "2"
 notify = "=5.0.0-pre.1"
 
+realm-lang = { path = "realm-lang" }
 observer = { path = "../observer/observer" }
-observer_attribute = "0.1.8"
+observer_attribute = { path = "../observer/observer_attribute" }
 r2d2 = "0.8.5"
 r2d2-diesel = "1.0.0"
-serde = "~1.0.0"
-serde_derive = "~1.0.0"
-serde_json = "~1.0.0"
+serde = { version = "1" }
+serde_json = "1"
 signed_cookies = "0.1.2"
 syntect = "4"
 url = "2"
 woothee = "0.11"
+rand = "0.8.2"
+fluent = "0.15"
+intl-memoizer = "0.5.1"
 
 [dependencies.chrono]
 features = ["serde"]

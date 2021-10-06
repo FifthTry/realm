@@ -1,7 +1,5 @@
 from typing import List, Union
 import hashlib
-import gzip
-import brotli
 import os
 import re
 import datetime
@@ -17,8 +15,24 @@ def task_pip():
             "sed -i -e '/macfsevents/d' requirements.txt",
             "sed -i -e '/pyinotify/d' requirements.txt",
         ],
-        "file_dep": ["requirements.in", "dodo.py"],
+        "file_dep": ["requirements.in", "dodo.py", "realm/dodo.py"],
         "targets": ["requirements.txt"],
+    }
+
+
+def task_wasm():
+    return {
+        "actions": [
+            "cd ftd-rt && wasm-pack build --target web -- --features=wasm,realm",
+            "cp ftd-rt/pkg/ftd_rt.js static/",
+            "cp ftd-rt/pkg/ftd_rt_bg.wasm static/",
+        ],
+        "file_dep": (
+            ["dodo.py", "realm/dodo.py"]
+            + glob2("ftd", r".*\.(rs|toml)", recursive=True)
+            + glob2("ftd-rt", r".*\.(rs|toml)", recursive=True)
+        ),
+        "targets": ["static/ftd_rt.js", "static/ftd_rt_bg.wasm"],
     }
 
 
@@ -34,14 +48,16 @@ def _merge_files_update_latest(e: str, r: str, static: str):
     e = open(e, "rb").read()
     r = open(r, "rb").read()
     sw = open("realm/frontend/sw.js", "rb").read()
+    ftd_js = open("static/ftd_rt.js", "rb").read()
 
     # 1. concat e and r, and compute hash
     hasher = hashlib.sha256()
     hasher.update(e)
     hasher.update(r)  # repeated calls of .update() is okay
     hasher.update(sw)
+    hasher.update(ftd_js)
     # TODO: hash other generated files too
-    hexdiget = hasher.hexdigest()[:10]
+    hexdigest = hasher.hexdigest()[:10]
 
     # 2. get hash from last.txt, if file missing, or different, create new guid
     try:
@@ -49,16 +65,22 @@ def _merge_files_update_latest(e: str, r: str, static: str):
     except FileNotFoundError:
         last = ""
 
-    if last == hexdiget:
+    if last == hexdigest:
         return
 
-    new = "hashed-" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-") + hexdiget
-    open("%slast.txt" % (static,), "wt").write(hexdiget)
+    new = "hashed-" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-") + hexdigest
+
+    os.mkdir(os.path.join(static, new))
+
+    open("%slast.txt" % (static,), "wt").write(hexdigest)
     open("%scurrent.txt" % (static,), "wt").write(new)
 
-    sw_fd = open("%ssw.%s.js" % (static, new), "wb")
+    sw_fd = open(f"{static}{new}/sw.js", "wb")
     sw_fd.write(b'var realm_hash = "%s";\n' % (bytes(new, encoding="utf-8"),))
     sw_fd.write(sw)
+
+    ftd_js_fd = open(f"{static}{new}/ftd_rt.js", "wb")
+    ftd_js_fd.write(ftd_js)
 
     content = (
         b'window.realm_hash = "%s";\n' % (bytes(new, encoding="utf-8"),)
@@ -67,17 +89,20 @@ def _merge_files_update_latest(e: str, r: str, static: str):
         + r
     )
 
-    fd = open("%selm.%s.js" % (static, new), "wb")
+    fd = open(f"{static}{new}/elm.js", "wb")
     fd.write(content)
-
-    gzip.open("%selm.%s.js.gz" % (static, new), "wb").write(content)
-    open("%selm.%s.js.br" % (static, new), "wb").write(
-        brotli.compress(content, mode=brotli.MODE_TEXT, quality=11, lgwin=22)
-    )
 
 
 def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
     def spec():
+        def is_debug():
+            import sys
+
+            args = sys.argv
+            if "-d" in args:
+                return True
+            return False
+
         basename = folder if folder else "elm"
         prefix = folder + "/" if folder else ""
         static = target if target.endswith("/") else (target + "/")
@@ -86,6 +111,7 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
             glob2("realm/frontend/", r".*\.(elm|js)", recursive=True)
             + ["dodo.py"]
             + (extra_elms if extra_elms else [])
+            + glob2("elm/", r".*\.(elm|js)", recursive=True)
         )
 
         yield {
@@ -132,8 +158,7 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
                 "   realm/frontend/pre.js "
                 "   %sfrontend/elm-stuff/t.js "
                 "   realm/frontend/IframeController.js "
-                "   > %stest.js"
-                % (prefix, static),
+                "   > %stest.js" % (prefix, static),
             ],
             "file_dep": proj_elms + realm_deps,
             "targets": ["%stest.js" % (static,)],
@@ -143,15 +168,13 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
 
         yield {
             "actions": [
-                "cd fifthtry/frontend && elm make RealmTest.elm"
-                " --output=elm-stuff/t2.js",
+                "cd ftweb/frontend && elm make RealmTest.elm --output=elm-stuff/t2.js",
                 "mkdir -p %s" % (static,),
                 "cat "
                 "   realm/frontend/pre.js "
-                "   fifthtry/frontend/elm-stuff/t2.js "
+                "   ftweb/frontend/elm-stuff/t2.js "
                 "   realm/frontend/IframeController.js "
-                "   > %srealm-test.js"  # TODO: remove fifthtry from there
-                % (static,),
+                "   > %srealm-test.js" % (static,),  # TODO: remove ftweb from there
             ],
             "file_dep": proj_elms + realm_deps,
             "targets": ["%srealm-test.js" % (static,)],
@@ -168,8 +191,7 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
                 "   realm/frontend/pre.js "
                 "   %sfrontend/elm-stuff/s.js "
                 "   realm/frontend/IframeController.js "
-                "   > %sstorybook.js"
-                % (prefix, static),
+                "   > %sstorybook.js" % (prefix, static),
             ],
             "file_dep": proj_elms + realm_deps,
             "targets": ["%sstorybook.js" % (static,)],
@@ -190,25 +212,30 @@ def elm_with(folder: str, target: str = "static", extra_elms: List[str] = None):
                 "   realm/frontend/pre.js "
                 "   %sfrontend/elm-stuff/i.js "
                 "   realm/frontend/Realm.js "
-                "   > %siframe.js"
-                % (prefix, static),
+                "   > %siframe.js" % (prefix, static),
             ],
             "file_dep": proj_elms + realm_deps,
             "targets": ["%siframe.js" % (static,)],
             "basename": basename,
             "name": "iframe",
         }
+        # elm make src/Main.elm --optimize --output=elm.js
+        optimize = "--optimize" if not is_debug() else ""
 
         elm_cmd = " ".join(
-            ["cd %sfrontend && elm" % (prefix,), "make --output=elm-stuff/e.js"]
+            [
+                "cd %sfrontend && elm" % (prefix,),
+                "make %s --output=elm-stuff/e2.js" % (optimize,),
+            ]
             + main_elms
         )
+        uglify_cmd = f"uglifyjs {prefix}frontend/elm-stuff/e2.js --compress 'pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe' | uglifyjs --mangle --output {prefix}frontend/elm-stuff/e.js"
 
         yield {
             "actions": [
                 elm_cmd,
+                uglify_cmd,
                 "mkdir -p %s" % (static,),
-                "sh realm/delete_old_builds.sh",
                 lambda: _merge_files_update_latest(
                     "%sfrontend/elm-stuff/e.js" % (prefix,),
                     "realm/frontend/Realm.js",
@@ -228,7 +255,14 @@ task_elm = elm_with("")
 
 
 MAIN_ELM = re.compile(r"\Wmain\W")
-TARGETS = ["elm", "iframe", "test", "storybook", "realm-test"]
+TARGETS = [
+    "elm",
+    "iframe",
+    "test",
+    "realm-test",
+]
+
+# TARGETS = ["elm", "iframe", "test", "storybook", "realm-test"] todo
 
 
 def glob2(

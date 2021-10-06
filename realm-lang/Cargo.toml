@@ -1,14 +1,8 @@
 [package]
 name = "realm-lang"
-description = "localisation library for the realm framework"
 version = "0.1.0"
 authors = ["Amit Upadhyay <upadhyay@gmail.com>"]
 edition = "2018"
-license = "Apache-2.0"
-documentation = "https://www.fifthtry.com/amitu/realm/"
-
-[lib]
-path = "src/lib.rs"
 
 [dependencies]
 accept-language = "2"

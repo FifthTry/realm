@@ -31,6 +31,13 @@ String.prototype.slice = function(slice) {
                     return document.referrer;
                 case 8:
                     return (window.self === window.top).toString();
+                case 9:
+                    var session = JSON.parse(sessionStorage.getItem(this));
+                    var local = JSON.parse(localStorage.getItem(this));
+                    return JSON.stringify({session: session, local: local});
+                case 10:
+                    return localStorage.getItem(this);
+
             }
         }
         return slice.call(this, start, length);

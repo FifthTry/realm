@@ -1,5 +1,7 @@
+pub use in_::{In, In0, UD};
+pub use utils::elapsed;
+
 mod db;
-mod form;
 pub(crate) mod in_;
 #[cfg(feature = "postgres")]
 pub mod pg;
@@ -11,25 +13,8 @@ pub mod point;
 
 mod utils;
 
-pub use form::{Form, FormErrors};
-pub use in_::{In, In0, UD};
-
-pub use utils::elapsed;
-
 pub type Request = http::Request<Vec<u8>>;
 pub type Result<T> = std::result::Result<T, failure::Error>;
-pub type FResult<T> = Result<std::result::Result<T, FormErrors>>;
-
-pub enum Language {
-    English,
-    Hindi,
-}
-
-impl Default for Language {
-    fn default() -> Language {
-        Language::English
-    }
-}
 
 pub fn error_stack(err: &failure::Error) -> String {
     let mut b = "".to_string();

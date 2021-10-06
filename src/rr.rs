@@ -25,7 +25,7 @@ impl Default for ReplayResult {
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(serde::Serialize, Default)]
 pub struct Recording {
     pub id: String,
     pub title: String,
@@ -70,11 +70,13 @@ impl Recording {
 
     pub fn to_p1(&self) -> Result<Vec<ftd::p1::Section>> {
         let mut p1 = vec![];
-        let mut first = ftd::p1::Section::default();
-        first.name = P1_NAME.to_string();
+        let mut first = ftd::p1::Section {
+            name: P1_NAME.to_string(),
+            body: Some(self.description.clone()),
+            caption: Some(self.title.clone()),
+            ..Default::default()
+        };
         first.header.add("id", self.id.as_str());
-        first.body = Some(self.description.clone());
-        first.caption = Some(self.title.clone());
         if let Some(ref b) = self.base {
             first.header.add("base", b);
         }
@@ -108,7 +110,7 @@ impl Recording {
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(serde::Serialize, Default)]
 pub struct Step {
     pub method: String,
     pub path: String,
@@ -146,9 +148,10 @@ impl Step {
     }
 
     pub fn to_p1(&self) -> Result<ftd::p1::Section> {
-        let mut p1 = ftd::p1::Section::default();
-
-        p1.name = P1_STEP_NAME.to_string();
+        let mut p1 = ftd::p1::Section {
+            name: P1_STEP_NAME.to_string(),
+            ..Default::default()
+        };
 
         p1.header.add("method", self.method.as_str());
         p1.header.add("path", self.path.as_str());
@@ -179,7 +182,7 @@ impl Step {
             body
         };
 
-        crate::Context::from(self.method(), self.path.clone(), body, cookies)
+        crate::Context::from(self.method(), self.path.as_str(), body, cookies)
     }
 
     fn method(&self) -> http::Method {
@@ -193,7 +196,7 @@ impl Step {
 
 const ACTIVITY_NAME: &str = "realm.rr.step.activity";
 
-#[derive(Serialize, Default)]
+#[derive(serde::Serialize, Default)]
 pub struct Activity {
     pub okind: String,
     pub oid: String,
@@ -203,12 +206,14 @@ pub struct Activity {
 
 impl Activity {
     pub fn to_p1(&self) -> Result<ftd::p1::SubSection> {
-        let mut p1 = ftd::p1::SubSection::default();
-        p1.name = ACTIVITY_NAME.to_string();
+        let mut p1 = ftd::p1::SubSection {
+            name: ACTIVITY_NAME.to_string(),
+            body: Some(serde_json::to_string_pretty(&self.data)?),
+            ..Default::default()
+        };
         p1.header.add("okind", self.okind.as_str());
         p1.header.add("oid", self.oid.as_str());
         p1.header.add("ekind", self.ekind.as_str());
-        p1.body = Some(serde_json::to_string_pretty(&self.data)?);
 
         Ok(p1)
     }
@@ -247,11 +252,11 @@ where
     };
 
     if let Err(e) = Recording::add_step(tid, step) {
-        dbg!(e);
+        eprintln!("{:?}", e);
     }
 }
 
-#[derive(Serialize, Template)]
+#[derive(serde::Serialize, Template)]
 #[template(path = "page.html")]
 struct Page {
     recording: Option<Recording>,
@@ -377,7 +382,7 @@ where
         .write(true)
         .create_new(true)
         .open(path)?
-        .write(&ftd::p1::to_string(&recording.to_p1()?).as_bytes())
+        .write(ftd::p1::to_string(&recording.to_p1()?).as_bytes())
     {
         observer::observe_string("failed to create recording file", e.to_string().as_str());
         return match e.kind() {

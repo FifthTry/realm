@@ -16,7 +16,15 @@ pub struct PgPoint;
 /// Point is represented in Postgres as a tuple of 64 bit floating point values (x, y).  This
 /// struct is a dumb wrapper type, meant only to indicate the tuple's meaning.
 #[derive(
-    Debug, Clone, PartialEq, Copy, FromSqlRow, AsExpression, SqlType, Serialize, Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Copy,
+    FromSqlRow,
+    AsExpression,
+    SqlType,
+    serde::Serialize,
+    serde::Deserialize,
 )]
 #[sql_type = "PgPoint"]
 pub struct Point {
