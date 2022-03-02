@@ -1176,8 +1176,8 @@ impl Language {
         .to_string()
     }
 
-    pub fn from_human(s: &str) -> Self {
-        match s {
+    pub fn from_human(s: &str) -> Result<Self, crate::Error> {
+        Ok(match s {
             "Afar" => Self::Afar,
             "Abkhaz" => Self::Abkhaz,
             "Avestan" => Self::Avestan,
@@ -1362,8 +1362,12 @@ impl Language {
             "Zhuang" => Self::Zhuang,
             "Chinese" => Self::Chinese,
             "Zulu" => Self::Zulu,
-        }
-            .to_string()
+            _ => {
+                return Err(crate::Error::InvalidCode {
+                    found: s.to_string(),
+                })
+            }
+        })
     }
 
     pub fn id(&self) -> &'static str {
